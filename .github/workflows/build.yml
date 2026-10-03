@@ -337,6 +337,10 @@ jobs:
       - name: Build
         id: build
         uses: docker/build-push-action@v6
+        env:
+          # The build record artifact isn't a release file and breaks
+          # download-artifact in the release job.
+          DOCKER_BUILD_RECORD_UPLOAD: false
         with:
           context: .
           platforms: linux/${{ matrix.arch }}
@@ -393,8 +397,35 @@ jobs:
     permissions:
       contents: write
     steps:
+      # By name: other jobs' artifacts (e.g. buildx build records) aren't
+      # release files, and some can't be extracted by download-artifact.
       - uses: actions/download-artifact@v4
         with:
+          name: web
+          path: artifacts/web
+      - uses: actions/download-artifact@v4
+        with:
+          name: android
+          path: artifacts/android
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux
+          path: artifacts/linux
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows
+          path: artifacts/windows
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos
+          path: artifacts/macos
+      - uses: actions/download-artifact@v4
+        with:
+          name: ios
+          path: artifacts/ios
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: hub-*
           path: artifacts
       - name: Collect files
         run: |
