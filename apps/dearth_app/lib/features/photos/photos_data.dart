@@ -20,11 +20,14 @@ final photoItemsProvider = StreamProvider<List<PhotoItem>>((ref) {
       .watch();
 });
 
-/// Photos eligible for the screensaver: enabled sources, not hidden.
-final screensaverPoolProvider = Provider<List<PhotoItem>>((ref) {
-  final sources = ref.watch(photoSourcesProvider).value ?? const <PhotoSource>[];
+/// Photos eligible for the screensaver: enabled sources, not hidden. Null
+/// until both queries have loaded, so the frame can tell "still loading"
+/// from "no photos" (which falls back to the art pack).
+final screensaverPoolProvider = Provider<List<PhotoItem>?>((ref) {
+  final sources = ref.watch(photoSourcesProvider).value;
+  final items = ref.watch(photoItemsProvider).value;
+  if (sources == null || items == null) return null;
   final enabled = {for (final s in sources) if (s.enabled) s.id};
-  final items = ref.watch(photoItemsProvider).value ?? const <PhotoItem>[];
   return [for (final p in items) if (!p.hidden && enabled.contains(p.sourceId)) p];
 });
 

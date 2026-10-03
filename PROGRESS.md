@@ -174,6 +174,16 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
   its yellow debug underline. A `GestureDetector` inside a `tid` forms its own
   semantics node and drops the id: use `excludeFromSemantics: true` when
   the gesture needs a pointer position anyway.
+- **2026-10-03** The display layer (screensaver, night clock) renders in
+  `AppFrame`, above the app's Navigator, while the app sits offstage under
+  `TickerMode(enabled: false)`. Consequences: it needs its own
+  `Material(type: transparency)` (the yellow underline on the screensaver
+  clock), its own Navigator for sheets (the long-press photo options could
+  never open), and it must *listen* to what it shows: Riverpod 3 pauses the
+  subscriptions of consumers under a disabled TickerMode, so a `ref.read`
+  of the photo pool could be empty or stale. `expectNoFallbackText()` in
+  `test/support/app_harness.dart` catches fallback-styled text in widget
+  tests.
 - **2026-10-03** Follow-ups: bundle a Fluent Emoji subset (SPEC §11.3; web
   currently fetches Noto Color Emoji at runtime), slim the Hub image, Postgres
   backend, weather/recipe key settings UI.
@@ -192,6 +202,7 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
 - 2026-10-03 — Home, Calendar (5 views, editor with recurring scopes, quick add), Weather, Lists, Photos + screensaver, Settings; 10 FR-CAL-13 tests, 6 sync-client tests against an in-process Hub, app flow test (steps 4.x, 5.2).
 - 2026-10-03 — `SyncStore.applyOpsBulk` + batched `replaceAll`; 200-seed equivalence test; 341 core tests green.
 - 2026-10-03 — Playwright E2E suite (4 projects) against a test Hub; app icons; Android/iOS/desktop identity (`app.dearth`); CI/CD workflow with releases; Git LFS.
+- 2026-10-03 — Fixed the screensaver: fallback text style (yellow underline) on the clock and overlays, photo options that could never open, and a photo pool read while paused; screensaver widget tests + shared app test harness. E2E: 149 passed, 7 skipped.
 - 2026-10-03 — Kids & chores settings: chore/routine/reward editors, chore library by age, jar/sticker/goal settings; 8 setup unit tests; 4 Playwright journeys × 4 viewports.
 - 2026-10-03 — Kids (step 6.1 core): chart, celebrations, approvals, jar, stars, sticker book, routines, grown-ups' chores; 9 kids-op unit tests; 6 Playwright journeys × 4 viewports.
 - 2026-10-03 — Meals (step 5.1 core): planner, recipe sheet, slot picker, Discover, recipe box, cook mode, add to list; 8 meal-op unit tests; 9 Playwright journeys × 4 viewports (full suite: 109 passed, 7 skipped).

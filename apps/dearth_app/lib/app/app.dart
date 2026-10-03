@@ -166,9 +166,15 @@ class _DisplayLayer extends ConsumerWidget {
           child: const ColoredBox(color: Colors.black),
         ),
     };
-    return AnimatedSwitcher(
-      duration: t.motion(mode == DisplayMode.active ? DMotion.standard : const Duration(milliseconds: 600)),
-      child: child,
+    // This layer sits above the Navigator, outside every Scaffold: without a
+    // Material its text inherits MaterialApp's fallback style (yellow double
+    // underline).
+    return Material(
+      type: MaterialType.transparency,
+      child: AnimatedSwitcher(
+        duration: t.motion(mode == DisplayMode.active ? DMotion.standard : const Duration(milliseconds: 600)),
+        child: child,
+      ),
     );
   }
 }

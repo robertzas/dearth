@@ -22,14 +22,30 @@ import 'photos_data.dart';
 /// portraits on landscape screens, uses Hub pre-blurred backgrounds (no
 /// runtime blur), precaches the next slide, and falls back to the art pack.
 /// A tap only wakes; a long press opens photo options (grown-up).
-class Screensaver extends ConsumerStatefulWidget {
+class Screensaver extends StatelessWidget {
   const Screensaver({super.key});
 
+  // Its own Navigator: the display layer sits above the app's Navigator, and
+  // the app is offstage meanwhile, so the photo options (FR-PHO-09) and the
+  // PIN sheet before them open here, over the photo. The scope keeps it off
+  // the root Navigator's HeroController.
   @override
-  ConsumerState<Screensaver> createState() => _ScreensaverState();
+  Widget build(BuildContext context) => tid(
+        'screensaver',
+        HeroControllerScope.none(
+          child: Navigator(onGenerateRoute: (_) => PageRouteBuilder<void>(pageBuilder: (_, _, _) => const _PhotoFrame())),
+        ),
+      );
 }
 
-class _ScreensaverState extends ConsumerState<Screensaver> with SingleTickerProviderStateMixin {
+class _PhotoFrame extends ConsumerStatefulWidget {
+  const _PhotoFrame();
+
+  @override
+  ConsumerState<_PhotoFrame> createState() => _PhotoFrameState();
+}
+
+class _PhotoFrameState extends ConsumerState<_PhotoFrame> with SingleTickerProviderStateMixin {
   final _deck = SlideDeck();
   late final AnimationController _fade = AnimationController(vsync: this, duration: DMotion.ambient, value: 1);
   Slide? _current;
@@ -37,6 +53,7 @@ class _ScreensaverState extends ConsumerState<Screensaver> with SingleTickerProv
   Slide? _upcoming;
   Timer? _timer;
   Timer? _precache;
+  Timer? _loading;
 
   bool get _landscape {
     final s = MediaQuery.sizeOf(context);
@@ -44,16 +61,40 @@ class _ScreensaverState extends ConsumerState<Screensaver> with SingleTickerProv
   }
 
   @override
+  void initState() {
+    super.initState();
+    // Listen while the frame shows: the app below is offstage under a
+    // disabled TickerMode, so Riverpod has paused its subscriptions, and a
+    // plain read could see an empty or stale pool.
+    ref.listenManual(screensaverPoolProvider, (_, pool) {
+      if (pool != null && _current == null && mounted) setState(() => _start(fadeIn: true));
+    });
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_current == null) {
-      _current = _draw();
-      _upcoming = _draw();
-      _schedule();
+    if (_current != null || _loading != null) return;
+    if (ref.read(screensaverPoolProvider) != null) {
+      _start();
+    } else {
+      // The clock overlay shows meanwhile; if the database is slow (a busy
+      // web worker), the art pack starts rather than a black frame (FR-SSV-06).
+      _loading = Timer(const Duration(seconds: 2), () {
+        if (mounted && _current == null) setState(() => _start(fadeIn: true));
+      });
     }
   }
 
-  Slide _draw() => _deck.next(ref.read(screensaverPoolProvider), landscape: _landscape, artCount: kArtCount);
+  void _start({bool fadeIn = false}) {
+    _loading?.cancel();
+    _current = _draw();
+    _upcoming = _draw();
+    if (fadeIn) _fade.forward(from: 0);
+    _schedule();
+  }
+
+  Slide _draw() => _deck.next(ref.read(screensaverPoolProvider) ?? const [], landscape: _landscape, artCount: kArtCount);
 
   int get _seconds => (ref.read(settingMapProvider(SettingKeys.screensaver))['photoSeconds'] as num?)?.toInt().clamp(10, 120) ?? 30;
 
@@ -95,6 +136,7 @@ class _ScreensaverState extends ConsumerState<Screensaver> with SingleTickerProv
   void dispose() {
     _timer?.cancel();
     _precache?.cancel();
+    _loading?.cancel();
     _fade.dispose();
     super.dispose();
   }
@@ -102,11 +144,23 @@ class _ScreensaverState extends ConsumerState<Screensaver> with SingleTickerProv
   Future<void> _options() async {
     final slide = _current;
     if (slide == null || slide.photos.isEmpty) return;
-    if (!await ensureGrownUp(context, ref, reason: 'Photo options')) return;
-    if (!mounted) return;
-    final p = slide.photos.first;
+    // Hold this photo while the grown-up decides.
+    _timer?.cancel();
+    _precache?.cancel();
+    try {
+      if (!await ensureGrownUp(context, ref, reason: 'Photo options')) return;
+      if (!mounted) return;
+      await _photoSheet(slide.photos.first);
+    } finally {
+      if (mounted && identical(_current, slide)) _schedule();
+    }
+  }
+
+  Future<void> _photoSheet(PhotoItem p) {
     final w = ref.read(writerProvider);
-    await showDSheet<void>(
+    final source = ref.read(photoSourcesProvider).value?.where((s) => s.id == p.sourceId).firstOrNull;
+    final about = [?_caption(ref, p), if (source != null) 'From ${source.name}'];
+    return showDSheet<void>(
       context,
       title: 'This photo',
       id: 'ss.options',
@@ -115,8 +169,11 @@ class _ScreensaverState extends ConsumerState<Screensaver> with SingleTickerProv
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (p.takenMs != null || p.caption != null)
-              Padding(padding: EdgeInsets.only(bottom: t.space.md), child: Text(_caption(ref, p) ?? '', style: t.text.body)),
+            if (about.isNotEmpty)
+              Padding(
+                padding: EdgeInsets.only(bottom: t.space.md),
+                child: tid('ss.about', Text(about.join('\n'), style: t.text.body.copyWith(color: t.colors.inkSecondary))),
+              ),
             DListRow(
               id: 'ss.favorite',
               title: p.favorite ? 'Remove from favorites' : 'Favorite',
@@ -147,26 +204,23 @@ class _ScreensaverState extends ConsumerState<Screensaver> with SingleTickerProv
   Widget build(BuildContext context) {
     final ss = ref.watch(settingMapProvider(SettingKeys.screensaver));
     final kenBurns = (ss['kenBurns'] as bool? ?? false) && ref.watch(perfTierProvider) != PerfTier.t1;
-    return tid(
-      'screensaver',
-      GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => ref.read(displayProvider.notifier).wake(),
-        onLongPress: _options,
-        child: ColoredBox(
-          color: Colors.black,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              if (_previous != null) _SlideView(slide: _previous!, kenBurns: false, key: ValueKey('p-${_previous!.key}')),
-              if (_current != null)
-                FadeTransition(
-                  opacity: CurvedAnimation(parent: _fade, curve: Curves.easeInOut),
-                  child: _SlideView(slide: _current!, kenBurns: kenBurns, seconds: _seconds, key: ValueKey('c-${_current!.key}')),
-                ),
-              _Overlays(slide: _current, settings: ss),
-            ],
-          ),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => ref.read(displayProvider.notifier).wake(),
+      onLongPress: _options,
+      child: ColoredBox(
+        color: Colors.black,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (_previous != null) _SlideView(slide: _previous!, kenBurns: false, key: ValueKey('p-${_previous!.key}')),
+            if (_current != null)
+              FadeTransition(
+                opacity: CurvedAnimation(parent: _fade, curve: Curves.easeInOut),
+                child: _SlideView(slide: _current!, kenBurns: kenBurns, seconds: _seconds, key: ValueKey('c-${_current!.key}')),
+              ),
+            _Overlays(slide: _current, settings: ss),
+          ],
         ),
       ),
     );
