@@ -35,7 +35,7 @@ Useful commands (details in `README.md`):
 
 ## In progress
 
-- Next: 6.1 Kids editors (chores, routines, rewards, chore library in Settings) and FR-KID extras; or 4.2 calendar M2.
+- Next: 4.2 calendar M2 (drag to move, People view, reminders, weather on events), then 6.3 music box / 6.2 toybox, 3.2 Android platform channel.
 - Then: 4.2 calendar M2 items, 3.2 Android platform channel (FreeKiosk bridge, light sensor), 7.1 deploy/perf scripts, CI action major upgrades.
 
 ## Plan & status
@@ -73,7 +73,7 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
 - 🟡 5.2 Lists ✅ (FR-LIST-01, aisle grouping for shopping, undo) · notes (display only) · ⬜ timers
 
 ### Phase 6 — M3 features
-- 🟡 6.1 Kids: ✅ Kids destination (a tab per kid + Grown-ups), stage-aware chart of big picture cards, "I did it!" with celebrations (confetti / stars / bubbles, buddy, praise; calm at night; reduced-motion variant), Undo for 30 s, grown-up approvals behind the PIN, grants on the append-only ledger with stable ids (idempotent, converge across devices; undo appends reversals), reward jar with a surprise reveal, star bank with a pinned goal and redemption requests, sticker book (pick and place on painted theme scenes, pages), routine run mode (stepping-stone path, visual timer, debounced steps, progress saved), grown-ups' household chores (claim Anyone chores), family team goal · ⬜ voice prompts / TTS, chore & routine editors and the chore library in Settings, First–Then and choice boards, kindness hearts, growing garden, potty chart, proud wall, feelings check-in, adult rotation / fairness, approval notifications
+- 🟡 6.1 Kids: ✅ Kids destination (a tab per kid + Grown-ups), stage-aware chart of big picture cards, "I did it!" with celebrations (confetti / stars / bubbles, buddy, praise; calm at night; reduced-motion variant), Undo for 30 s, grown-up approvals behind the PIN, grants on the append-only ledger with stable ids (idempotent, converge across devices; undo appends reversals), reward jar with a surprise reveal, star bank with a pinned goal and redemption requests, sticker book (pick and place on painted theme scenes, pages), routine run mode (stepping-stone path, visual timer, debounced steps, progress saved), grown-ups' household chores (claim Anyone chores), family team goal, Settings → Kids & chores (chore editor with who/schedule/time/rewards/approval/voice line, age-sorted chore library, routine editor from templates with steps/timers/reorder, reward editor from ideas, jar size, sticker theme and star goal per kid) · ⬜ voice prompts / TTS playback, First–Then and choice boards, kindness hearts, growing garden, potty chart, proud wall, feelings check-in, adult rotation / fairness, approval notifications
 - ⬜ 6.2 Toybox: launcher + launch-set games
 - ⬜ 6.3 Music box: tiles, local files, YouTube, Spotify (via Hub)
 
@@ -192,6 +192,7 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
 - 2026-10-03 — Home, Calendar (5 views, editor with recurring scopes, quick add), Weather, Lists, Photos + screensaver, Settings; 10 FR-CAL-13 tests, 6 sync-client tests against an in-process Hub, app flow test (steps 4.x, 5.2).
 - 2026-10-03 — `SyncStore.applyOpsBulk` + batched `replaceAll`; 200-seed equivalence test; 341 core tests green.
 - 2026-10-03 — Playwright E2E suite (4 projects) against a test Hub; app icons; Android/iOS/desktop identity (`app.dearth`); CI/CD workflow with releases; Git LFS.
+- 2026-10-03 — Kids & chores settings: chore/routine/reward editors, chore library by age, jar/sticker/goal settings; 8 setup unit tests; 4 Playwright journeys × 4 viewports.
 - 2026-10-03 — Kids (step 6.1 core): chart, celebrations, approvals, jar, stars, sticker book, routines, grown-ups' chores; 9 kids-op unit tests; 6 Playwright journeys × 4 viewports.
 - 2026-10-03 — Meals (step 5.1 core): planner, recipe sheet, slot picker, Discover, recipe box, cook mode, add to list; 8 meal-op unit tests; 9 Playwright journeys × 4 viewports (full suite: 109 passed, 7 skipped).
 - 2026-10-03 — Pushed to GitHub; CI run #1 green except the release job (artifact download); fixed → run #2 published `v0.1.0-build.2`.

@@ -342,9 +342,9 @@ final List<String> kEventEmojiChoices = () {
   ];
 }();
 
-Future<String?> pickEmoji(BuildContext context) => showDSheet<String>(
+Future<String?> pickEmoji(BuildContext context, {List<String>? choices, String title = 'Pick an icon'}) => showDSheet<String>(
       context,
-      title: 'Pick an icon',
+      title: title,
       id: 'picker.emoji',
       builder: (sheet) {
         final t = DTheme.of(sheet);
@@ -352,8 +352,9 @@ Future<String?> pickEmoji(BuildContext context) => showDSheet<String>(
           spacing: t.space.xs,
           runSpacing: t.space.xs,
           children: [
-            for (final e in kEventEmojiChoices)
+            for (final (i, e) in (choices ?? kEventEmojiChoices).indexed)
               DPressable(
+                id: 'picker.emoji.$i',
                 onTap: () => Navigator.of(sheet).pop(e),
                 semanticLabel: e,
                 borderRadius: t.radius.card,

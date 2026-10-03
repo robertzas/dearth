@@ -51,7 +51,8 @@ back.
   and a sticker book of painted scenes where each sticker is chosen and
   placed. Morning and bedtime routines run step by step with a visual
   timer. Grown-ups approve, tick off household chores, and fill a family
-  goal together.
+  goal together. Chores, routines and rewards are set up in Settings,
+  starting from an age-sorted library of chores toddlers can really do.
 - **Weather.** The current conditions and a 36-hour chart with rain, sun
   and UV bands. It also shows a rain summary, a 10-day forecast, sunrise,
   sunset and the moon, what to wear, and alerts. Sources are Open-Meteo,
@@ -93,8 +94,8 @@ back.
 <img src="docs/images/calendar-phone.png" height="420" alt="Phone: calendar">
 </p>
 
-Still to come: chore and routine editors, voice prompts, a music box,
-reminders, and meal-plan templates. Integration with the FreeKiosk
+Still to come: voice prompts, a music box and toybox, reminders,
+meal-plan templates, and calendar drag-and-drop. Integration with the FreeKiosk
 Android frame is coming too. [`PROGRESS.md`](PROGRESS.md) tracks the
 build, and [`SPEC.md`](SPEC.md) is the full product specification.
 

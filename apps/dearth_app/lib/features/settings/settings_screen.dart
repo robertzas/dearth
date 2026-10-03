@@ -8,6 +8,7 @@ import 'sections/calendars_section.dart';
 import 'sections/device_section.dart';
 import 'sections/household_section.dart';
 import 'sections/hub_section.dart';
+import 'sections/kids_section.dart';
 import 'sections/people_section.dart';
 import 'sections/screensaver_section.dart';
 
@@ -24,6 +25,7 @@ class SettingsSection {
 final List<SettingsSection> kSettingsSections = [
   SettingsSection('household', 'Household', 'Name, location, units, time', Icons.home_rounded, (_) => const HouseholdSection()),
   SettingsSection('people', 'People', 'Family members, colors, PINs', Icons.people_alt_rounded, (_) => const PeopleSection()),
+  SettingsSection('kids', 'Kids & chores', 'Chores, routines, rewards', Icons.child_care_rounded, (_) => const KidsSection()),
   SettingsSection('device', 'This display', 'Theme, size, idle, night', Icons.tablet_mac_rounded, (_) => const DeviceSection()),
   SettingsSection('calendars', 'Calendars', 'Sources, colors, subscriptions', Icons.calendar_month_rounded, (_) => const CalendarsSection()),
   SettingsSection('screensaver', 'Photo frame & night', 'Screensaver and quiet hours', Icons.photo_rounded, (_) => const ScreensaverSection()),

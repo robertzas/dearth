@@ -20,7 +20,8 @@ const screenFor = (route: string): string => {
 /** Starts the app in local demo mode at [NOW] and waits for [route]. */
 export async function openDemo(page: Page, route = '/'): Promise<void> {
   await page.goto(`/?demo=1&e2e=1&now=${NOW}#${route}`);
-  await expect(tid(page, screenFor(route)).first()).toBeVisible({ timeout: 90_000 });
+  // Prefix: phones show a settings section as its own screen.settings.<id>.
+  await expect(tids(page, screenFor(route)).first()).toBeVisible({ timeout: 90_000 });
 }
 
 /**
