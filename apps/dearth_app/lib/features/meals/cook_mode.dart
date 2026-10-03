@@ -8,6 +8,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../app/display_state.dart';
 import '../../core/data/household.dart';
 import '../../core/providers.dart';
+import '../timers/timers.dart';
 
 /// Cook mode (SPEC FR-RCP-07): one step at a time in large type, the screen
 /// kept awake (no screensaver), timers found in the step text ("bake 25
@@ -37,13 +38,6 @@ List<Ingredient> ingredientsForStep(String step, List<Ingredient> all) {
   ];
 }
 
-class _RunningTimer {
-  _RunningTimer(this.label, this.seconds, this.endsAtMs);
-  final String label;
-  final int seconds;
-  final int endsAtMs;
-}
-
 class CookMode extends ConsumerStatefulWidget {
   const CookMode({super.key, required this.recipe, required this.servings});
   final RecipeData recipe;
@@ -55,8 +49,6 @@ class CookMode extends ConsumerStatefulWidget {
 
 class _CookModeState extends ConsumerState<CookMode> {
   int _step = 0;
-  final _timers = <_RunningTimer>[];
-  Timer? _tick;
   late final DisplayController _display = ref.read(displayProvider.notifier);
   late final List<Ingredient> _ingredients = widget.recipe.scaledIngredients(widget.servings);
 
@@ -70,7 +62,6 @@ class _CookModeState extends ConsumerState<CookMode> {
 
   @override
   void dispose() {
-    _tick?.cancel();
     // Hand the display back to the idle engine.
     _display.keepAwakeFor(Duration.zero);
     super.dispose();
@@ -78,8 +69,10 @@ class _CookModeState extends ConsumerState<CookMode> {
 
   int _now() => ref.read(appClockProvider).nowMs();
 
+  /// Stays awake through the longest running timer, then [d] more.
   void _awake([Duration d = const Duration(minutes: 30)]) {
-    final longest = _timers.fold<int>(0, (m, x) => x.endsAtMs - _now() > m ? x.endsAtMs - _now() : m);
+    final timers = ref.read(kitchenTimersProvider).value ?? const <KitchenTimer>[];
+    final longest = timers.fold<int>(0, (m, x) => x.remainingMs(_now()) > m ? x.remainingMs(_now()) : m);
     _display.keepAwakeFor(Duration(milliseconds: longest) + d);
   }
 
@@ -88,24 +81,11 @@ class _CookModeState extends ConsumerState<CookMode> {
     _awake();
   }
 
-  void _startTimer(int seconds, String label) {
-    setState(() => _timers.add(_RunningTimer(label, seconds, _now() + seconds * 1000)));
-    _awake(const Duration(minutes: 5));
-    _tick ??= Timer.periodic(const Duration(seconds: 1), (_) => _onTick());
-  }
-
-  void _onTick() {
-    final now = _now();
-    final done = [for (final x in _timers) if (x.endsAtMs <= now) x];
-    for (final d in done) {
-      ref.read(toastProvider).show('Timer done: ${d.label}', emoji: '⏰', duration: const Duration(seconds: 12), tone: DBannerTone.warning);
-    }
-    _timers.removeWhere(done.contains);
-    if (_timers.isEmpty) {
-      _tick?.cancel();
-      _tick = null;
-    }
-    setState(() {});
+  /// A shared kitchen timer named after the step: it rings on every
+  /// display, and keeps going if cook mode closes (FR-TMR-02).
+  Future<void> _startTimer(int seconds) async {
+    await startKitchenTimer(ref, Duration(seconds: seconds), label: '${widget.recipe.title} · step ${_step + 1}', kind: 'cook');
+    _awake(Duration(seconds: seconds) + const Duration(minutes: 5));
   }
 
   void _finish() {
@@ -134,13 +114,13 @@ class _CookModeState extends ConsumerState<CookMode> {
             spacing: t.space.sm,
             runSpacing: t.space.sm,
             children: [
-              for (final (i, (seconds, label)) in timers.indexed)
+              for (final (i, (seconds, _)) in timers.indexed)
                 DButton(
                   label: 'Start ${_duration(seconds)} timer',
                   icon: Icons.timer_outlined,
                   tone: DButtonTone.tonal,
                   id: 'cook.timer.$i',
-                  onPressed: () => _startTimer(seconds, label),
+                  onPressed: () => _startTimer(seconds),
                 ),
             ],
           ),
@@ -150,10 +130,7 @@ class _CookModeState extends ConsumerState<CookMode> {
     final side = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (_timers.isNotEmpty) ...[
-          for (final (i, x) in _timers.indexed) _TimerTile(timer: x, nowMs: _now(), id: 'cook.running.$i', onCancel: () => setState(() => _timers.remove(x))),
-          SizedBox(height: t.space.md),
-        ],
+        const _CookTimers(),
         DCard(
           id: 'cook.ingredients',
           padding: EdgeInsets.all(t.space.md),
@@ -246,35 +223,21 @@ String _duration(int seconds) {
   return '${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}';
 }
 
-class _TimerTile extends StatelessWidget {
-  const _TimerTile({required this.timer, required this.nowMs, required this.id, required this.onCancel});
-  final _RunningTimer timer;
-  final int nowMs;
-  final String id;
-  final VoidCallback onCancel;
+/// The kitchen timers that are going, with their controls.
+class _CookTimers extends ConsumerWidget {
+  const _CookTimers();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final all = ref.watch(kitchenTimersProvider).value ?? const <KitchenTimer>[];
+    if (all.isEmpty) return const SizedBox.shrink();
+    final now = ref.watch(countdownClockProvider).value ?? ref.read(appClockProvider).nowMs();
+    final timers = visibleTimers(all, now);
+    if (timers.isEmpty) return const SizedBox.shrink();
     final t = DTheme.of(context);
-    final left = ((timer.endsAtMs - nowMs) / 1000).ceil().clamp(0, timer.seconds);
-    final mm = (left ~/ 60).toString().padLeft(2, '0'), ss = (left % 60).toString().padLeft(2, '0');
     return Padding(
-      padding: EdgeInsets.only(bottom: t.space.sm),
-      child: DCard(
-        id: id,
-        semanticLabel: '${timer.label}: $mm:$ss left',
-        color: t.colors.accentTint,
-        padding: EdgeInsets.symmetric(horizontal: t.space.md, vertical: t.space.sm),
-        child: Row(
-          children: [
-            DProgressRing(progress: 1 - left / timer.seconds, size: 36 * t.scale),
-            SizedBox(width: t.space.sm),
-            Expanded(child: Text(timer.label, style: t.text.body, maxLines: 1, overflow: TextOverflow.ellipsis)),
-            Text('$mm:$ss', style: t.text.title.copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
-            DIconButton(icon: Icons.close_rounded, label: 'Cancel timer', tone: DButtonTone.ghost, onPressed: onCancel),
-          ],
-        ),
-      ),
+      padding: EdgeInsets.only(bottom: t.space.md),
+      child: Column(children: [for (final x in timers) TimerRow(timer: x, nowMs: now)]),
     );
   }
 }

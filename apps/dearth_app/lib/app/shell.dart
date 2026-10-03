@@ -7,6 +7,7 @@ import '../core/data/household.dart';
 import '../core/providers.dart';
 import '../core/sync/sync_client.dart';
 import '../features/calendar/quick_add.dart';
+import '../features/timers/timers.dart';
 import 'destinations.dart';
 import 'display_state.dart';
 import 'grown_up.dart';
@@ -28,7 +29,14 @@ class AppShell extends ConsumerWidget {
     final t = DTheme.of(context);
     final size = MediaQuery.sizeOf(context);
     final keepRecent = ref.watch(perfTierProvider) != PerfTier.t1;
-    final body = _BranchStack(current: shell.currentIndex, keepRecent: keepRecent, children: children);
+    // The timer pill floats over the destinations, under sheets and dialogs
+    // (their buttons stay reachable) and clear of the navigation bars.
+    final body = Stack(
+      children: [
+        _BranchStack(current: shell.currentIndex, keepRecent: keepRecent, children: children),
+        const TimerPill(),
+      ],
+    );
     final landscape = size.width > size.height;
 
     if (t.displayClass == DisplayClass.phone) {
@@ -145,6 +153,12 @@ class _NavRail extends ConsumerWidget {
             ),
             const _SyncDot(),
             const _LockButton(),
+            _RailAction(
+              icon: Icons.timer_rounded,
+              label: 'Timers',
+              id: 'nav.timers',
+              onTap: () => showTimers(ref, context),
+            ),
             _RailAction(
               icon: Icons.photo_rounded,
               label: 'Frame',
@@ -448,6 +462,18 @@ void _showMore(BuildContext context, ValueChanged<int> onSelect, {required Set<i
       final t = DTheme.of(sheetContext);
       return Column(
         children: [
+          Consumer(
+            builder: (context, ref, _) => DListRow(
+              id: 'more.timers',
+              title: 'Timers',
+              leading: Icon(Icons.timer_rounded, color: t.colors.accent, size: t.iconMd),
+              chevron: true,
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                showTimers(ref, context);
+              },
+            ),
+          ),
           for (final (i, d) in kDestinations.indexed)
             if (!exclude.contains(i))
               DListRow(

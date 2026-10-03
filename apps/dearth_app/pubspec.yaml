@@ -44,6 +44,9 @@ dependencies:
   device_info_plus: ^13.3.0
   package_info_plus: ^10.2.2
 
+  # Sound (SPEC §7.4, §11.5): low-latency playback of synthesized effects
+  flutter_soloud: ^5.1.6
+
   # Sharing
   url_launcher: ^6.3.3
   qr_flutter: ^4.1.0

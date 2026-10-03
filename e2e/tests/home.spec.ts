@@ -25,6 +25,10 @@ test.describe('Home', () => {
     await scrollTo(page, 'home.countdown.ev-grandma');
   });
 
+  test('FR-CAL-18: the holidays kids wait for count down too', async ({ page }) => {
+    await expectText(await scrollTo(page, 'home.countdown.holiday:US:2026-10-31:halloween'), /Halloween/);
+  });
+
   test('FR-MEAL-05: tonight’s dinner comes from the meal plan', async ({ page }) => {
     await expectText(tid(page, 'home.dinner.title'), /\S/);
   });

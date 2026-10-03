@@ -26,7 +26,8 @@ class CalendarScreen extends ConsumerWidget {
     final nav = ref.watch(calNavProvider);
     final size = MediaQuery.sizeOf(context);
     final landscape = size.width > size.height;
-    final view = nav.view ?? (landscape && !t.isPhone ? CalView.week : CalView.agenda);
+    var view = nav.view ?? (landscape && !t.isPhone ? CalView.week : CalView.agenda);
+    if (view == CalView.people3 && t.isPhone && !landscape) view = CalView.people;
     final weekStart = ref.watch(weekStartProvider);
     final range = visibleRange(view, nav.anchor, weekStart);
     final controller = ref.read(calNavProvider.notifier);
@@ -34,13 +35,14 @@ class CalendarScreen extends ConsumerWidget {
     final title = switch (view) {
       CalView.month => monthYear(nav.anchor),
       CalView.agenda => 'From ${monthDay(range.start)}',
-      CalView.day => longDate(range.start),
+      CalView.day || CalView.people => longDate(range.start),
       _ => formatDateSpan(range.start, range.end.addDays(-1)),
     };
     final views = [
       CalView.day,
       CalView.threeDay,
       if (!t.isPhone || landscape) CalView.week,
+      CalView.people,
       CalView.month,
       CalView.agenda,
     ];
@@ -59,14 +61,25 @@ class CalendarScreen extends ConsumerWidget {
       idPrefix: 'cal.view',
       dense: t.isPhone,
       options: [for (final v in views) (v, v.label)],
-      value: view,
+      value: view == CalView.people3 ? CalView.people : view,
       onChanged: controller.setView,
     );
+    // Who's where today, or over three days (FR-CAL-09); a phone held
+    // upright only has room for one day of lanes.
+    final peopleSpan = view.isPeople && (!t.isPhone || landscape)
+        ? DSegmented<CalView>(
+            idPrefix: 'cal.people',
+            dense: true,
+            options: const [(CalView.people, '1 day'), (CalView.people3, '3 days')],
+            value: view,
+            onChanged: controller.setView,
+          )
+        : null;
 
     final body = switch (view) {
       CalView.month => MonthView(anchor: nav.anchor, range: range),
       CalView.agenda => AgendaView(start: range.start),
-      _ => TimeGrid(range: range, key: ValueKey('grid-${view.name}')),
+      _ => TimeGrid(range: range, people: view.isPeople, key: ValueKey('grid-${view.name}')),
     };
 
     return tid(
@@ -84,13 +97,17 @@ class CalendarScreen extends ConsumerWidget {
                 ],
               ),
               SizedBox(height: t.space.sm),
-              SingleChildScrollView(scrollDirection: Axis.horizontal, child: switcher),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(children: [switcher, if (peopleSpan != null) ...[SizedBox(width: t.space.sm), peopleSpan]]),
+              ),
             ] else ...[
               Row(
                 children: [
                   nav3,
                   SizedBox(width: t.space.lg),
                   Expanded(child: tid('cal.title', Text(title, style: t.text.h2, maxLines: 1, overflow: TextOverflow.ellipsis))),
+                  if (peopleSpan != null) ...[peopleSpan, SizedBox(width: t.space.sm)],
                   switcher,
                   SizedBox(width: t.space.md),
                   DButton(label: 'Add', icon: Icons.add_rounded, id: 'cal.add', onPressed: () => showEventEditor(context, ref, draft: _draftFor(ref, nav.anchor))),

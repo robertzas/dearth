@@ -83,7 +83,8 @@ test.describe('Meals', () => {
     await expectText(tid(page, 'cook.progress'), 'Step 1 of 4');
     await expectText(tid(page, 'cook.step'), 'Cook the rice for 18 minutes.');
     await tap(tid(page, 'cook.timer.0'));
-    await expectText(tid(page, 'cook.running.0'), /1[78]:\d\d/);
+    // A shared kitchen timer named after the step (FR-TMR-02).
+    await expectText(page.locator('[flt-semantics-identifier^="timer."][flt-semantics-identifier$=".left"]'), /step 1: 1[78]:\d\d left/);
     await tap(tid(page, 'cook.next'));
     await expectText(tid(page, 'cook.progress'), 'Step 2 of 4');
     await tap(tid(page, 'cook.close'));

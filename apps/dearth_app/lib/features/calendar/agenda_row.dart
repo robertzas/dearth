@@ -39,10 +39,16 @@ class AgendaRow extends ConsumerWidget {
       if (!showPeople && people.isNotEmpty) people.map((p) => p.name).join(', '),
     ];
     final rowH = (dense ? 60 : 72) * t.scale;
+    // The row speaks for its children (excludeSemantics), forecast included.
+    final forecast = past ? null : watchEventForecast(ref, o);
 
     return DPressable(
       id: 'event.${o.event.id}',
-      semanticLabel: '${o.event.title}, ${o.allDay ? 'all day' : formatTime(start, h24: h24)}',
+      semanticLabel: [
+        o.event.title,
+        o.allDay ? 'all day' : formatTime(start, h24: h24),
+        if (forecast != null) 'forecast ${describeEventForecast(forecast, imperial: ref.watch(imperialProvider), separator: ', ')}',
+      ].join(', '),
       onTap: () => showEventSheet(context, ref, o),
       excludeSemantics: true,
       borderRadius: t.radius.card,
@@ -85,6 +91,7 @@ class AgendaRow extends ConsumerWidget {
                   ],
                 ),
               ),
+              if (forecast != null) ...[SizedBox(width: t.space.xs), EventWeather(occurrence: o, size: (dense ? 24 : 28) * t.scale)],
               if (showPeople && people.isNotEmpty) ...[SizedBox(width: t.space.xs), AvatarStack(people: people, size: (dense ? 30 : 36) * t.scale)],
             ],
           ),

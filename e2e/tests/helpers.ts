@@ -112,3 +112,21 @@ export async function replaceText(page: Page, id: string, text: string): Promise
 
 /** A button-like semantics node by its accessible name. */
 export const button = (page: Page, name: string | RegExp): Locator => page.getByRole('button', { name });
+
+/**
+ * Long-presses the centre of [target] past the deliberate 600 ms threshold
+ * (SPEC §11.10), then drags by [dx], [dy] and releases (FR-CAL-14).
+ */
+export async function longPressDrag(page: Page, target: Locator, dx: number, dy: number, from: 'center' | 'bottom' = 'center'): Promise<void> {
+  const el = target.first();
+  await el.waitFor({ state: 'visible' });
+  const box = (await el.boundingBox())!;
+  const x = box.x + box.width / 2;
+  const y = from === 'center' ? box.y + box.height / 2 : box.y + box.height - 4;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.waitForTimeout(900);
+  await page.mouse.move(x + dx, y + dy, { steps: 12 });
+  await page.waitForTimeout(150);
+  await page.mouse.up();
+}

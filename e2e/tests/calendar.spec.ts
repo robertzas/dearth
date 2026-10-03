@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { button, expectText, isPhone, openDemo, replaceText, tap, tid, typeInto } from './helpers';
+import { button, expectText, goTo, isPhone, longPressDrag, openDemo, replaceText, tap, textOf, tid, typeInto } from './helpers';
 
 test.describe('Calendar', () => {
   test('FR-CAL-12: quick add parses natural language with a live preview', async ({ page }, info) => {
@@ -62,5 +62,70 @@ test.describe('Calendar', () => {
     await expectText(tid(page, 'toast'), 'Deleted');
     await expect(tid(page, 'agenda.day.2026-10-05')).toHaveCount(0);
     await expect(tid(page, 'agenda.day.2026-10-06')).toBeVisible();
+  });
+
+  test('FR-CAL-09: People shows who’s where, one lane per person', async ({ page }, info) => {
+    await openDemo(page, '/calendar');
+    await tap(tid(page, 'cal.view.people'));
+    for (const lane of ['family', 'p-mom', 'p-dad', 'p-ava']) {
+      await expect(tid(page, `cal.lane.2026-10-03.${lane}`)).toBeVisible();
+    }
+    await expect(tid(page, 'cal.lane.2026-10-03.p-biscuit')).toHaveCount(0);
+    // Story time is Ava’s and Dad’s, so it sits in both lanes.
+    await expect(tid(page, 'event.block.ev-story')).toHaveCount(2);
+    if (!isPhone(info)) {
+      await tap(tid(page, 'cal.people.3-days'));
+      await expect(tid(page, 'cal.lane.2026-10-05.p-ava')).toBeVisible();
+    }
+  });
+
+  test('FR-CAL-14: long-press and drag moves an event; Undo puts it back', async ({ page }) => {
+    await openDemo(page, '/calendar');
+    await tap(tid(page, 'cal.view.day'));
+    const block = tid(page, 'event.block.ev-story');
+    await expectText(block, '10:30');
+    // 45 minutes of grid → one hour is a third more.
+    const hour = ((await block.boundingBox())!.height + 2) * (60 / 45);
+    await longPressDrag(page, block, 0, hour * 1.05);
+    await expectText(tid(page, 'toast'), 'Moved');
+    await expectText(block, '11:30');
+    await tap(tid(page, 'toast.action'));
+    await expectText(block, '10:30');
+  });
+
+  test('FR-CAL-19: outdoor events and events with a place show their forecast', async ({ page }) => {
+    await openDemo(page, '/calendar');
+    await tap(tid(page, 'cal.view.agenda'));
+    // Agenda rows speak for their children: the forecast is in the label.
+    await expectText(tid(page, 'event.ev-market'), /forecast \w.*°/);
+    expect(await textOf(tid(page, 'event.ev-pizza'))).not.toMatch(/forecast/);
+    await tap(tid(page, 'event.ev-market').first());
+    await expectText(tid(page, 'event.sheet.weather'), '°');
+  });
+
+  test('FR-CAL-20: a calendar’s default reminder fires as a banner that talks to the kid', async ({ page }, info) => {
+    await openDemo(page, '/settings/calendars');
+    await tap(tid(page, 'calendars.cal-family'));
+    await tap(tid(page, 'calendars.remind.10'));
+    await tap(tid(page, 'sheet.close'));
+    await goTo(page, 'calendar');
+    if (isPhone(info)) await tap(tid(page, 'nav.add'));
+    // The demo clock starts at 8:30: a 10-minute reminder for 8:40 is due.
+    await typeInto(page, 'quickadd.input', 'Piano 8:40am Ava');
+    await expectText(tid(page, 'quickadd.preview'), 'Piano');
+    await page.keyboard.press('Enter');
+    await expectText(tid(page, 'reminder.title'), 'Ava, piano in');
+    await tap(tid(page, 'reminder.ok'));
+    await expect(tid(page, 'reminder.banner')).toHaveCount(0);
+  });
+
+  test('FR-CAL-18: holidays are on the calendar, read-only', async ({ page }) => {
+    await openDemo(page, '/calendar');
+    await tap(tid(page, 'cal.view.month'));
+    await tap(tid(page, 'cal.month.2026-10-31'));
+    await expect(tid(page, 'cal.daysheet')).toBeVisible();
+    await tap(button(page, /^Halloween/));
+    await expectText(tid(page, 'event.sheet.title'), 'Halloween');
+    await expect(tid(page, 'event.sheet.edit')).toHaveCount(0);
   });
 });

@@ -5,6 +5,8 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/data/calendar.dart';
 import '../../core/data/household.dart';
+import '../../core/format.dart';
+import '../../core/providers.dart';
 
 /// Colors for an event: its people are the color (SPEC §11.1 #2); events
 /// without people use their calendar's color.
@@ -144,3 +146,57 @@ class StripedEdge extends StatelessWidget {
     );
   }
 }
+
+/// The forecast for an event (FR-CAL-19), or null when it gets none.
+/// Watches the hour, not the minute, so event lists don't rebuild each tick.
+EventForecast? watchEventForecast(WidgetRef ref, Occurrence o) {
+  final report = ref.watch(weatherProvider).value;
+  final hour = ref.watch(nowMinuteMsProvider.select((ms) => ms ~/ 3600000));
+  return eventForecast(report, o, ref.watch(householdTimeProvider), nowMs: hour * 3600000);
+}
+
+/// "Rain · 52° · 80% chance of rain" for sheets; screen readers get it
+/// with commas.
+String describeEventForecast(EventForecast f, {required bool imperial, String separator = ' · '}) => [
+      conditionLabel(f.condition),
+      if (f.tempC != null) formatTemp(f.tempC, imperial: imperial) else if (f.highC != null) '${formatTemp(f.highC, imperial: imperial)} / ${formatTemp(f.lowC, imperial: imperial)}',
+      if ((f.precipProb ?? 0) >= 30) '${f.precipProb!.round()}% chance of ${f.condition.isSnowy ? 'snow' : 'rain'}',
+    ].join(separator);
+
+/// The forecast chip on an event (FR-CAL-19): condition emoji and the hour's
+/// temperature (or the day's high beyond the hourly forecast).
+class EventWeather extends ConsumerWidget {
+  const EventWeather({super.key, required this.occurrence, required this.size, this.color});
+  final Occurrence occurrence;
+
+  /// Emoji size; the temperature follows it.
+  final double size;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final f = watchEventForecast(ref, occurrence);
+    if (f == null) return const SizedBox.shrink();
+    final t = DTheme.of(context);
+    final imperial = ref.watch(imperialProvider);
+    return tid(
+      'event.weather.${occurrence.event.id}',
+      Semantics(
+        label: 'Forecast: ${describeEventForecast(f, imperial: imperial, separator: ', ')}',
+        excludeSemantics: true,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DEmoji(f.emoji, size: size),
+            SizedBox(width: size * 0.12),
+            Text(
+              formatTemp(f.tempC ?? f.highC, imperial: imperial),
+              style: t.text.caption.copyWith(fontSize: size * 0.72, fontWeight: FontWeight.w800, color: color ?? t.colors.inkSecondary),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

@@ -35,8 +35,8 @@ Useful commands (details in `README.md`):
 
 ## In progress
 
-- Next: 4.2 calendar M2 (drag to move, People view, reminders, weather on events), then 6.3 music box / 6.2 toybox, 3.2 Android platform channel.
-- Then: 4.2 calendar M2 items, 3.2 Android platform channel (FreeKiosk bridge, light sensor), 7.1 deploy/perf scripts, CI action major upgrades.
+- Next: kid timeline (FR-CAL-10), then 6.3 music box / 6.2 toybox (instruments on `synth.dart`), then the family Google calendar offer (FR-CAL-04) and Google reminders mapping on the Hub.
+- Then: 3.2 Android platform channel (FreeKiosk bridge, light sensor), 7.1 deploy/perf scripts, CI action major upgrades.
 
 ## Plan & status
 
@@ -63,14 +63,14 @@ Milestones refer to `SPEC.md` §17. ✅ done · 🟡 partial · ⬜ not started.
 ### Phase 4 — M1 features
 _Every feature step below ships with unit tests **and** its Playwright journey specs._
 - ✅ 4.1 Home dashboard (Wall-L 3 columns, tablet 2 columns, Wall-P stacked, phone Today) + widgets: header (date/clock/weather/alerts/sync/lock), agenda + now-line, up next + conflicts, week strip, notes & countdowns, dinner, kids' chores, shopping
-- 🟡 4.2 Calendar: ✅ day / 3-day / week / month / agenda, person filters, event sheet, full editor with recurring scopes (this / following / all), quick add with preview, countdowns, auto + learned icons · ⬜ M2: drag to move, People view, reminders, weather on events
+- 🟡 4.2 Calendar: ✅ day / 3-day / week / month / agenda, person filters, event sheet, full editor with recurring scopes (this / following / all), quick add with preview, countdowns, auto + learned icons · ✅ M2: People view (lanes per person, Family lane, 1 or 3 days), long-press drag to move and bottom-edge resize (15-min snaps, haptics, edge auto-scroll, scope for repeating events, Undo, grown-up gated), weather on events (agenda, grid, sheet), reminders (editor field, per-calendar defaults, on-display banner that talks to kids by name, chime, fired once per device), birthdays & holidays (read-only virtual calendars: profile birthdays with ages and kid countdowns, bundled US/CA/GB public holidays with observed days, family observances, country from the time zone, duplicates of real events hidden) · ⬜ kid timeline (M3), family Google calendar offer, Google reminders mapping on the Hub, Nager.Date holidays for other countries
 - ✅ 4.3 Weather screen (now, 36 h chart with rain/sun/UV bands, rain summary, 10 days, sun & moon, what to wear, alerts, sources)
 - 🟡 4.4 Photos: ✅ curation grid (favorite/hide), screensaver (crossfade, portrait pairing, Hub pre-blur, precache, overlays with drift, long-press options, painted art-pack fallback), night clock · ⬜ verified against real Amazon/folder sources on the Hub
 - 🟡 4.5 Settings: ✅ household (location search, units, week start, clock), people (colors, roles, stages, buddies, PINs), this display (theme, size, distance, idle, night, role, tier), calendars (enable, default, ICS subscribe, Google connect incl. paste-back), photo frame & night, Hub & devices (status, approvals, enrollment codes, disconnect), about · ⬜ weather/recipe/integration keys page, diagnostics
 
 ### Phase 5 — M2 features
 - 🟡 5.1 Meals: ✅ week planner (grid on landscape, day list on portrait/phone; recipes or free text; per-entry servings; remove with undo), recipe sheet (servings scaling with friendly fractions, US/metric, add to plan, add ingredients to list, save to box, per-person face ratings), slot picker (search, "Pairs with your plan" with explanations, box, quick weeknights, Leftovers/Eat out/Takeout), Discover (search, pairs, quick, favorites, popular, Surprise me; Hub API or bundled catalog), recipe box (+ URL import on a Hub), cook mode (one step at a time, detected timers, step ingredients, keeps the display awake), week → shopping list (consolidated, sources, staples skipped), Home dinner card opens tonight's recipe · ⬜ templates / copy last week (FR-MEAL-04), leftovers links (FR-MEAL-03), per-period shopping view with check state (FR-SHOP-02..05), allergen/diet filters, cuisine passport, seasonal & "haven't had in a while" feeds, drag to move
-- 🟡 5.2 Lists ✅ (FR-LIST-01, aisle grouping for shopping, undo) · notes (display only) · ⬜ timers
+- 🟡 5.2 Lists ✅ (FR-LIST-01, aisle grouping for shopping, undo) · notes (display only) · ✅ kitchen timers (FR-TMR-01/02: named, presets + custom, synced so every display rings, floating pill on every screen, ring countdowns with pause / +1 min / cancel, a chime that grows louder, wakes the screensaver, cook-mode steps start them)
 
 ### Phase 6 — M3 features
 - 🟡 6.1 Kids: ✅ Kids destination (a tab per kid + Grown-ups), stage-aware chart of big picture cards, "I did it!" with celebrations (confetti / stars / bubbles, buddy, praise; calm at night; reduced-motion variant), Undo for 30 s, grown-up approvals behind the PIN, grants on the append-only ledger with stable ids (idempotent, converge across devices; undo appends reversals), reward jar with a surprise reveal, star bank with a pinned goal and redemption requests, sticker book (pick and place on painted theme scenes, pages), routine run mode (stepping-stone path, visual timer, debounced steps, progress saved), grown-ups' household chores (claim Anyone chores), family team goal, Settings → Kids & chores (chore editor with who/schedule/time/rewards/approval/voice line, age-sorted chore library, routine editor from templates with steps/timers/reorder, reward editor from ideas, jar size, sticker theme and star goal per kid) · ⬜ voice prompts / TTS playback, First–Then and choice boards, kindness hearts, growing garden, potty chart, proud wall, feelings check-in, adult rotation / fairness, approval notifications
@@ -184,6 +184,41 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
   of the photo pool could be empty or stale. `expectNoFallbackText()` in
   `test/support/app_harness.dart` catches fallback-styled text in widget
   tests.
+- **2026-10-03** Sound: `lib/core/synth.dart` synthesizes every effect
+  (bell and mallet partials → 16-bit WAV), so there are no audio assets.
+  Native platforms play them through flutter_soloud (lazy engine start,
+  1024-frame buffer ≈ 23 ms; Xiph codecs off via `hooks.user_defines` in
+  the workspace pubspec); the web uses WebAudio directly, so pages load no
+  extra WASM. S10 (latency on the frame) is still to measure.
+- **2026-10-03** Reminders: `events.reminders` is an explicit list of
+  minutes. Calendar defaults (`calendar.reminders` setting) prefill new
+  events (editor and quick add) and apply at runtime only to read-only
+  calendars, whose events can't carry their own. All-day events remind at
+  8:00. Each device remembers fired keys (`eventId@startMs@lead`) in its kv
+  store; a display that was off shows only the latest due lead.
+- **2026-10-03** Weather on events uses the household forecast (hourly,
+  else daily) for events within 7 days with a location or an outdoor
+  keyword. Forecasts for far-away event locations need a Hub job
+  (geocode + forecast): follow-up.
+- **2026-10-03** Kitchen timers are synced `kitchen_timers` rows that hold
+  `started_ms` + `duration_ms` (or `paused_remaining_ms`), never a ticking
+  value. Every display derives the countdown and phase itself, so a timer
+  started on a phone rings on the wall, and stopping it anywhere stops it
+  everywhere. A timer rings for 2 min (chime every 6 s, louder each time),
+  then stays "ended" for 30 min. The alarm arms one `Timer` for the next
+  end instead of polling, and the pill sits in the shell body, not above
+  the Navigator, so it never covers side-sheet buttons.
+- **2026-10-03** Birthdays and holidays are *virtual* calendars computed on
+  each device (`virtual:birthdays`, `virtual:holidays`), not synced rows.
+  Feb 29 birthdays fall on Feb 28 in common years. Holiday rules are
+  bundled for US/CA/GB (observed and substitute days, Easter by the
+  computus), and the country defaults from the household time zone.
+  Holiday ids use a slug of the name, not `hashCode`: the web and the VM
+  hash strings differently. A virtual day is hidden when a real all-day
+  event duplicates it (the demo's "Ava's birthday"). The Google sync sets
+  no `eventTypes` filter, so Google birthday events are not filtered out.
+  Other countries subscribe to an ICS holiday calendar; Nager.Date on the
+  Hub is a follow-up.
 - **2026-10-03** Follow-ups: bundle a Fluent Emoji subset (SPEC §11.3; web
   currently fetches Noto Color Emoji at runtime), slim the Hub image, Postgres
   backend, weather/recipe key settings UI.
@@ -202,6 +237,8 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
 - 2026-10-03 — Home, Calendar (5 views, editor with recurring scopes, quick add), Weather, Lists, Photos + screensaver, Settings; 10 FR-CAL-13 tests, 6 sync-client tests against an in-process Hub, app flow test (steps 4.x, 5.2).
 - 2026-10-03 — `SyncStore.applyOpsBulk` + batched `replaceAll`; 200-seed equivalence test; 341 core tests green.
 - 2026-10-03 — Playwright E2E suite (4 projects) against a test Hub; app icons; Android/iOS/desktop identity (`app.dearth`); CI/CD workflow with releases; Git LFS.
+- 2026-10-03 — Kitchen timers (synced, pill on every screen, escalating chime, cook mode) and birthdays & holidays (virtual calendars, US/CA/GB rules, kid countdowns). Tests: 12 new core, 3 new app; E2E journeys for timers, holidays on the calendar and holiday countdowns.
+- 2026-10-03 — Calendar M2: People view, drag to move/resize, weather on events, reminders with banners and a synthesized chime (flutter_soloud native, WebAudio on web); toast timers cancel on dispose; event blocks fit their title lines; `tool/build_all.sh` executable again. Tests: 16 new core, 20 new app; E2E journeys for People, drag, forecast, reminders.
 - 2026-10-03 — Fixed the screensaver: fallback text style (yellow underline) on the clock and overlays, photo options that could never open, and a photo pool read while paused; screensaver widget tests + shared app test harness. E2E: 149 passed, 7 skipped.
 - 2026-10-03 — Kids & chores settings: chore/routine/reward editors, chore library by age, jar/sticker/goal settings; 8 setup unit tests; 4 Playwright journeys × 4 viewports.
 - 2026-10-03 — Kids (step 6.1 core): chart, celebrations, approvals, jar, stars, sticker book, routines, grown-ups' chores; 9 kids-op unit tests; 6 Playwright journeys × 4 viewports.

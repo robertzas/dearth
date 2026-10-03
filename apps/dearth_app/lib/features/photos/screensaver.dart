@@ -15,6 +15,7 @@ import '../../core/format.dart';
 import '../../core/providers.dart';
 import '../../core/sync/hub_api.dart';
 import '../calendar/event_visuals.dart';
+import '../timers/timers.dart';
 import 'art_pack.dart';
 import 'photos_data.dart';
 
@@ -399,6 +400,7 @@ class _Overlays extends ConsumerWidget {
                         ].join('  ·  '),
                         style: t.text.title.copyWith(color: white, shadows: shadow),
                       ),
+                      _TimerLine(shadow: shadow),
                     ],
                   ),
                 const Spacer(),
@@ -421,6 +423,33 @@ class _Overlays extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The next kitchen timer, so the frame stays useful while dinner cooks
+/// (FR-TMR-01); it ticks on its own layer.
+class _TimerLine extends ConsumerWidget {
+  const _TimerLine({required this.shadow});
+  final List<Shadow> shadow;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final all = ref.watch(kitchenTimersProvider).value ?? const <KitchenTimer>[];
+    if (all.isEmpty) return const SizedBox.shrink();
+    final now = ref.watch(countdownClockProvider).value ?? ref.read(appClockProvider).nowMs();
+    final running = [for (final x in visibleTimers(all, now)) if (x.phase(now) == TimerPhase.running) x]..sort((a, b) => a.endsAtMs!.compareTo(b.endsAtMs!));
+    if (running.isEmpty) return const SizedBox.shrink();
+    final t = DTheme.of(context);
+    final next = running.first;
+    return RepaintBoundary(
+      child: tid(
+        'ss.timer',
+        Text(
+          '⏲️ ${next.label}  ${formatCountdown(next.remainingMs(now))}${running.length > 1 ? '  +${running.length - 1}' : ''}',
+          style: t.text.title.copyWith(color: Colors.white, shadows: shadow, fontFeatures: const [FontFeature.tabularFigures()]),
+        ),
       ),
     );
   }

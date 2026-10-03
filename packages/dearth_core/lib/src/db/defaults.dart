@@ -25,6 +25,13 @@ abstract final class SettingKeys {
   static const nightSchedule = 'display.night';
   static const toybox = 'kids.toybox';
   static const learnedIcons = 'calendar.learned_icons';
+
+  /// Per calendar id: default reminder leads (FR-CAL-20).
+  static const calendarReminders = 'calendar.reminders';
+
+  /// Birthdays and holidays calendars (FR-CAL-18): `{birthdays: bool,
+  /// holidays: bool, country: 'US', observances: bool}`.
+  static const calendarVirtual = 'calendar.virtual';
   static const onboarding = 'household.onboarding';
 }
 

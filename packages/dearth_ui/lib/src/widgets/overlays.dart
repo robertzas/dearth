@@ -238,18 +238,30 @@ class DToastData {
 /// Shows toasts from anywhere (providers, sync client) without a context.
 class DToastController extends ChangeNotifier {
   final List<DToastData> _items = [];
+  final Map<int, Timer> _timers = {};
   List<DToastData> get items => List.unmodifiable(_items);
 
   void show(String message, {String? emoji, String? actionLabel, VoidCallback? onAction, Duration? duration, DBannerTone tone = DBannerTone.info}) {
     final d = DToastData(message, emoji: emoji, actionLabel: actionLabel, onAction: onAction, tone: tone, duration: duration ?? const Duration(seconds: 4));
     _items.add(d);
-    if (_items.length > 3) _items.removeAt(0);
+    if (_items.length > 3) _timers.remove(_items.removeAt(0).id)?.cancel();
     notifyListeners();
-    Timer(d.duration, () => dismiss(d));
+    _timers[d.id] = Timer(d.duration, () => dismiss(d));
   }
 
   void dismiss(DToastData d) {
+    _timers.remove(d.id)?.cancel();
     if (_items.remove(d)) notifyListeners();
+  }
+
+  // A pending auto-dismiss must not notify a disposed controller.
+  @override
+  void dispose() {
+    for (final t in _timers.values) {
+      t.cancel();
+    }
+    _timers.clear();
+    super.dispose();
   }
 }
 

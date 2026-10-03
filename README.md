@@ -32,11 +32,18 @@ back.
   countdowns, dinner, kids' chores and the shopping list. It lays itself
   out for each display.
 - **Calendar.** Day, 3-day, week, month and agenda views, with filters for
-  each person. A full editor handles recurring events ("this one",
+  each person, plus a People view with a lane per person: who's where today
+  or over three days. A full editor handles recurring events ("this one",
   "this and following" or "all"). Quick add understands plain language:
-  *"Swim Saturday 9am Ava"*. It adds automatic event emoji and learns from
-  your edits. It subscribes to ICS calendars and connects to Google
-  Calendar.
+  *"Swim Saturday 9am Ava"*. Hold an event to drag it to a new time or
+  day, or drag its bottom edge to change its length. Events with a place,
+  or that sound like they're outdoors, show the forecast for their hour.
+  Reminders chime and show a banner on the wall, and a kid's reminder
+  talks to the kid by name: *"Ava, swim lesson in 15 minutes!"*
+  Birthdays (with ages) and public holidays for the US, Canada and the UK
+  appear without setup, and the holidays kids wait for count down on Home.
+  It adds automatic event emoji and learns from your edits. It subscribes
+  to ICS calendars and connects to Google Calendar.
 - **Meals.** A week planner of days and meal slots, holding recipes or a
   free-text entry like "Leftovers". Recipes scale with the servings
   stepper, using friendly fractions, and switch between US and metric
@@ -58,6 +65,10 @@ back.
   sunset and the moon, what to wear, and alerts. Sources are Open-Meteo,
   NWS and Weather Underground, merged.
 - **Lists.** Shared shopping and to-do lists, grouped by aisle, with undo.
+- **Kitchen timers.** Named timers from preset chips or any length. A
+  floating pill keeps them in view on every screen, and a finished timer
+  chimes, louder each time, and wakes the display. Timers sync, so one
+  started on a phone rings on the wall. Cook mode starts one per step.
 - **Photo frame.** A screensaver with crossfades, paired portrait photos
   and a built-in painted art pack, plus a night clock. Photos come from
   folders on the Hub or Amazon Photos shared albums.
@@ -94,9 +105,9 @@ back.
 <img src="docs/images/calendar-phone.png" height="420" alt="Phone: calendar">
 </p>
 
-Still to come: voice prompts, a music box and toybox, reminders,
-meal-plan templates, and calendar drag-and-drop. Integration with the FreeKiosk
-Android frame is coming too. [`PROGRESS.md`](PROGRESS.md) tracks the
+Still to come: voice prompts, a music box and toybox, a picture timeline
+for kids who can't read yet, and meal-plan templates. Integration with the
+FreeKiosk Android frame is coming too. [`PROGRESS.md`](PROGRESS.md) tracks the
 build, and [`SPEC.md`](SPEC.md) is the full product specification.
 
 ## Try it

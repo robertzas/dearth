@@ -19,7 +19,7 @@ Future<void> showEventEditor(BuildContext context, WidgetRef ref, {Occurrence? o
   if (occurrence != null && occurrence.event.recurringParentId != null) {
     (master, _) = await loadSeries(ref, occurrence);
   }
-  final initial = draft ??
+  var initial = draft ??
       (occurrence != null
           ? EventDraft.fromOccurrence(occurrence, time, master: master)
           : EventDraft(
@@ -28,6 +28,10 @@ Future<void> showEventEditor(BuildContext context, WidgetRef ref, {Occurrence? o
               sourceId: ref.read(defaultCalendarProvider)?.id ?? Ids.familyCalendar,
               startMinute: _nextHalfHour(time),
             ));
+  // New events start with their calendar's default reminders (FR-CAL-20).
+  if (occurrence == null && initial.reminders.isEmpty) {
+    initial = initial.copyWith(reminders: _calendarDefault(ref, initial));
+  }
   if (!context.mounted) return;
   await showDSheet<void>(
     context,
@@ -36,6 +40,8 @@ Future<void> showEventEditor(BuildContext context, WidgetRef ref, {Occurrence? o
     builder: (_) => _EventEditor(initial: initial, occurrence: occurrence),
   );
 }
+
+List<int> _calendarDefault(WidgetRef ref, EventDraft d) => defaultReminders(ref.read(calendarRemindersProvider), d);
 
 int _nextHalfHour(HouseholdTime time) {
   final m = time.minuteOfDay(time.nowMs());
@@ -57,6 +63,10 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
   late final _location = TextEditingController(text: widget.initial.location ?? '');
   late final _notes = TextEditingController(text: widget.initial.notes ?? '');
   late bool _iconPicked = widget.initial.icon != null;
+
+  /// Until the reminders are touched, a new event follows its calendar's
+  /// default (and all-day vs timed choices).
+  late bool _remindersPicked = widget.occurrence != null;
   bool _saving = false;
   String? _error;
 
@@ -177,7 +187,10 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
           id: 'editor.allday',
           title: 'All day',
           value: _d.allDay,
-          onChanged: (v) => setState(() => _d = _d.copyWith(allDay: v, clearEndDate: true)),
+          onChanged: (v) => setState(() {
+            _d = _d.copyWith(allDay: v, clearEndDate: true);
+            _d = _d.copyWith(reminders: _remindersPicked ? _validReminders(_d) : _calendarDefault(ref, _d));
+          }),
         ),
         Wrap(
           spacing: t.space.sm,
@@ -256,6 +269,36 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
             if (_preset == RepeatPreset.custom) DChip(label: describeRrule(_d.rrule), selected: true, dense: true),
           ],
         ),
+        label('Remind'),
+        Wrap(
+          spacing: t.space.xs,
+          runSpacing: t.space.xs,
+          children: [
+            DChip(
+              id: 'editor.remind.none',
+              label: 'None',
+              dense: true,
+              selected: _d.reminders.isEmpty,
+              onTap: () => setState(() {
+                _remindersPicked = true;
+                _d = _d.copyWith(reminders: const []);
+              }),
+            ),
+            for (final m in _d.allDay ? kAllDayReminderChoices : kTimedReminderChoices)
+              DChip(
+                id: 'editor.remind.$m',
+                label: describeReminder(m, allDay: _d.allDay),
+                dense: true,
+                selected: _d.reminders.contains(m),
+                onTap: () => setState(() {
+                  _remindersPicked = true;
+                  final next = {..._d.reminders};
+                  next.contains(m) ? next.remove(m) : next.add(m);
+                  _d = _d.copyWith(reminders: next.toList()..sort());
+                }),
+              ),
+          ],
+        ),
         if (family.isNotEmpty) ...[
           label('Who'),
           Wrap(
@@ -291,7 +334,10 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                   dense: true,
                   selected: _d.sourceId == s.id,
                   leading: Container(width: 12 * t.scale, height: 12 * t.scale, decoration: BoxDecoration(color: Color(s.color), shape: BoxShape.circle)),
-                  onTap: () => setState(() => _d = _d.copyWith(sourceId: s.id)),
+                  onTap: () => setState(() {
+                    _d = _d.copyWith(sourceId: s.id);
+                    if (!_remindersPicked) _d = _d.copyWith(reminders: _calendarDefault(ref, _d));
+                  }),
                 ),
             ],
           ),
@@ -321,6 +367,12 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
         ),
       ],
     );
+  }
+
+  /// The leads that still make sense after switching all-day on or off.
+  List<int> _validReminders(EventDraft d) {
+    final choices = d.allDay ? kAllDayReminderChoices : kTimedReminderChoices;
+    return [for (final m in d.reminders) if (choices.contains(m)) m];
   }
 
   /// Keeps weekly/monthly presets anchored on the new date.

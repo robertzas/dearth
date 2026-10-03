@@ -21,6 +21,7 @@ class EventDraft {
     this.location,
     this.notes,
     this.countdown = false,
+    this.reminders = const [],
   });
 
   factory EventDraft.fromOccurrence(Occurrence o, HouseholdTime time, {Event? master}) {
@@ -40,6 +41,7 @@ class EventDraft {
       location: e.location,
       notes: e.notes,
       countdown: e.countdown,
+      reminders: decodeReminders(e.reminders),
     );
   }
 
@@ -59,6 +61,9 @@ class EventDraft {
   final String? notes;
   final bool countdown;
 
+  /// Minutes before the start (FR-CAL-20); empty = no reminder.
+  final List<int> reminders;
+
   EventDraft copyWith({
     String? title,
     String? icon,
@@ -76,6 +81,7 @@ class EventDraft {
     String? location,
     String? notes,
     bool? countdown,
+    List<int>? reminders,
   }) =>
       EventDraft(
         title: title ?? this.title,
@@ -91,6 +97,7 @@ class EventDraft {
         location: location ?? this.location,
         notes: notes ?? this.notes,
         countdown: countdown ?? this.countdown,
+        reminders: reminders ?? this.reminders,
       );
 
   /// Column values for `events` (SPEC §8.2), computed in household time.
@@ -111,9 +118,17 @@ class EventDraft {
       'location': (location?.trim().isEmpty ?? true) ? null : location!.trim(),
       'notes': (notes?.trim().isEmpty ?? true) ? null : notes!.trim(),
       'countdown': countdown,
+      'reminders': ([...reminders]..sort()),
       'source_id': sourceId,
     };
   }
+}
+
+/// The default reminders of [d]'s calendar that fit it (timed or all-day),
+/// for new events from any path: editor, quick add (FR-CAL-20).
+List<int> defaultReminders(Map<String, List<int>> byCalendar, EventDraft d) {
+  final choices = d.allDay ? kAllDayReminderChoices : kTimedReminderChoices;
+  return [for (final m in byCalendar[d.sourceId] ?? const <int>[]) if (choices.contains(m)) m];
 }
 
 /// Deterministic id of the exception row overriding one instance, so two

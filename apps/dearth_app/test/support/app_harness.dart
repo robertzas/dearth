@@ -2,6 +2,7 @@ import 'package:dearth_app/app/app.dart';
 import 'package:dearth_app/app/grown_up.dart';
 import 'package:dearth_app/core/env.dart';
 import 'package:dearth_app/core/providers.dart';
+import 'package:dearth_app/core/sound.dart';
 import 'package:dearth_core/dearth_core.dart';
 import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
@@ -17,7 +18,7 @@ class AppHarness {
   final ProviderContainer container;
   final DearthDb db;
 
-  static Future<AppHarness> boot(WidgetTester tester, {Size size = const Size(1920, 1080), DateTime? now}) async {
+  static Future<AppHarness> boot(WidgetTester tester, {Size size = const Size(1920, 1080), DateTime? now, SoundPlayer sound = const SilentSound()}) async {
     driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
     ensureTimeZones();
     tester.view.physicalSize = size;
@@ -29,14 +30,16 @@ class AppHarness {
       dbProvider.overrideWithValue(db),
       nodeIdProvider.overrideWithValue('dtest'),
       actorProvider.overrideWith((ref) => ref.watch(grownUpActorProvider)),
+      // Tests never open the host's audio device.
+      soundProvider.overrideWithValue(sound),
     ]);
     await tester.pumpWidget(UncontrolledProviderScope(container: container, child: const DearthApp()));
     return AppHarness._(tester, container, db);
   }
 
   /// Boots, then starts the seeded demo household from onboarding.
-  static Future<AppHarness> demo(WidgetTester tester, {Size size = const Size(1920, 1080)}) async {
-    final h = await boot(tester, size: size);
+  static Future<AppHarness> demo(WidgetTester tester, {Size size = const Size(1920, 1080), SoundPlayer sound = const SilentSound()}) async {
+    final h = await boot(tester, size: size, sound: sound);
     await h.settle();
     await tester.tap(byId('onboarding.demo'));
     await h.settle(30);
@@ -83,3 +86,12 @@ void expectNoFallbackText([Finder? within]) {
   }
   expect(bad, isEmpty, reason: 'text outside a Material: $bad');
 }
+
+/// Records what would have played (chime assertions).
+class RecordingSound implements SoundPlayer {
+  final played = <(Sfx, double)>[];
+
+  @override
+  Future<void> play(Sfx sfx, {double volume = 1}) async => played.add((sfx, volume));
+}
+

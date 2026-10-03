@@ -103,12 +103,7 @@ class RecurrenceExpander {
       }
     }
 
-    out.sort((a, b) {
-      final c = a.startMs.compareTo(b.startMs);
-      if (c != 0) return c;
-      if (a.allDay != b.allDay) return a.allDay ? -1 : 1;
-      return a.event.title.compareTo(b.event.title);
-    });
+    out.sort(compareOccurrences);
     return out;
   }
 
@@ -321,4 +316,12 @@ String describeRrule(String? raw) {
     default:
       return 'Custom repeat';
   }
+}
+
+/// Calendar order: by start, all-day first, then by title.
+int compareOccurrences(Occurrence a, Occurrence b) {
+  final c = a.startMs.compareTo(b.startMs);
+  if (c != 0) return c;
+  if (a.allDay != b.allDay) return a.allDay ? -1 : 1;
+  return a.event.title.compareTo(b.event.title);
 }

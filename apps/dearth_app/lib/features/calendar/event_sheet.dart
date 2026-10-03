@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../app/grown_up.dart';
+import '../../core/data/calendar.dart';
 import '../../core/data/household.dart';
 import '../../core/format.dart';
 import '../../core/providers.dart';
@@ -99,7 +100,21 @@ class EventDetails extends ConsumerWidget {
             ),
           ),
         if (o.event.location != null) info(Icons.place_rounded, o.event.location!),
+        if (watchEventForecast(ref, o) case final f?)
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: t.space.xs),
+            child: Row(
+              children: [
+                SizedBox(width: t.iconSm, child: Center(child: DEmoji(f.emoji, size: t.iconSm))),
+                SizedBox(width: t.space.sm),
+                Expanded(child: tid('event.sheet.weather', Text(describeEventForecast(f, imperial: ref.watch(imperialProvider)), style: t.text.body))),
+              ],
+            ),
+          ),
         if (o.event.notes != null) info(Icons.notes_rounded, o.event.notes!),
+        if (effectiveReminders(o.event, writable: writable, calendarDefault: ref.watch(calendarRemindersProvider)[o.event.sourceId] ?? const [])
+            case final leads when leads.isNotEmpty)
+          info(Icons.notifications_active_rounded, leads.map((m) => describeReminder(m, allDay: o.allDay)).join(', '), id: 'event.sheet.reminders'),
         if (o.event.countdown && days > 0)
           info(Icons.hourglass_bottom_rounded, '$days ${days == 1 ? 'day' : 'days'} to go · ${'🌙' * days.clamp(0, 7)} $days ${days == 1 ? 'sleep' : 'sleeps'}', id: 'event.sheet.countdown'),
         if (source != null)
@@ -212,6 +227,34 @@ Future<void> deleteOccurrence(BuildContext context, WidgetRef ref, Occurrence o)
                       writer.op('events', op.rowId, {'deleted': true}), // drop the new cancellation
                 ])
             : null,
+      );
+}
+
+/// Applies a drag move or resize (FR-CAL-14): asks which instances a
+/// repeating event's change applies to, writes it, and offers Undo where a
+/// clean revert exists (one event, or one day of a series).
+Future<void> moveOccurrence(BuildContext context, WidgetRef ref, Occurrence o, EventDraft moved, {required String summary, bool resized = false}) async {
+  final recurring = isRecurring(o);
+  final scope = recurring ? await pickScope(context, delete: false) : EditScope.all;
+  if (scope == null) return;
+  final writer = ref.read(writerProvider);
+  final time = ref.read(householdTimeProvider);
+  final (master, exceptions) = recurring ? await loadSeries(ref, o) : (null, const <Event>[]);
+  final ops = updateEventOps(writer.op, o, moved, scope, time, master: master, exceptions: exceptions);
+  await writer.commit(ops);
+  final before = EventDraft.fromOccurrence(o, time, master: master);
+  final List<Op>? undo = switch (scope) {
+    _ when !recurring => [writer.op('events', o.event.id, before.fields(time))],
+    // A plain instance got a new override row: dropping it restores the day.
+    EditScope.single when o.event.recurringParentId == null => [writer.op('events', ops.single.rowId, const {}, kind: OpKind.delete)],
+    EditScope.single => [writer.op('events', o.event.id, before.fields(time, includeRrule: false))],
+    _ => null,
+  };
+  ref.read(toastProvider).show(
+        '${resized ? 'Changed' : 'Moved'} “${o.event.title}” · $summary',
+        emoji: resized ? '↕️' : '📅',
+        actionLabel: undo == null ? null : 'Undo',
+        onAction: undo == null ? null : () => writer.commit(undo),
       );
 }
 

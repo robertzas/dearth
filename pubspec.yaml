@@ -14,3 +14,10 @@ workspace:
 
 dev_dependencies:
   lints: ^6.1.0
+
+# flutter_soloud only plays synthesized WAV (lib/core/synth.dart): skip its
+# Ogg/Opus/Vorbis/FLAC libraries (smaller binaries, no prebuilt download).
+hooks:
+  user_defines:
+    flutter_soloud:
+      no_xiph_libs: true

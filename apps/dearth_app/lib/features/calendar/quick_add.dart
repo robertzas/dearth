@@ -50,7 +50,7 @@ class _QuickAddFieldState extends ConsumerState<QuickAddField> {
     final r = _result;
     if (r == null) return null;
     final learned = ref.read(learnedIconsProvider);
-    return EventDraft(
+    final d = EventDraft(
       title: r.title,
       icon: suggestEventIcon(r.title, learned: learned),
       date: r.date,
@@ -61,6 +61,7 @@ class _QuickAddFieldState extends ConsumerState<QuickAddField> {
       profileIds: r.profileIds,
       sourceId: ref.read(defaultCalendarProvider)?.id ?? Ids.familyCalendar,
     );
+    return d.copyWith(reminders: defaultReminders(ref.read(calendarRemindersProvider), d));
   }
 
   Future<void> _add() async {

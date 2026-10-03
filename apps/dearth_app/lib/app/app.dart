@@ -15,8 +15,10 @@ import '../core/platform/platform.dart';
 import '../core/providers.dart';
 import '../core/sync/sync_client.dart';
 import '../features/photos/screensaver.dart';
+import '../features/timers/timers.dart';
 import 'display_state.dart';
 import 'grown_up.dart';
+import 'reminders.dart';
 import 'router.dart';
 
 /// Root of the app: router + theme frame.
@@ -116,6 +118,8 @@ class _AppFrameState extends ConsumerState<AppFrame> with WidgetsBindingObserver
     _resolveTheme(context);
     final display = ref.watch(displayProvider.select((d) => d.mode));
     final active = display == DisplayMode.active;
+    // Finished timers ring on every display, whatever it shows (FR-TMR-01).
+    ref.listen(timerAlarmProvider, (_, _) {});
     return Theme(
       data: _theme!,
       child: _Effects(
@@ -138,6 +142,7 @@ class _AppFrameState extends ConsumerState<AppFrame> with WidgetsBindingObserver
                   ),
                 ),
                 const _DisplayLayer(),
+                const ReminderLayer(),
               ],
             ),
           ),

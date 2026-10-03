@@ -34,6 +34,14 @@ runs:
         path: ~/.pub-cache
         key: pub-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pubspec.lock') }}
         restore-keys: pub-${{ runner.os }}-${{ runner.arch }}-
+    # Native build hooks compile C/C++ (flutter_soloud, sqlite3) per target:
+    # minutes per job (Android builds three ABIs), so keep their outputs.
+    - name: Build-hook cache
+      uses: actions/cache@v4
+      with:
+        path: .dart_tool/hooks_runner
+        key: hooks-v1-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ hashFiles('pubspec.lock', 'pubspec.yaml') }}
+        restore-keys: hooks-v1-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-
     - name: Resolve workspace
       if: inputs.pub-get == 'true'
       shell: bash

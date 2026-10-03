@@ -2,9 +2,12 @@
 library;
 
 export 'src/calendar/event_icons.dart';
+export 'src/calendar/event_weather.dart';
+export 'src/calendar/holidays.dart';
 export 'src/calendar/layout.dart';
 export 'src/calendar/quick_add.dart';
 export 'src/calendar/recurrence.dart';
+export 'src/calendar/reminders.dart';
 export 'src/db/database.dart';
 export 'src/db/defaults.dart';
 export 'src/db/mutator.dart';
@@ -12,6 +15,7 @@ export 'src/db/sync_store.dart';
 export 'src/display/moon.dart';
 export 'src/display/palette.dart';
 export 'src/display/solar.dart';
+export 'src/home/kitchen_timers.dart';
 export 'src/kids/kids.dart';
 export 'src/recipes/ingredients.dart';
 export 'src/recipes/recipe_model.dart';
