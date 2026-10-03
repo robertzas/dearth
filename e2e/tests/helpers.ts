@@ -60,15 +60,25 @@ export async function goTo(page: Page, dest: string): Promise<void> {
 /**
  * Scrolls the page content (mouse wheel over the middle of the viewport)
  * until [id] is built — lists build lazily, so off-screen widgets have no
- * semantics node yet.
+ * semantics node yet. Waits briefly first (the node may be about to appear
+ * after a write), then scrolls down, then back up.
  */
 export async function scrollTo(page: Page, id: string, maxSteps = 12): Promise<Locator> {
   const target = tid(page, id);
+  try {
+    await target.first().waitFor({ state: 'attached', timeout: 2_000 });
+    return target.first();
+  } catch {
+    // not built yet: scroll for it
+  }
   const size = page.viewportSize() ?? { width: 1280, height: 800 };
-  for (let i = 0; i < maxSteps && (await target.count()) === 0; i++) {
-    await page.mouse.move(size.width * 0.6, size.height * 0.55);
-    await page.mouse.wheel(0, size.height * 0.6);
-    await page.waitForTimeout(250);
+  for (const direction of [1, -1]) {
+    for (let i = 0; i < maxSteps * (direction === 1 ? 1 : 2) && (await target.count()) === 0; i++) {
+      await page.mouse.move(size.width * 0.6, size.height * 0.55);
+      await page.mouse.wheel(0, direction * size.height * 0.6);
+      await page.waitForTimeout(250);
+    }
+    if (await target.count()) break;
   }
   await expect(target.first()).toBeAttached();
   return target.first();

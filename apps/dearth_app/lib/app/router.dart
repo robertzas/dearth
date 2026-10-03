@@ -8,6 +8,7 @@ import '../core/sync/hub_api.dart';
 import '../features/calendar/calendar_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/lists/lists_screen.dart';
+import '../features/meals/meals_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
 import '../features/photos/photos_screen.dart';
 import '../features/settings/settings_screen.dart';
@@ -38,6 +39,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         branches: [
           StatefulShellBranch(routes: [GoRoute(path: '/', builder: (_, _) => const HomeScreen())]),
           StatefulShellBranch(routes: [GoRoute(path: '/calendar', builder: (_, _) => const CalendarScreen())]),
+          StatefulShellBranch(routes: [GoRoute(path: '/meals', builder: (_, _) => const MealsScreen())]),
           StatefulShellBranch(routes: [
             GoRoute(
               path: '/lists',

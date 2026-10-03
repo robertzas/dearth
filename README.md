@@ -37,6 +37,14 @@ back.
   *"Swim Saturday 9am Ava"*. It adds automatic event emoji and learns from
   your edits. It subscribes to ICS calendars and connects to Google
   Calendar.
+- **Meals.** A week planner of days and meal slots, holding recipes or a
+  free-text entry like "Leftovers". Recipes scale with the servings
+  stepper, using friendly fractions, and switch between US and metric
+  units. Discover suggests recipes that pair with the week's plan and says
+  why ("Uses your cilantro and limes · adds 2 items"). Each person rates a
+  recipe with a face, kids included. A tap adds a recipe's ingredients, or
+  the whole week's, to the shopping list, with staples skipped and amounts
+  merged. Cook mode shows one step at a time with tap-to-start timers.
 - **Weather.** The current conditions and a 36-hour chart with rain, sun
   and UV bands. It also shows a rain summary, a 10-day forecast, sunrise,
   sunset and the moon, what to wear, and alerts. Sources are Open-Meteo,
@@ -57,6 +65,10 @@ back.
 <td width="50%"><img src="docs/images/weather-wall-l.png" alt="Weather"></td>
 </tr>
 <tr>
+<td><img src="docs/images/meals-wall-l.png" alt="Meal planner"></td>
+<td><img src="docs/images/discover-wall-l.png" alt="Recipe discovery"></td>
+</tr>
+<tr>
 <td><img src="docs/images/home-tablet.png" alt="Home on a tablet"></td>
 <td><img src="docs/images/photos-wall-l.png" alt="Photo frame curation"></td>
 </tr>
@@ -70,8 +82,8 @@ back.
 <img src="docs/images/calendar-phone.png" height="420" alt="Phone: calendar">
 </p>
 
-Still to come: meal planning and recipes, the kids' chart, chores and
-rewards, a music box, and reminders. Integration with the FreeKiosk
+Still to come: the kids' chart, chores and rewards, a music box,
+reminders, and meal-plan templates. Integration with the FreeKiosk
 Android frame is coming too. [`PROGRESS.md`](PROGRESS.md) tracks the
 build, and [`SPEC.md`](SPEC.md) is the full product specification.
 

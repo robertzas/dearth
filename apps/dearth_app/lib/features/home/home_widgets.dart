@@ -12,6 +12,9 @@ import '../../shared/recipe_visual.dart';
 import '../calendar/calendar_state.dart';
 import '../calendar/event_sheet.dart';
 import '../calendar/event_visuals.dart';
+import '../meals/meals_data.dart';
+import '../meals/meals_screen.dart';
+import '../meals/recipe_sheet.dart';
 import 'home_card.dart';
 
 // ────────────────────────────── Week strip ──────────────────────────────────
@@ -172,10 +175,17 @@ class DinnerCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = DTheme.of(context);
     final (tonight, tomorrow) = ref.watch(dinnerPreviewProvider);
+    void openMeals() {
+      ref.read(mealsTabProvider.notifier).show(MealsTab.plan);
+      ref.read(mealWeekOffsetProvider.notifier).thisWeek();
+      context.go('/meals');
+    }
+
     if (tonight == null) {
       return HomeCard(
         id: 'home.dinner',
         title: 'Tonight',
+        onTap: openMeals,
         child: DEmptyState(
           emoji: '🍽️',
           title: 'What’s for dinner?',
@@ -189,6 +199,8 @@ class DinnerCard extends ConsumerWidget {
     return HomeCard(
       id: 'home.dinner',
       title: tonight.entry.slot == 'dinner' ? 'Tonight' : 'Today',
+      onTitleTap: openMeals,
+      onTap: r == null ? openMeals : () => showRecipeSheet(context, RecipeData.fromRow(r), entry: tonight.entry),
       padding: EdgeInsets.fromLTRB(t.space.lg, t.space.md, t.space.lg, t.space.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

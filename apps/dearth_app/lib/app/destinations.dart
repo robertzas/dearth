@@ -23,6 +23,7 @@ class Destination {
 const List<Destination> kDestinations = [
   Destination(id: 'home', label: 'Home', phoneLabel: 'Today', icon: Icons.home_outlined, activeIcon: Icons.home_rounded, path: '/'),
   Destination(id: 'calendar', label: 'Calendar', icon: Icons.calendar_month_outlined, activeIcon: Icons.calendar_month_rounded, path: '/calendar'),
+  Destination(id: 'meals', label: 'Meals', icon: Icons.restaurant_menu_outlined, activeIcon: Icons.restaurant_menu_rounded, path: '/meals'),
   Destination(id: 'lists', label: 'Lists', icon: Icons.checklist_rounded, activeIcon: Icons.fact_check_rounded, path: '/lists'),
   Destination(id: 'weather', label: 'Weather', icon: Icons.wb_sunny_outlined, activeIcon: Icons.wb_sunny_rounded, path: '/weather'),
   Destination(id: 'photos', label: 'Photos', icon: Icons.photo_library_outlined, activeIcon: Icons.photo_library_rounded, path: '/photos'),

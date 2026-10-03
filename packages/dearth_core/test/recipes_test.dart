@@ -89,6 +89,11 @@ void main() {
       expect(r.scaledIngredients(2)[0].describe(), '¾ cup flour');
       expect(r.scaledIngredients(4)[0].describe(metric: true), contains('ml'));
     });
+
+    test('FR-RCP-06: preparation is shown once', () {
+      expect(parseIngredientLine('2 cloves garlic, minced').describe(), '2 cloves garlic, minced');
+      expect(parseIngredientLine('1 tbsp grated ginger').describe(), isNot(contains(', grated')));
+    });
   });
 
   group('FR-SHOP-01/02: consolidation', () {

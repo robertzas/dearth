@@ -94,7 +94,7 @@ class Ingredient {
 
   /// "1⅓ cups flour, sifted" for display.
   String describe({bool metric = false}) {
-    if (qty == null) return [name, if (prep != null && prep!.isNotEmpty) prep].join(', ');
+    if (qty == null) return '$name$_prepSuffix';
     var amount = qty!;
     var maxAmount = qtyMax;
     var u = unit;
@@ -105,7 +105,14 @@ class Ingredient {
       u = unit2;
     }
     final measure = formatMeasure(amount, u, max: maxAmount);
-    return '$measure $name${prep != null && prep!.isNotEmpty ? ', $prep' : ''}';
+    return '$measure $name$_prepSuffix';
+  }
+
+  /// ", minced", unless the name already says it ("grated ginger").
+  String get _prepSuffix {
+    final p = prep;
+    if (p == null || p.isEmpty || name.toLowerCase().contains(p.toLowerCase())) return '';
+    return ', $p';
   }
 
   Map<String, Object?> toJson() => {

@@ -300,7 +300,7 @@ class _BottomBar extends StatelessWidget {
   final int current;
   final ValueChanged<int> onSelect;
 
-  static const _primary = ['home', 'calendar', 'lists', 'weather'];
+  static const _primary = ['home', 'calendar', 'meals', 'lists'];
 
   @override
   Widget build(BuildContext context) {

@@ -197,6 +197,16 @@ class HubApi {
 
   Future<Map<String, Object?>> post(String path, Map<String, Object?> body) => _postJson(path, body);
 
+  Future<List<String>> getStrings(String path, [Map<String, String>? query]) async {
+    final res = await _send(() => _client.get(_u(path, query), headers: _headers(json: false)));
+    return [for (final e in (res as List? ?? const [])) '$e'];
+  }
+
+  Future<List<Map<String, Object?>>> postList(String path, Map<String, Object?> body) async {
+    final res = await _send(() => _client.post(_u(path), headers: _headers(), body: jsonEncode(body)));
+    return [for (final e in (res as List? ?? const [])) if (e is Map<String, Object?>) e];
+  }
+
   Future<Map<String, Object?>> get(String path, [Map<String, String>? query]) => _getJson(path, query);
 
   Future<Map<String, Object?>> put(String path, Map<String, Object?> body) async =>

@@ -9,8 +9,12 @@ import '../core/sync/hub_api.dart';
 /// A recipe's photo (Hub blob or proxied URL, decoded at display size;
 /// SPEC §12.5) or, without one, its emoji on a warm food-toned gradient.
 class RecipeVisual extends ConsumerWidget {
-  const RecipeVisual({super.key, required this.recipe, required this.title, required this.height, this.radius});
+  const RecipeVisual({super.key, this.recipe, this.data, required this.title, required this.height, this.radius});
+
+  /// A local recipe row, or [data] for a recipe that isn't local yet
+  /// (search and discover results).
   final Recipe? recipe;
+  final RecipeData? data;
   final String title;
   final double height;
   final BorderRadius? radius;
@@ -25,8 +29,9 @@ class RecipeVisual extends ConsumerWidget {
       height: height,
       child: LayoutBuilder(builder: (context, box) {
         final w = (box.maxWidth.isFinite ? box.maxWidth : 600) * dpr;
-        final url = _imageUrl(recipe, api, w.round());
-        final fallback = _EmojiTile(emoji: recipeEmoji(recipe, title), seed: title, radius: r);
+        final url = _imageUrl(recipe?.imageBlob ?? data?.imageBlob, recipe?.imageUrl ?? data?.imageUrl, api, w.round());
+        final emoji = data != null && recipe == null ? recipeEmojiFor(data!.tags, data!.category, title) : recipeEmoji(recipe, title);
+        final fallback = _EmojiTile(emoji: emoji, seed: title, radius: r);
         if (url == null) return fallback;
         return ClipRRect(
           borderRadius: r,
@@ -44,22 +49,22 @@ class RecipeVisual extends ConsumerWidget {
     );
   }
 
-  static String? _imageUrl(Recipe? r, HubApi? api, int width) {
-    if (r == null) return null;
-    final sha = blobSha(r.imageBlob);
+  static String? _imageUrl(String? blob, String? u, HubApi? api, int width) {
+    final sha = blobSha(blob);
     if (sha != null && api != null) return api.blobUrl(sha, width: width).toString();
-    final u = r.imageUrl;
     if (u == null || u.isEmpty) return null;
     return api != null ? api.imageProxy(u, width: width).toString() : u;
   }
 }
 
 /// A recipe's emoji: a tag that is an emoji, else one by category/title.
-String recipeEmoji(Recipe? r, String title) {
-  for (final tag in decodeStringList(r?.tags)) {
+String recipeEmoji(Recipe? r, String title) => recipeEmojiFor(decodeStringList(r?.tags), r?.category, title);
+
+String recipeEmojiFor(List<String> tags, String? category, String title) {
+  for (final tag in tags) {
     if (tag.isNotEmpty && tag.runes.first > 0x2000) return tag;
   }
-  final s = '${r?.category ?? ''} $title'.toLowerCase();
+  final s = '${category ?? ''} $title'.toLowerCase();
   const map = {
     'pizza': '🍕', 'taco': '🌮', 'burrito': '🌯', 'pasta': '🍝', 'spaghetti': '🍝', 'noodle': '🍜', 'soup': '🥣', //
     'salad': '🥗', 'curry': '🍛', 'rice': '🍚', 'salmon': '🐟', 'fish': '🐟', 'chicken': '🍗', 'burger': '🍔',

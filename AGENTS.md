@@ -105,6 +105,9 @@ first time.
   `print` (use `package:logging` / the app logger).
 - Prefer small, composable widgets with `const` constructors.
 - Riverpod: narrow providers, `select` in widgets, no business logic in
-  `build`.
+  `build`. Riverpod 3 pauses providers that nothing listens to, so in an
+  event handler `ref.read(p).value` is null and `ref.read(p.future)` can
+  wait forever unless a visible widget watches `p`. For one-off reads,
+  query the database directly (e.g. `shoppingListOnce(db)`).
 - Comments explain *why*. Reference spec sections (`SPEC §8.4`) when a rule
   comes from there.

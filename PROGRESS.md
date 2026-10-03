@@ -35,8 +35,8 @@ Useful commands (details in `README.md`):
 
 ## In progress
 
-- First push to GitHub (`robertzas/dearth`, public) + first CI run / release. The owner's commit `310c3d3` holds the demo milestone; README + E2E fixes follow it.
-- Next up: 4.2 calendar M2 items, 5.1 meals, 3.2 Android platform channel (FreeKiosk bridge, light sensor), 7.1 deploy/perf scripts.
+- 6.1 Kids: chart by stage with "I did it!" and celebrations, approvals in grown-up mode, reward jar, star bank with a pinned goal, sticker book, routines run mode.
+- Then: 4.2 calendar M2 items, 3.2 Android platform channel (FreeKiosk bridge, light sensor), 7.1 deploy/perf scripts, CI action major upgrades.
 
 ## Plan & status
 
@@ -69,7 +69,7 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
 - 🟡 4.5 Settings: ✅ household (location search, units, week start, clock), people (colors, roles, stages, buddies, PINs), this display (theme, size, distance, idle, night, role, tier), calendars (enable, default, ICS subscribe, Google connect incl. paste-back), photo frame & night, Hub & devices (status, approvals, enrollment codes, disconnect), about · ⬜ weather/recipe/integration keys page, diagnostics
 
 ### Phase 5 — M2 features
-- ⬜ 5.1 Meals: discover, recipe detail + scaling, planner, shopping list, recommendations, cook mode
+- 🟡 5.1 Meals: ✅ week planner (grid on landscape, day list on portrait/phone; recipes or free text; per-entry servings; remove with undo), recipe sheet (servings scaling with friendly fractions, US/metric, add to plan, add ingredients to list, save to box, per-person face ratings), slot picker (search, "Pairs with your plan" with explanations, box, quick weeknights, Leftovers/Eat out/Takeout), Discover (search, pairs, quick, favorites, popular, Surprise me; Hub API or bundled catalog), recipe box (+ URL import on a Hub), cook mode (one step at a time, detected timers, step ingredients, keeps the display awake), week → shopping list (consolidated, sources, staples skipped), Home dinner card opens tonight's recipe · ⬜ templates / copy last week (FR-MEAL-04), leftovers links (FR-MEAL-03), per-period shopping view with check state (FR-SHOP-02..05), allergen/diet filters, cuisine passport, seasonal & "haven't had in a while" feeds, drag to move
 - 🟡 5.2 Lists ✅ (FR-LIST-01, aisle grouping for shopping, undo) · notes (display only) · ⬜ timers
 
 ### Phase 6 — M3 features
@@ -146,6 +146,24 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
 - **2026-10-03** Git LFS tracks all binaries (`.gitattributes`); CI caches LFS
   objects to save bandwidth. Releases: every push to main is tagged
   `v<pubspec version>-build.<run>`.
+- **2026-10-03** CI: Hub binaries build with the Dart SDK alone (Flutter has no
+  linux-arm64 host build); the Hub image builds per arch on native runners
+  (`ubuntu-24.04-arm`, no QEMU) and is merged by digest; the release job
+  downloads artifacts by name (buildx `.dockerbuild` records break a blanket
+  download-artifact). The repo is public, so arm64 runners are free.
+- **2026-10-03** Follow-up: actions run on Node 20 majors (`checkout@v4`,
+  `*-artifact@v4`, `cache@v4`, docker `@v3/@v6`…) that GitHub forces onto
+  Node 24; upgrade majors (checkout v7, download-artifact v8, upload-artifact
+  v7, cache v6, setup-java v6, setup-node v7, docker v4/v7, gh-release v3) in a
+  dedicated change and watch one run.
+- **2026-10-03** Meals: planning a provider recipe copies it into `recipes`
+  under `stableId('recipe', [source, sourceId])` (the demo seed's ids), so a
+  plan survives the provider and offline devices converge. Ratings are one
+  row per person per recipe (`stableId('rating', …)`), scored 2/1/0/−2 so
+  they add straight into plan scoring.
+- **2026-10-03** Riverpod 3 pauses unlistened providers: reading a
+  StreamProvider's `.future` from a handler hung "Add to list". Handlers
+  read once from the DB instead (AGENTS.md → Style).
 - **2026-10-03** Follow-ups: bundle a Fluent Emoji subset (SPEC §11.3; web
   currently fetches Noto Color Emoji at runtime), slim the Hub image, Postgres
   backend, weather/recipe key settings UI.
@@ -164,5 +182,7 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
 - 2026-10-03 — Home, Calendar (5 views, editor with recurring scopes, quick add), Weather, Lists, Photos + screensaver, Settings; 10 FR-CAL-13 tests, 6 sync-client tests against an in-process Hub, app flow test (steps 4.x, 5.2).
 - 2026-10-03 — `SyncStore.applyOpsBulk` + batched `replaceAll`; 200-seed equivalence test; 341 core tests green.
 - 2026-10-03 — Playwright E2E suite (4 projects) against a test Hub; app icons; Android/iOS/desktop identity (`app.dearth`); CI/CD workflow with releases; Git LFS.
+- 2026-10-03 — Meals (step 5.1 core): planner, recipe sheet, slot picker, Discover, recipe box, cook mode, add to list; 8 meal-op unit tests; 9 Playwright journeys × 4 viewports (full suite: 109 passed, 7 skipped).
+- 2026-10-03 — Pushed to GitHub; CI run #1 green except the release job (artifact download); fixed → run #2 published `v0.1.0-build.2`.
 - 2026-10-03 — E2E run 2: 69 passed, 4 failed (quick-add preview had no readable text node; fixed by labeling the summary node), 7 skipped by design. README written (screenshots in `docs/images`, LFS).
 
