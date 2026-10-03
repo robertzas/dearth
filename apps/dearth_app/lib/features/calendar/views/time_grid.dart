@@ -44,8 +44,10 @@ class _TimeGridState extends ConsumerState<TimeGrid> {
       if (!_scroll.hasClients) return;
       final time = ref.read(householdTimeProvider);
       final today = ref.read(todayProvider);
-      final minute = widget.range.contains(today) ? time.minuteOfDay(time.nowMs()) - 90 : 7 * 60;
-      _scroll.jumpTo((minute / 60 * hourH).clamp(0, _scroll.position.maxScrollExtent));
+      // Open on a whole hour, with its line a little below the top edge so
+      // the hour label (centered on the line) isn't clipped.
+      final hour = widget.range.contains(today) ? (time.minuteOfDay(time.nowMs()) - 90) ~/ 60 : 7;
+      _scroll.jumpTo((hour * hourH - hourH * 0.2).clamp(0, _scroll.position.maxScrollExtent));
     });
   }
 

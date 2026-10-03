@@ -132,32 +132,46 @@ class _Preview extends ConsumerWidget {
         ? '${relativeDayName(result.date, today)}, ${monthDay(result.date)}${result.endDate != null ? ' – ${monthDay(result.endDate!.addDays(-1))}' : ''} · All day'
         : '${relativeDayName(result.date, today)}, ${monthDay(result.date)} · '
             '${formatTime(DateTime(2000, 1, 1, result.startMinute! ~/ 60, result.startMinute! % 60), h24: h24)} · ${formatDuration(result.durationMinutes)}';
+    // One spoken summary for the parsed event; the buttons stay separate
+    // nodes so they remain individually reachable.
+    final summary = [result.title, when, if (who.isNotEmpty) who.map((p) => p.name).join(', ')].join(', ');
     return Padding(
       padding: EdgeInsets.only(top: t.space.sm),
-      child: tid(
-        'quickadd.preview',
-        Container(
-          padding: EdgeInsets.all(t.space.sm),
-          decoration: BoxDecoration(color: palette.tint, borderRadius: t.radius.card),
-          child: Row(
-            children: [
-              DEmoji(suggestEventIcon(result.title, learned: learned) ?? '📅', size: 40 * t.scale),
-              SizedBox(width: t.space.sm),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(result.title, style: t.text.bodyStrong.copyWith(color: palette.ink), maxLines: 1, overflow: TextOverflow.ellipsis),
-                    Text(when, style: t.text.caption, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  ],
+      child: Container(
+        padding: EdgeInsets.all(t.space.sm),
+        decoration: BoxDecoration(color: palette.tint, borderRadius: t.radius.card),
+        child: Row(
+          children: [
+            Expanded(
+              child: tid(
+                'quickadd.preview',
+                Semantics(
+                  label: summary,
+                  excludeSemantics: true,
+                  child: Row(
+                    children: [
+                      DEmoji(suggestEventIcon(result.title, learned: learned) ?? '📅', size: 40 * t.scale),
+                      SizedBox(width: t.space.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(result.title, style: t.text.bodyStrong.copyWith(color: palette.ink), maxLines: 1, overflow: TextOverflow.ellipsis),
+                            Text(when, style: t.text.caption, maxLines: 1, overflow: TextOverflow.ellipsis),
+                          ],
+                        ),
+                      ),
+                      if (who.isNotEmpty) ...[SizedBox(width: t.space.sm), AvatarStack(people: who, size: 32 * t.scale)],
+                    ],
+                  ),
                 ),
               ),
-              if (who.isNotEmpty) ...[AvatarStack(people: who, size: 32 * t.scale), SizedBox(width: t.space.sm)],
-              DIconButton(icon: Icons.tune_rounded, label: 'More options', id: 'quickadd.more', tone: DButtonTone.ghost, onPressed: onMore),
-              SizedBox(width: t.space.xs),
-              DButton(label: 'Add', icon: Icons.add_rounded, size: DButtonSize.sm, id: 'quickadd.add', onPressed: onAdd),
-            ],
-          ),
+            ),
+            SizedBox(width: t.space.sm),
+            DIconButton(icon: Icons.tune_rounded, label: 'More options', id: 'quickadd.more', tone: DButtonTone.ghost, onPressed: onMore),
+            SizedBox(width: t.space.xs),
+            DButton(label: 'Add', icon: Icons.add_rounded, size: DButtonSize.sm, id: 'quickadd.add', onPressed: onAdd),
+          ],
         ),
       ),
     );

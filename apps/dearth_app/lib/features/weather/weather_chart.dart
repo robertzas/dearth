@@ -57,7 +57,9 @@ class _HourlyPainter extends CustomPainter {
     required this.colors,
     required this.caption,
     required this.label,
-  });
+    // Repaint when fonts change: on the web the color-emoji font arrives
+    // after the first paint, and text painted before that shows as tofu.
+  }) : super(repaint: PaintingBinding.instance.systemFonts);
 
   final List<WxHour> hours;
   final bool imperial;
@@ -82,7 +84,8 @@ class _HourlyPainter extends CustomPainter {
 
     // Layout bands top → bottom.
     final emojiY = 18 * scale;
-    final tempTop = 40 * scale, tempBottom = 120 * scale;
+    // Peak labels sit 14 above the curve; keep them clear of the icon row.
+    final tempTop = 56 * scale, tempBottom = 120 * scale;
     final rainTop = 138 * scale, rainBottom = 210 * scale;
     final sunTop = 220 * scale, sunH = 16 * scale;
     final uvTop = 242 * scale, uvH = 16 * scale;

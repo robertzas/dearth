@@ -23,7 +23,12 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
-    launchOptions: process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : undefined,
+    // CI runners have no GPU: Flutter's renderer needs WebGL, which Chrome
+    // only provides there through SwiftShader when explicitly allowed.
+    launchOptions: {
+      args: ['--enable-unsafe-swiftshader'],
+      ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}),
+    },
   },
   projects: [
     { name: 'wall-l', use: { viewport: { width: 1920, height: 1080 } } },

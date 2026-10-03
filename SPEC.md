@@ -557,8 +557,10 @@ results. Recipe results are fetched on demand and persisted only when saved.
 - **Roles:** `kitchen` (full experience), `kid_room`, `entry`, `personal`
   (phone or desktop), or `custom`. A role sets navigation, home layout,
   scopes, screensaver defaults, schedules and lock defaults (§10.12).
-- Tokens are stored in Android Keystore-backed encrypted storage. Revoking a
-  token in the admin immediately disconnects the device.
+- Tokens are stored in Android Keystore / iOS Keychain-backed storage on
+  phones and tablets, and in the app-private database on web, desktop and
+  kiosk Linux (no WebCrypto on LAN http; kiosks rarely run a keyring).
+  Revoking a token in the admin immediately disconnects the device.
 
 ### 9.3 Grown-up mode & toddler safety
 - Shared displays default to **family mode**. Adult actions (settings,
@@ -586,8 +588,9 @@ results. Recipe results are fetched on demand and persisted only when saved.
   cookie sessions. Same-origin CORS. Strict CSP on the web app. Security
   headers.
 - LAN devices may use the HTTPS domain via split-horizon DNS (recommended)
-  or `http://<lan-ip>`. Android needs a network security config allowing
-  cleartext only to the configured Hub IP and `127.0.0.1` (FreeKiosk bridge).
+  or `http://<lan-ip>`. Android's network security config permits cleartext,
+  because the Hub's LAN address is chosen at pairing time (and FreeKiosk's
+  bridge is on `127.0.0.1`); remote access uses the HTTPS domain.
 
 ### 9.5 Secrets
 Integration credentials (Google refresh tokens, WU key, Spotify tokens,

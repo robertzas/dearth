@@ -19,7 +19,8 @@ Read these first, in order:
 | `hub/dearth_hub` | Dart server: sync authority, pairing, blobs, jobs, integrations, admin API, web hosting. |
 | `apps/dearth_app` | The Flutter app for every platform. Feature-first folders under `lib/features/<feature>/`. |
 | `e2e/` | Playwright end-to-end suite against the web build and a test Hub. |
-| `tool/` | `check.sh`, `codegen.sh`, `build_all.sh`, `deploy_frame.sh`, `e2e.sh`, `dev_hub.sh`, `perf_gate.sh`. |
+| `tool/` | `check.sh`, `codegen.sh`, `build_all.sh`, `e2e.sh`, `dev_hub.sh`, `web_assets.sh`, `icons/` (the SVG source of every app icon and `make_icons.sh`). Planned: `deploy_frame.sh`, `perf_gate.sh`. |
+| `.github/` | `workflows/build.yml`: every push to `main` runs the gate and the E2E suite, builds every platform plus the Hub image, and publishes a GitHub release `v<version>-build.<run>`. `actions/setup`: shared Flutter, pub and LFS setup. |
 
 ## Golden rules
 
@@ -51,7 +52,24 @@ Read these first, in order:
 10. **Test identifiers are a contract.** Widgets on user journeys use
     `tid('area.thing', child)` (a `Semantics(identifier:)`). Playwright
     selects them via `flt-semantics-identifier`. Renaming one means updating
-    `e2e/`.
+    `e2e/`. When a test needs to read text, put the `tid` on a node that
+    carries the text itself: a leaf, or `Semantics(label: …,
+    excludeSemantics: true)` directly inside the `tid`. A container's
+    children are separate DOM nodes, so the container exposes no text.
+11. **Write in bulk.** Many ops go into one `Mutator.commit` (or
+    `DataWriter.commit`), which applies them with `SyncStore.applyOpsBulk`
+    inside a single transaction. Raw maintenance writes use `db.batch`.
+    Never `await` one statement per row in a loop: on the web, every
+    statement is a round trip to the drift worker (hundreds of ms while
+    frames are busy). Seeding the onboarding demo one statement at a time
+    once made it look hung.
+12. **Import Material from `package:material_ui/material_ui.dart`**, never
+    `package:flutter/material.dart`. Flutter 3.47 moved Material into its
+    own package, and go_router only recognizes material_ui's `MaterialApp`.
+13. **Binary files go through Git LFS.** `.gitattributes` lists the
+    extensions (images, fonts, wasm, archives, media). Check
+    `git lfs ls-files` before committing a new kind of binary. Generated
+    text (`database.g.dart`, `web/drift_worker.js`) stays in plain git.
 
 ## Testing
 
@@ -60,7 +78,19 @@ Read these first, in order:
 - `dearth_ui`, `dearth_app`: `flutter test` (unit + widget).
 - End to end: `tool/e2e.sh` builds the web app, starts a Hub with
   `DEARTH_FAKE_PROVIDERS=1` on a temp data dir, and runs Playwright across
-  the Wall-L, Wall-P, Tablet and Phone projects.
+  the Wall-L, Wall-P, Tablet and Phone projects. `SKIP_BUILD=1` reuses the
+  last web build. `CHROME_PATH=/usr/bin/google-chrome-stable` uses a system
+  Chrome instead of downloading one. Extra arguments go to
+  `playwright test`, e.g. `tool/e2e.sh tests/calendar.spec.ts`.
+- E2E specs drive the app through `e2e/tests/helpers.ts`:
+  - `openDemo(page, route)` starts a seeded local household at a fixed
+    clock (`?demo=1&e2e=1&now=…`).
+  - `tap()` clicks the centre of the node, as a finger would. Empty
+    semantics containers can overlap it in the DOM, and Flutter hit-tests
+    the pointer position itself.
+  - `expectText()` polls the aria-label and the text content.
+  - `scrollTo()` wheels lazy lists until a `tid` is built.
+  - `goTo()` uses whichever navigation chrome the layout shows.
 - Name tests after requirements where possible: `FR-CAL-12: quick add …`.
 
 ## Code generation

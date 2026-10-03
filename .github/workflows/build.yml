@@ -22,6 +22,7 @@ permissions:
 
 env:
   FLUTTER_VERSION: 3.47.2
+  DART_VERSION: 3.13.2
 
 jobs:
   version:
@@ -268,7 +269,16 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup
+      # The Hub is pure Dart: no Flutter SDK (which has no linux-arm64 host
+      # build), just Dart and the workspace subset the Hub needs, exactly
+      # like the Dockerfile.
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: ${{ env.DART_VERSION }}
+      - name: Hub-only workspace
+        run: |
+          printf 'name: dearth_hub_build\npublish_to: none\nenvironment:\n  sdk: ^3.13.0\nworkspace:\n  - packages/dearth_core\n  - packages/dearth_integrations\n  - hub/dearth_hub\n' > pubspec.yaml
+          dart pub get
       - name: Compile (dart build cli bundles the SQLite native asset)
         working-directory: hub/dearth_hub
         run: dart build cli -o "$RUNNER_TEMP/hub"
@@ -292,10 +302,16 @@ jobs:
           path: out/*
 
   docker:
-    name: Hub image (amd64 + arm64)
+    name: Hub image (${{ matrix.arch }})
     needs: [version, web]
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: amd64, os: ubuntu-latest }
+          - { arch: arm64, os: ubuntu-24.04-arm }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     permissions:
       contents: read
       packages: write
@@ -305,7 +321,6 @@ jobs:
         with:
           name: web
           path: dist/web
-      - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         if: github.event_name == 'push'
@@ -316,22 +331,64 @@ jobs:
       - name: Image name
         id: img
         run: echo "name=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/dearth-hub" >> "$GITHUB_OUTPUT"
-      - uses: docker/build-push-action@v6
+      # Each architecture builds natively (the Dart toolchain is slow and
+      # fragile under QEMU) and is pushed by digest; docker-manifest then
+      # publishes both under the release tags.
+      - name: Build
+        id: build
+        uses: docker/build-push-action@v6
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name == 'push' }}
+          platforms: linux/${{ matrix.arch }}
           build-args: VERSION=${{ needs.version.outputs.full }}
-          tags: |
-            ${{ steps.img.outputs.name }}:latest
-            ${{ steps.img.outputs.name }}:${{ needs.version.outputs.full }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          outputs: type=image,name=${{ steps.img.outputs.name }},push-by-digest=true,name-canonical=true,push=${{ github.event_name == 'push' }}
+          cache-from: type=gha,scope=hub-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=hub-${{ matrix.arch }}
+      - name: Export digest
+        if: github.event_name == 'push'
+        run: |
+          mkdir -p "$RUNNER_TEMP/digests"
+          digest="${{ steps.build.outputs.digest }}"
+          touch "$RUNNER_TEMP/digests/${digest#sha256:}"
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'push'
+        with:
+          name: digests-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  docker-manifest:
+    name: Hub image (multi-arch tags)
+    if: github.event_name == 'push'
+    needs: [version, docker]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digests-*
+          merge-multiple: true
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Tag latest and this build
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          name="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/dearth-hub"
+          docker buildx imagetools create -t "$name:latest" -t "$name:${{ needs.version.outputs.full }}" $(printf "$name@sha256:%s " *)
+          docker buildx imagetools inspect "$name:${{ needs.version.outputs.full }}"
 
   release:
     name: GitHub release
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [version, check, e2e, web, android, linux, windows, macos, ios, hub, docker]
+    needs: [version, check, e2e, web, android, linux, windows, macos, ios, hub, docker-manifest]
     runs-on: ubuntu-latest
     permissions:
       contents: write
