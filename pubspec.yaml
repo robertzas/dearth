@@ -1,0 +1,16 @@
+name: dearth_workspace
+description: Dearth monorepo (pub workspace). See README.md.
+publish_to: none
+
+environment:
+  sdk: ^3.13.0
+
+workspace:
+  - packages/dearth_core
+  - packages/dearth_integrations
+  - packages/dearth_ui
+  - hub/dearth_hub
+  - apps/dearth_app
+
+dev_dependencies:
+  lints: ^6.1.0

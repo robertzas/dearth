@@ -1,0 +1,31 @@
+/// Dearth core: shared schema, sync protocol and pure domain logic.
+library;
+
+export 'src/calendar/event_icons.dart';
+export 'src/calendar/layout.dart';
+export 'src/calendar/quick_add.dart';
+export 'src/calendar/recurrence.dart';
+export 'src/db/database.dart';
+export 'src/db/defaults.dart';
+export 'src/db/mutator.dart';
+export 'src/db/sync_store.dart';
+export 'src/display/moon.dart';
+export 'src/display/palette.dart';
+export 'src/display/solar.dart';
+export 'src/kids/kids.dart';
+export 'src/recipes/ingredients.dart';
+export 'src/recipes/recipe_model.dart';
+export 'src/recipes/scoring.dart';
+export 'src/recipes/shopping.dart';
+export 'src/recipes/units.dart';
+export 'src/sync/hlc.dart';
+export 'src/sync/merge.dart';
+export 'src/sync/op.dart';
+export 'src/sync/protocol.dart';
+export 'src/sync/sync_specs.dart';
+export 'src/time/household_time.dart';
+export 'src/time/local_date.dart';
+export 'src/util/ids.dart';
+export 'src/util/json.dart';
+export 'src/util/pin.dart';
+export 'src/weather/weather.dart';

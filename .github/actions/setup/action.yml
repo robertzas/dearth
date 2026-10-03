@@ -1,0 +1,40 @@
+name: Dearth setup
+description: Pull Git LFS objects (cached to save LFS bandwidth), install Flutter and resolve the workspace.
+inputs:
+  flutter-version:
+    description: Flutter SDK version (pinned; SPEC §12.2 moves only after the perf gate).
+    default: 3.47.2
+  pub-get:
+    description: Run flutter pub get at the workspace root.
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: LFS object list
+      shell: bash
+      run: git lfs ls-files --long | cut -d ' ' -f1 | sort > .lfs-assets-id
+    - name: Restore LFS cache
+      uses: actions/cache@v4
+      with:
+        path: .git/lfs
+        key: lfs-v1-${{ hashFiles('.lfs-assets-id') }}
+        restore-keys: lfs-v1-
+    - name: Pull LFS objects
+      shell: bash
+      run: git lfs pull && rm -f .lfs-assets-id
+    - name: Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ inputs.flutter-version }}
+        channel: stable
+        cache: true
+    - name: Pub cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.pub-cache
+        key: pub-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pubspec.lock') }}
+        restore-keys: pub-${{ runner.os }}-${{ runner.arch }}-
+    - name: Resolve workspace
+      if: inputs.pub-get == 'true'
+      shell: bash
+      run: flutter pub get

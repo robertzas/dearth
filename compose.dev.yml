@@ -1,0 +1,22 @@
+# Dearth Hub — development compose: builds from source, demo data, fake
+# providers (no API keys or network needed). Never point this at real data.
+#
+#   docker compose -f compose.dev.yml up --build
+services:
+  dearth-dev:
+    build: .
+    container_name: dearth-dev
+    environment:
+      DEARTH_FAKE_PROVIDERS: "1"
+      DEARTH_SEED_DEMO: "1"
+      DEARTH_ADMIN_PASSWORD: dev
+      DEARTH_AUTO_APPROVE: "1"
+      DEARTH_LOG_LEVEL: fine
+      TZ: America/Denver
+    volumes:
+      - dearth-dev-data:/data
+    ports:
+      - "8090:8080"
+
+volumes:
+  dearth-dev-data: {}

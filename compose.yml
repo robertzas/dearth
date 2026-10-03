@@ -1,0 +1,32 @@
+# Dearth Hub — production compose (SPEC §14.6).
+#
+#   cp .env.example .env    # set DEARTH_PUBLIC_URL, DEARTH_ADMIN_PASSWORD, …
+#   openssl rand -hex 32 > dearth_key
+#   docker compose up -d
+services:
+  dearth:
+    image: ${DEARTH_IMAGE:-ghcr.io/robertzas/dearth-hub:latest}
+    build: .
+    container_name: dearth
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DEARTH_SECRET_KEY_FILE: /run/secrets/dearth_key
+      DEARTH_PHOTO_DIRS: /photos
+      DEARTH_MUSIC_DIRS: /music
+    volumes:
+      - dearth-data:/data
+      # Optional: folders the Hub may read photos/music from (read-only).
+      - ${DEARTH_PHOTO_FOLDER:-./photos}:/photos:ro
+      - ${DEARTH_MUSIC_FOLDER:-./music}:/music:ro
+    ports:
+      - "${DEARTH_HTTP_PORT:-8080}:8080"
+    secrets:
+      - dearth_key
+
+volumes:
+  dearth-data: {}
+
+secrets:
+  dearth_key:
+    file: ./dearth_key

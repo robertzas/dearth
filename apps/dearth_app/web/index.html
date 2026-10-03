@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Replaced by `flutter build web --base-href`. -->
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Dearth — the family command center: calendar, meals, chores, photos and weather on your own hardware.">
+  <meta name="theme-color" content="#F7F4EE" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#14161C" media="(prefers-color-scheme: dark)">
+
+  <!-- iOS PWA (SPEC FR-CMP-01) -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Dearth">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="manifest" href="manifest.json">
+  <title>Dearth</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #F7F4EE; }
+    @media (prefers-color-scheme: dark) { html, body { background: #14161C; } }
+    /* Splash shown until Flutter paints its first frame. */
+    #splash { position: fixed; inset: 0; display: grid; place-items: center; transition: opacity .25s ease-out; }
+    #splash .mark { width: 72px; height: 72px; border-radius: 20px; background: #5B5BD6; color: #fff;
+      font: 700 40px/72px system-ui, sans-serif; text-align: center; animation: breathe 1.6s ease-in-out infinite; }
+    @keyframes breathe { 50% { transform: scale(.94); opacity: .8; } }
+    @media (prefers-reduced-motion: reduce) { #splash .mark { animation: none; } }
+  </style>
+</head>
+<body>
+  <div id="splash" aria-hidden="true"><div class="mark">D</div></div>
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      var s = document.getElementById('splash');
+      if (s) { s.style.opacity = '0'; setTimeout(function () { s.remove(); }, 300); }
+    });
+  </script>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

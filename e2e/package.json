@@ -1,0 +1,14 @@
+{
+  "name": "dearth-e2e",
+  "private": true,
+  "description": "Playwright end-to-end suite for the Dearth web build against a test Hub (SPEC §16.1).",
+  "scripts": {
+    "test": "playwright test",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.3"
+  }
+}

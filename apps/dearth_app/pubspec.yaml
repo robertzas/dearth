@@ -1,0 +1,62 @@
+name: dearth_app
+description: Dearth — the family command center app (wall displays, tablets, phones, desktop, web).
+publish_to: none
+version: 0.1.0+1
+resolution: workspace
+
+environment:
+  sdk: ^3.13.0
+  flutter: ">=3.47.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  material_ui: ^1.5.0
+
+  # Dearth packages
+  dearth_core:
+  dearth_integrations:
+  dearth_ui:
+
+  # Architecture
+  flutter_riverpod: ^3.4.3
+  go_router: ^18.0.2
+
+  # Data & sync
+  drift: ^2.35.1
+  drift_flutter: ^0.3.1
+  sqlite3: ^3.7.0
+  http: ^1.6.0
+  web_socket_channel: ^3.0.3
+  path: ^1.9.1
+  path_provider: ^2.1.6
+  flutter_secure_storage: ^11.2.0
+  timezone: ^0.11.1
+  flutter_timezone: ^5.1.0
+  collection: ^1.19.1
+  intl: ^0.20.3
+  web: ^1.1.1
+
+  # Device & display
+  wakelock_plus: ^1.8.1
+  device_info_plus: ^13.3.0
+  package_info_plus: ^10.2.2
+
+  # Sharing
+  url_launcher: ^6.3.3
+  qr_flutter: ^4.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  lints: ^6.1.0
+  # In-process Hub for sync-client tests (SPEC §16.1).
+  dearth_hub:
+
+flutter:
+  uses-material-design: true
+  generate: false
+  assets:
+    - assets/demo/

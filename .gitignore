@@ -1,0 +1,51 @@
+# --- Dart / Flutter ---------------------------------------------------------
+.dart_tool/
+.packages
+.pub/
+.pub-cache/
+build/
+coverage/
+**/doc/api/
+.flutter-plugins
+.flutter-plugins-dependencies
+**/ios/Flutter/.last_build_id
+app.*.symbols
+app.*.map.json
+.widget_preview/
+
+# --- IDEs ---------------------------------------------------------------------
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+.history/
+*.swp
+.DS_Store
+
+# --- Android signing & local config (NEVER commit) -----------------------------
+apps/dearth_app/android/key.properties
+*.jks
+*.keystore
+local.properties
+
+# --- Hub runtime data ------------------------------------------------------------
+hub/dearth_hub/data/
+/data/
+*.db
+*.db-shm
+*.db-wal
+.env
+.env.*
+!.env.example
+dearth_key
+
+# --- Tooling output ----------------------------------------------------------------
+/dist/*
+!/dist/.keep
+/tool/.cache/
+/tool/.work/
+perf-reports/
+screenshots/

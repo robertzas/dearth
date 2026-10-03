@@ -1,0 +1,28 @@
+name: dearth_ui
+description: Dearth design system — tokens, themes, display classes, motion and components.
+version: 0.1.0
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.13.0
+  flutter: ">=3.44.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  material_ui: ^1.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  lints: ^6.1.0
+
+flutter:
+  fonts:
+    - family: PlusJakartaSans
+      fonts:
+        - asset: assets/fonts/PlusJakartaSans.ttf
+    - family: Fredoka
+      fonts:
+        - asset: assets/fonts/Fredoka.ttf

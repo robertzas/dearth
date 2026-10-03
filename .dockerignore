@@ -1,0 +1,17 @@
+**/.dart_tool
+**/build
+**/.flutter-plugins*
+**/.idea
+**/*.iml
+.git
+data
+hub/dearth_hub/data
+e2e/node_modules
+e2e/test-results
+e2e/playwright-report
+tool/.cache
+tool/.work
+**/*.jks
+**/key.properties
+**/local.properties
+.env
