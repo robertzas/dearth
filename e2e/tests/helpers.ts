@@ -59,29 +59,41 @@ export async function goTo(page: Page, dest: string): Promise<void> {
 
 /**
  * Scrolls the page content (mouse wheel over the middle of the viewport)
- * until [id] is built — lists build lazily, so off-screen widgets have no
- * semantics node yet. Waits briefly first (the node may be about to appear
- * after a write), then scrolls down, then back up.
+ * until [id] is built and inside the viewport — lists build lazily, so
+ * off-screen widgets may have no semantics node yet, and a node in the cache
+ * extent can't be tapped. Waits briefly first (the node may be about to
+ * appear after a write), then scrolls down, then back up.
  */
 export async function scrollTo(page: Page, id: string, maxSteps = 12): Promise<Locator> {
-  const target = tid(page, id);
+  const target = tid(page, id).first();
+  const size = page.viewportSize() ?? { width: 1280, height: 800 };
+  const inView = async (): Promise<boolean> => {
+    if ((await tid(page, id).count()) === 0) return false;
+    const box = await target.boundingBox();
+    if (!box) return false;
+    // Its middle must clear the top chrome and the phone's bottom bar.
+    const middle = box.y + Math.min(box.height, size.height) / 2;
+    return middle >= 40 && middle <= size.height - 110;
+  };
   try {
-    await target.first().waitFor({ state: 'attached', timeout: 2_000 });
-    return target.first();
+    await target.waitFor({ state: 'attached', timeout: 2_000 });
   } catch {
     // not built yet: scroll for it
   }
-  const size = page.viewportSize() ?? { width: 1280, height: 800 };
   for (const direction of [1, -1]) {
-    for (let i = 0; i < maxSteps * (direction === 1 ? 1 : 2) && (await target.count()) === 0; i++) {
+    for (let i = 0; i < maxSteps * (direction === 1 ? 1 : 2) && !(await inView()); i++) {
+      const box = (await tid(page, id).count()) ? await target.boundingBox() : null;
+      // Built but out of view: scroll toward it; otherwise keep searching.
+      const dir = box ? (box.y < 0 ? -1 : 1) : direction;
+      const step = box ? Math.min(size.height * 0.6, Math.abs(box.y - size.height * 0.3) + 1) : size.height * 0.6;
       await page.mouse.move(size.width * 0.6, size.height * 0.55);
-      await page.mouse.wheel(0, direction * size.height * 0.6);
+      await page.mouse.wheel(0, dir * step);
       await page.waitForTimeout(250);
     }
-    if (await target.count()) break;
+    if (await inView()) break;
   }
-  await expect(target.first()).toBeAttached();
-  return target.first();
+  await expect(target).toBeAttached();
+  return target;
 }
 
 /** Focuses the text field inside [id] and types. */

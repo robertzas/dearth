@@ -103,6 +103,9 @@ first time.
 
 - Strict analysis (`analysis_options.yaml` at the root). No `dynamic`, no
   `print` (use `package:logging` / the app logger).
+- The code isn't `dart format`-ed (lines run to ~160–200 columns). Don't
+  run the formatter on existing files: it reflows unrelated code and buries
+  the real change in the diff.
 - Prefer small, composable widgets with `const` constructors.
 - Riverpod: narrow providers, `select` in widgets, no business logic in
   `build`. Riverpod 3 pauses providers that nothing listens to, so in an

@@ -12,6 +12,7 @@ import '../../shared/recipe_visual.dart';
 import '../calendar/calendar_state.dart';
 import '../calendar/event_sheet.dart';
 import '../calendar/event_visuals.dart';
+import '../kids/kids_data.dart';
 import '../meals/meals_data.dart';
 import '../meals/meals_screen.dart';
 import '../meals/recipe_sheet.dart';
@@ -240,6 +241,10 @@ class KidsCard extends ConsumerWidget {
     return HomeCard(
       id: 'home.kids',
       title: kids.length == 1 ? '${kids.first.name}’s day' : 'Kids',
+      onTap: () {
+        showKidsTab(ref, kids.first.id);
+        context.go('/kids');
+      },
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

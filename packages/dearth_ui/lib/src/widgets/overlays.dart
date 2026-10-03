@@ -268,22 +268,27 @@ class DToastHost extends StatelessWidget {
           left: 0,
           right: 0,
           bottom: 0,
-          child: SafeArea(
-            child: ListenableBuilder(
-              listenable: controller,
-              builder: (context, _) {
-                final t = DTheme.of(context);
-                return Padding(
-                  padding: EdgeInsets.all(t.space.lg),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      for (final d in controller.items)
-                        _ToastView(key: ValueKey(d.id), data: d, onDismiss: () => controller.dismiss(d)),
-                    ],
-                  ),
-                );
-              },
+          // The host sits above the Navigator, outside any route's Material:
+          // give text a real default style (no debug underline).
+          child: Material(
+            type: MaterialType.transparency,
+            child: SafeArea(
+              child: ListenableBuilder(
+                listenable: controller,
+                builder: (context, _) {
+                  final t = DTheme.of(context);
+                  return Padding(
+                    padding: EdgeInsets.all(t.space.lg),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (final d in controller.items)
+                          _ToastView(key: ValueKey(d.id), data: d, onDismiss: () => controller.dismiss(d)),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
           ),
         ),

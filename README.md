@@ -45,6 +45,13 @@ back.
   recipe with a face, kids included. A tap adds a recipe's ingredients, or
   the whole week's, to the shopping list, with staples skipped and amounts
   merged. Cook mode shows one step at a time with tap-to-start timers.
+- **Kids.** A chore chart a toddler can run: big picture cards, a
+  celebration for every "I did it!", and rewards that fit each kid's stage.
+  These are a reward jar with a surprise inside, a star bank with a goal,
+  and a sticker book of painted scenes where each sticker is chosen and
+  placed. Morning and bedtime routines run step by step with a visual
+  timer. Grown-ups approve, tick off household chores, and fill a family
+  goal together.
 - **Weather.** The current conditions and a 36-hour chart with rain, sun
   and UV bands. It also shows a rain summary, a 10-day forecast, sunrise,
   sunset and the moon, what to wear, and alerts. Sources are Open-Meteo,
@@ -69,6 +76,10 @@ back.
 <td><img src="docs/images/discover-wall-l.png" alt="Recipe discovery"></td>
 </tr>
 <tr>
+<td><img src="docs/images/kids-wall-l.png" alt="A toddler's chore chart"></td>
+<td><img src="docs/images/stickers-wall-l.png" alt="Sticker book"></td>
+</tr>
+<tr>
 <td><img src="docs/images/home-tablet.png" alt="Home on a tablet"></td>
 <td><img src="docs/images/photos-wall-l.png" alt="Photo frame curation"></td>
 </tr>
@@ -82,7 +93,7 @@ back.
 <img src="docs/images/calendar-phone.png" height="420" alt="Phone: calendar">
 </p>
 
-Still to come: the kids' chart, chores and rewards, a music box,
+Still to come: chore and routine editors, voice prompts, a music box,
 reminders, and meal-plan templates. Integration with the FreeKiosk
 Android frame is coming too. [`PROGRESS.md`](PROGRESS.md) tracks the
 build, and [`SPEC.md`](SPEC.md) is the full product specification.

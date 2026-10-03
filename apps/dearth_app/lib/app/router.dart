@@ -7,6 +7,7 @@ import '../core/providers.dart';
 import '../core/sync/hub_api.dart';
 import '../features/calendar/calendar_screen.dart';
 import '../features/home/home_screen.dart';
+import '../features/kids/kids_screen.dart';
 import '../features/lists/lists_screen.dart';
 import '../features/meals/meals_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
@@ -47,6 +48,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               routes: [GoRoute(path: ':id', builder: (_, state) => ListsScreen(listId: state.pathParameters['id']))],
             ),
           ]),
+          StatefulShellBranch(routes: [GoRoute(path: '/kids', builder: (_, _) => const KidsScreen())]),
           StatefulShellBranch(routes: [GoRoute(path: '/weather', builder: (_, _) => const WeatherScreen())]),
           StatefulShellBranch(routes: [GoRoute(path: '/photos', builder: (_, _) => const PhotosScreen())]),
           StatefulShellBranch(routes: [
