@@ -31,6 +31,10 @@ List<String> memoryDeck(int level, Random rng, {List<String> faces = kMemoryFace
 /// A finished board: up to one wrong pair per pair is a win.
 String memoryResult(int pairs, int mismatches) => resultFor(mismatches, allowed: pairs);
 
+/// The first two levels show every face for a moment before turning the
+/// cards over: the youngest learn what they are looking for.
+bool memoryPeek(int level) => level <= 2;
+
 // ─────────────────────────────── Shape Sorter ───────────────────────────────
 
 enum ToyShape { circle, square, triangle, star, heart, hexagon, oval, diamond }
@@ -54,6 +58,9 @@ ShapeRound shapeRound(int level, Random rng) {
   final shapes = ToyShape.values.take(n).toList()..shuffle(rng);
   return ShapeRound(shapes, rotated: level >= kShapeCounts.length);
 }
+
+/// A full board: a wrong hole now and then (one per four shapes) is a win.
+String shapeResult(int shapes, int slips) => resultFor(slips, allowed: (shapes / 4).ceil());
 
 // ────────────────────────────── Counting Garden ─────────────────────────────
 
@@ -80,6 +87,10 @@ CountingRound countingRound(int level, Random rng) {
   final picks = [count, ...others.take(choices - 1)]..sort();
   return CountingRound(count, picks, flash: flash);
 }
+
+/// "How many?" has two or three answers, so a guess often lands: right the
+/// first time is a win, the second time "helped", later a miss.
+String countingResult(int slips) => switch (slips) { 0 => GameResult.win, 1 => GameResult.helped, _ => GameResult.miss };
 
 // ───────────────────────────── Feed the Monster ─────────────────────────────
 
@@ -188,6 +199,9 @@ String _otherColor(String color, int seed) {
 int _partial(MonsterRule r, Food f) =>
     (r.color != null && f.color == r.color ? 1 : 0) + (r.round != null && f.round == r.round ? 1 : 0) + (r.kind != null && f.kind == r.kind ? 1 : 0);
 
+/// A fed monster: one food it wouldn't eat is still a win.
+String monsterResult(int slips) => resultFor(slips, allowed: 1);
+
 // ─────────────────────────────────── Jigsaw ─────────────────────────────────
 
 /// Pieces per level: 2 → 24.
@@ -206,6 +220,42 @@ const List<int> kJigsawPieces = [2, 4, 6, 9, 12, 16, 24];
       right: [for (var r = 0; r < rows; r++) [for (var c = 0; c < cols - 1; c++) rng.nextBool() ? 1 : -1]],
       down: [for (var r = 0; r < rows - 1; r++) [for (var c = 0; c < cols; c++) rng.nextBool() ? 1 : -1]],
     );
+
+/// A finished picture: a piece tried in the wrong spot now and then (one in
+/// three) is a win.
+String jigsawResult(int pieces, int slips) => resultFor(slips, allowed: max(1, pieces ~/ 3));
+
+// ─────────────────────────────── Magic Coloring ─────────────────────────────
+
+/// Regions per picture by level, inclusive: 4 big ones → 30 small ones.
+const List<(int, int)> kColoringBands = [(3, 5), (6, 9), (10, 15), (16, 23), (24, 34)];
+
+/// Whether a picture of [regions] suits [level].
+bool coloringFits(int regions, int level) {
+  final (lo, hi) = kColoringBands[(level - 1).clamp(0, kColoringBands.length - 1)];
+  return regions >= lo && regions <= hi;
+}
+
+// ──────────────────────────────── Paint Studio ──────────────────────────────
+
+/// What Paint Studio offers at a level (Appendix B: tools unlock with play,
+/// stamps → layers → symmetry). Brushes, colors, papers and undo are there
+/// from the start.
+@immutable
+class PaintKit {
+  const PaintKit({required this.stamps, required this.scenes, required this.mirror});
+
+  /// Picture stamps, which sit on top of the paint.
+  final bool stamps;
+
+  /// Painted backgrounds under the paint (a meadow, the sea, space).
+  final bool scenes;
+
+  /// Symmetry: every stroke is mirrored across the middle.
+  final bool mirror;
+}
+
+PaintKit paintKit(int level) => PaintKit(stamps: level >= 2, scenes: level >= 2, mirror: level >= 3);
 
 // ──────────────────────────────── Bubble Pop ────────────────────────────────
 
@@ -243,11 +293,12 @@ class FarmAnimal {
   final String says;
 }
 
+/// Each [FarmAnimal.id] names its recording (tool/sounds/animals.py).
 const List<FarmAnimal> kFarmAnimals = [
   FarmAnimal('cow', 'Cow', '🐮', 'Moo!'),
   FarmAnimal('pig', 'Pig', '🐷', 'Oink oink!'),
   FarmAnimal('sheep', 'Sheep', '🐑', 'Baa!'),
-  FarmAnimal('duck', 'Duck', '🦆', 'Quack quack!'),
+  FarmAnimal('rooster', 'Rooster', '🐓', 'Cock-a-doodle-doo!'),
   FarmAnimal('chicken', 'Chicken', '🐔', 'Cluck cluck!'),
   FarmAnimal('horse', 'Horse', '🐴', 'Neigh!'),
   FarmAnimal('dog', 'Dog', '🐶', 'Woof woof!'),

@@ -35,7 +35,7 @@ Useful commands (details in `README.md`):
 
 ## In progress
 
-- In progress: 6.2 Toybox (owner request: the toybox and all of its games). Done: core rules (catalog, adaptive ladder, time budget, every launch-set game's rounds; 14 tests), game sounds (synth effects, drums, xylophone pitch by rate) and ten CC0 animal recordings (`tool/sounds/animals.py`). Next: the launcher, game host and the ten launch-set games with widget tests and E2E journeys, Settings → Toybox, then the expansion set (Appendix B, M4).
+- In progress: 6.2 Toybox (owner request: the toybox and all of its games). Done: core rules (catalog, adaptive ladder, time budget, every launch-set game's rounds and results; 18 tests), game sounds and ten CC0 animal recordings, the launcher (`/toybox`, a "Toys" destination), the game host, Settings → Toybox (time, hours, volume, per-kid game switches incl. opening a game early, level pins), and three games: Bubble Pop, Animal Farm, Xylophone & Drums (7 widget tests, 4 E2E journeys). The launcher hides games without a playfield. Next: Memory Match, Shape Sorter, Counting Garden, Feed the Monster, Magic Coloring, Jigsaw, Paint Studio (each with widget tests and an E2E journey), then the expansion set (Appendix B, M4).
 - Next: 6.3 music box, then the family Google calendar offer (FR-CAL-04) and Google reminders mapping on the Hub.
 - Then: 3.2 Android platform channel (FreeKiosk bridge, light sensor, a "setting the time…" state until the frame's clock syncs), 7.1 perf script, CI action major upgrades.
 
@@ -75,7 +75,7 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
 
 ### Phase 6 — M3 features
 - 🟡 6.1 Kids: ✅ Kids destination (a tab per kid + Grown-ups), stage-aware chart of big picture cards, "I did it!" with celebrations (confetti / stars / bubbles, buddy, praise; calm at night; reduced-motion variant), Undo for 30 s, grown-up approvals behind the PIN, grants on the append-only ledger with stable ids (idempotent, converge across devices; undo appends reversals), reward jar with a surprise reveal, star bank with a pinned goal and redemption requests, sticker book (pick and place on painted theme scenes, pages), routine run mode (stepping-stone path, visual timer, debounced steps, progress saved), grown-ups' household chores (claim Anyone chores), family team goal, Settings → Kids & chores (chore editor with who/schedule/time/rewards/approval/voice line, age-sorted chore library, routine editor from templates with steps/timers/reorder, reward editor from ideas, jar size, sticker theme and star goal per kid) · ⬜ voice prompts / TTS playback, First–Then and choice boards, kindness hearts, growing garden, potty chart, proud wall, feelings check-in, adult rotation / fairness, approval notifications
-- 🟡 6.2 Toybox: ✅ core rules (catalog, adaptive difficulty FR-TOY-04, time budget and hours FR-TOY-05, launch-set rounds), game sounds, CC0 animal recordings · ⬜ launcher, game host, the ten launch-set games, parent controls UI, expansion set (M4)
+- 🟡 6.2 Toybox: ✅ core rules (catalog, adaptive difficulty FR-TOY-04, time budget and hours FR-TOY-05, launch-set rounds), game sounds, CC0 animal recordings, launcher (FR-TOY-01: picture tiles by age, "new!" sparkle, time left, grown-up corner), game host (levels, volume cap, two-minute warning, "the Toybox is sleeping"), parent controls (FR-TOY-05), Bubble Pop, Animal Farm, Xylophone & Drums · ⬜ Memory Match, Shape Sorter, Counting Garden, Feed the Monster, Magic Coloring, Jigsaw, Paint Studio, Toddler Lock (§9.3), expansion set (M4)
 - ⬜ 6.3 Music box: tiles, local files, YouTube, Spotify (via Hub)
 
 ### Phase 7 — Deployment tooling & CI
@@ -251,6 +251,16 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
   between builds. Follow-up for the owner: a release keystore kept outside
   the repo plus the four secrets (README → Android signing); local builds
   pick it up from `apps/dearth_app/android/key.properties` (gitignored).
+- **2026-10-03** Flutter web drops a node's `flt-semantics-identifier` when
+  its role changes: a `DPressable` whose `onTap` went null for a moment (the
+  music toy's echo button while the tune played) stopped being a button,
+  and the rebuilt node had no id, so E2E lost it. Keep a `tid`'d control's
+  handler non-null (do nothing instead). Same family as `screenTid` above.
+- **2026-10-03** Toybox: games are shown by age (Appendix B starting points),
+  and a grown-up can switch a game off or open it early per kid
+  (`kids.toybox` → `off` / `early` keys `kidId.gameId`). Rounds are
+  append-only `game_events`; the ladder (FR-TOY-04) is recomputed from them,
+  so it converges across displays with no level table.
 - **2026-10-03** Follow-ups: bundle a Fluent Emoji subset (SPEC §11.3; web
   currently fetches Noto Color Emoji at runtime), slim the Hub image, Postgres
   backend, weather/recipe key settings UI.
@@ -269,6 +279,7 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
 - 2026-10-03 — Home, Calendar (5 views, editor with recurring scopes, quick add), Weather, Lists, Photos + screensaver, Settings; 10 FR-CAL-13 tests, 6 sync-client tests against an in-process Hub, app flow test (steps 4.x, 5.2).
 - 2026-10-03 — `SyncStore.applyOpsBulk` + batched `replaceAll`; 200-seed equivalence test; 341 core tests green.
 - 2026-10-03 — Playwright E2E suite (4 projects) against a test Hub; app icons; Android/iOS/desktop identity (`app.dearth`); CI/CD workflow with releases; Git LFS.
+- 2026-10-03 — Toybox checkpoint: launcher, game host, Settings → Toybox, Bubble Pop, Animal Farm, Xylophone & Drums; 18 core tests, 7 widget tests, 4 E2E journeys × 4 viewports. Full E2E: 201 passed, 7 skipped.
 - 2026-10-03 — Kid timeline (FR-CAL-10: core layout + 5 tests, Timeline view, "My day" on the Kids screen, 2 widget tests, 2 E2E journeys); fixed the photo frame that a tap couldn't wake (2 idle-engine tests); immersive bars and accelerometer orientation on wall displays (3 tests); routine run mode no longer changes providers mid-build.
 - 2026-10-03 — `tool/deploy_frame.sh`: sets up, checks or updates an Android wall display over network ADB; the kitchen frame now has a working exit corner, auto-rotate, adaptive brightness and the current Dearth. README section for it.
 - 2026-10-03 — Kitchen timers (synced, pill on every screen, escalating chime, cook mode) and birthdays & holidays (virtual calendars, US/CA/GB rules, kid countdowns). Tests: 12 new core, 3 new app; E2E journeys for timers, holidays on the calendar and holiday countdowns.

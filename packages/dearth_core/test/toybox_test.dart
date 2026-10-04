@@ -32,6 +32,15 @@ void main() {
     });
   });
 
+  test('free-play games unlock a level every three sessions; their echo rounds still climb', () {
+    final paint = gameById('paint')!, music = gameById('music')!;
+    List<GameRound> sessions(int n) => [for (var i = 0; i < n; i++) r(1, 'played')];
+    expect([for (final n in [0, 2, 3, 6, 9]) startLevel(paint, sessions(n))], [1, 1, 2, 3, 3]);
+    expect(startLevel(paint, sessions(9), pinned: 1), 1);
+    expect(startLevel(music, [r(2, 'win'), r(2, 'win'), r(2, 'win')]), 3);
+    expect(startLevel(gameById('memory')!, sessions(9)), 1, reason: 'not a free-play game');
+  });
+
   group('who plays what', () {
     test('age comes from the birthday, else the stage', () {
       final today = DateTime(2026, 10, 3);
@@ -47,6 +56,13 @@ void main() {
       expect(gamesFor(30).map((g) => g.id), isNot(contains('counting')));
       expect(gamesFor(48).length, kGames.length);
       expect(gamesFor(48, off: {'paint'}).map((g) => g.id), isNot(contains('paint')));
+    });
+
+    test('a grown-up can open a game early; launcher order stays', () {
+      final ids = gamesFor(30, early: {'counting'}).map((g) => g.id).toList();
+      expect(ids, contains('counting'));
+      expect(ids.last, 'counting');
+      expect(gamesFor(30, off: {'counting'}, early: {'counting'}).map((g) => g.id), contains('counting'), reason: 'early wins');
     });
 
     test('a daily budget counts down; hours can run past midnight', () {
@@ -71,12 +87,14 @@ void main() {
         }
       }
       expect((memoryResult(4, 4), memoryResult(4, 9), memoryResult(4, 13)), ('win', 'helped', 'miss'));
+      expect([for (var l = 1; l <= 4; l++) memoryPeek(l)], [true, true, false, false]);
     });
 
     test('shapes: 2 → 8, the last level turns the holes', () {
       expect(shapeRound(1, Random(1)).shapes.toSet(), {ToyShape.circle, ToyShape.square});
       expect(shapeRound(4, Random(1)).shapes.length, 6);
       expect((shapeRound(4, Random(1)).rotated, shapeRound(5, Random(1)).rotated), (false, true));
+      expect((shapeResult(2, 1), shapeResult(2, 2), shapeResult(8, 2), shapeResult(8, 7)), ('win', 'helped', 'win', 'miss'));
     });
 
     test('counting: the answer is always among the choices, which are near it', () {
@@ -90,6 +108,7 @@ void main() {
           expect(round.flash, level == 4);
         }
       }
+      expect([for (var slips = 0; slips < 3; slips++) countingResult(slips)], ['win', 'helped', 'miss']);
     });
 
     test('monster: something to eat and something to refuse, every time', () {
@@ -107,6 +126,7 @@ void main() {
         }
       }
       expect(const MonsterRule(color: 'red', round: true).words, 'red and round');
+      expect((monsterResult(1), monsterResult(2), monsterResult(4)), ('win', 'helped', 'miss'));
     });
 
     test('jigsaw: 2 → 24 pieces, tabs on every inner edge', () {
@@ -115,6 +135,19 @@ void main() {
       final tabs = jigsawTabs(3, 4, Random(3));
       expect((tabs.right.length, tabs.right.first.length, tabs.down.length, tabs.down.first.length), (3, 3, 2, 4));
       expect(tabs.right.expand((e) => e).every((t) => t == 1 || t == -1), isTrue);
+      expect((jigsawResult(2, 1), jigsawResult(2, 2), jigsawResult(24, 8), jigsawResult(24, 25)), ('win', 'helped', 'win', 'miss'));
+    });
+
+    test('coloring: bigger pictures as she climbs, every size has a level', () {
+      expect([for (var l = 1; l <= 5; l++) coloringFits(4, l)], [true, false, false, false, false]);
+      expect([for (var l = 1; l <= 5; l++) coloringFits(30, l)], [false, false, false, false, true]);
+      for (var n = kColoringBands.first.$1; n <= kColoringBands.last.$2; n++) {
+        expect([for (var l = 1; l <= 5; l++) coloringFits(n, l)].where((f) => f).length, 1, reason: '$n regions');
+      }
+    });
+
+    test('paint: stamps and scenes at level 2, symmetry at 3', () {
+      expect([for (var l = 1; l <= 3; l++) (paintKit(l).stamps, paintKit(l).scenes, paintKit(l).mirror)], [(false, false, false), (true, true, false), (true, true, true)]);
     });
 
     test('farm: free play, then find one among three, then six', () {

@@ -72,6 +72,23 @@ int nextLevel(List<GameRound> rounds, {required int maxLevel, int? pinned}) {
   return current;
 }
 
+/// Free-play games (painting, instruments) have no wins: their tools unlock
+/// with play instead, a level every three sessions.
+int freePlayLevel(List<GameRound> rounds, {required int maxLevel}) {
+  final sessions = rounds.where((r) => r.result == GameResult.played).length;
+  final level = 1 + sessions ~/ 3;
+  return level > maxLevel ? maxLevel : level;
+}
+
+/// The level a game starts at: the adaptive ladder, and for free-play games
+/// at least what their sessions unlocked. A parent's pin wins.
+int startLevel(GameInfo game, List<GameRound> rounds, {int? pinned}) {
+  final ladder = nextLevel(rounds, maxLevel: game.levels, pinned: pinned);
+  if (pinned != null || !game.freePlay) return ladder;
+  final unlocked = freePlayLevel(rounds, maxLevel: game.levels);
+  return unlocked > ladder ? unlocked : ladder;
+}
+
 /// The age, in whole months, that picks a kid's games: from their birthday,
 /// else the middle of their stage (2–3, 3–4, 4–5).
 int ageInMonths({required DateTime today, DateTime? birthday, String? stage}) {
@@ -83,10 +100,12 @@ int ageInMonths({required DateTime today, DateTime? birthday, String? stage}) {
   return switch (stage) { 'preschool' => 42, 'prek' => 54, _ => 30 };
 }
 
-/// The games a kid of [months] sees, minus those a grown-up switched off.
-List<GameInfo> gamesFor(int months, {Set<String> off = const {}}) => [
+/// The games a kid of [months] sees: the ones that suit their age, minus
+/// those a grown-up switched [off], plus any they opened [early] (ages are
+/// starting points, not limits).
+List<GameInfo> gamesFor(int months, {Set<String> off = const {}, Set<String> early = const {}}) => [
       for (final g in kGames)
-        if (g.minMonths <= months && !off.contains(g.id)) g,
+        if ((g.minMonths <= months && !off.contains(g.id)) || early.contains(g.id)) g,
     ];
 
 /// Toybox time today (FR-TOY-05): minutes left of [budgetMinutes] after

@@ -13,6 +13,7 @@ import '../features/meals/meals_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
 import '../features/photos/photos_screen.dart';
 import '../features/settings/settings_screen.dart';
+import '../features/toybox/toybox_screen.dart';
 import '../features/weather/weather_screen.dart';
 import 'shell.dart';
 
@@ -49,6 +50,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             ),
           ]),
           StatefulShellBranch(routes: [GoRoute(path: '/kids', builder: (_, _) => const KidsScreen())]),
+          StatefulShellBranch(routes: [GoRoute(path: '/toybox', builder: (_, _) => const ToyboxScreen())]),
           StatefulShellBranch(routes: [GoRoute(path: '/weather', builder: (_, _) => const WeatherScreen())]),
           StatefulShellBranch(routes: [GoRoute(path: '/photos', builder: (_, _) => const PhotosScreen())]),
           StatefulShellBranch(routes: [
