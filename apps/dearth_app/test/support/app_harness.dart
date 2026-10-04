@@ -104,5 +104,11 @@ class RecordingSound implements SoundPlayer {
     played.add((sfx, volume));
     rates.add(rate);
   }
+
+  /// Voice clips spoken, in order.
+  final said = <String>[];
+
+  @override
+  Future<void> say(String clip, {double volume = 1}) async => said.add(clip);
 }
 

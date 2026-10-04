@@ -1,30 +1,13 @@
 import { expect, Page, test } from '@playwright/test';
-import { drag, expectText, goTo, hold, openDemo, scrollTo, tap, textOf, tid, tids } from './helpers';
+import { drag, expectText, idsUnder, openToyboxGame, tap, textOf, tid } from './helpers';
 
 // The Toybox's expansion set (SPEC FR-TOY-03), played the way a child would:
 // from what the screen shows (labels), not from the game's state. Ava is 2½
 // in the demo, so games for older kids are opened early from Settings first.
 
-/** Opens [game] from Ava's Toybox, switching it on early when it's for an older kid. */
-async function openGame(page: Page, game: string, early = false): Promise<void> {
-  await openDemo(page, '/toybox');
-  if (early) {
-    await hold(page, tid(page, 'toybox.grownups'));
-    await expect(tids(page, 'screen.settings').first()).toBeVisible();
-    await tap(await scrollTo(page, `toybox.on.${game}`));
-    await goTo(page, 'toybox');
-  }
-  await tap(await scrollTo(page, `toybox.game.${game}`));
-  await expect(tid(page, `game.${game}`)).toBeVisible();
-}
-
+const openGame = openToyboxGame;
+const ids = idsUnder;
 const label = async (page: Page, id: string): Promise<string> => (await textOf(tid(page, id))).trim();
-
-/** Every element's id under [prefix], in index order. */
-async function ids(page: Page, prefix: string): Promise<string[]> {
-  const all = await tids(page, prefix).evaluateAll((els) => els.map((e) => e.getAttribute('flt-semantics-identifier')!));
-  return all.sort((a, b) => Number(a.split('.').pop()) - Number(b.split('.').pop()));
-}
 
 test.describe('Toybox expansion', () => {
   test('FR-TOY-03: Patterns — she reads the row and picks what comes next', async ({ page }) => {

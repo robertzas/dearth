@@ -13,7 +13,8 @@ import 'game_widgets.dart';
 /// Her buddy waits in one corner and home is in the other; she drags the
 /// buddy through the corridors, and it follows only where the maze is open
 /// (a wall gives a soft boing). Wide paths first, then turns, branches and
-/// dead ends. A tap on a neighbouring open square steps there too.
+/// dead ends. A tap on a neighbouring square steps there too, if no hedge
+/// is in the way.
 class MazesGame extends StatefulWidget {
   const MazesGame(this.c, {super.key});
   final GameController c;
@@ -63,23 +64,41 @@ class MazesGameState extends State<MazesGame> {
     if (mounted) setState(() {});
   }
 
-  /// Steps toward [cell]: along open passages, at most three squares at a
-  /// time (a quick finger), never through a wall.
+  /// A tap on a square next to the buddy: one step if the way is open, a
+  /// soft boing if a hedge is in the way. (Only a drag finds its way around.)
+  void _tapCell(int cell) {
+    if (_home || !_maze.neighbours(_at).contains(cell)) return;
+    if (_maze.connected(_at, cell)) {
+      _walk([_at, cell]);
+    } else {
+      _bump(cell);
+    }
+  }
+
+  /// Follows a dragging finger toward [cell]: along open passages, at most
+  /// three squares at a time (a quick finger), never through a wall.
   void _toward(int cell) {
     if (_home || cell == _at) return;
-    final path = _maze.path(_at);
     // The way from here to [cell] through open passages, if it's close.
     final route = _route(_at, cell);
     if (route == null) {
-      if (_maze.neighbours(_at).contains(cell) && _lastBump != cell) {
-        _bumps++;
-        _lastBump = cell;
-        widget.c.sound(Sfx.boing, volume: 0.45);
-      }
+      if (_maze.neighbours(_at).contains(cell)) _bump(cell);
       return;
     }
+    _walk(route);
+  }
+
+  void _bump(int cell) {
+    if (_lastBump == cell) return;
+    _bumps++;
+    _lastBump = cell;
+    widget.c.sound(Sfx.boing, volume: 0.45);
+  }
+
+  void _walk(List<int> route) {
+    final cell = route.last;
     _lastBump = -1;
-    widget.c.sound(Sfx.tap, volume: 0.35, rate: path.contains(cell) ? 1.2 : 0.9);
+    widget.c.sound(Sfx.tap, volume: 0.35, rate: _maze.path(_at).contains(cell) ? 1.2 : 0.9);
     setState(() {
       _at = cell;
       _trail.addAll(route.skip(1));
@@ -152,8 +171,8 @@ class MazesGameState extends State<MazesGame> {
               onPointerDown: (e) {
                 final c = _cellAt(e.position);
                 _dragging = c == _at;
-                // A tap on a neighbour steps there.
-                if (c != null && !_dragging && _maze.neighbours(_at).contains(c)) _toward(c);
+                // A tap on a neighbour steps there (or bumps a hedge).
+                if (c != null && !_dragging) _tapCell(c);
               },
               onPointerMove: (e) {
                 if (!_dragging) return;
@@ -177,7 +196,7 @@ class MazesGameState extends State<MazesGame> {
                         Semantics(
                           button: true,
                           label: 'Square ${i + 1}: ${ways(i)}${i == _at ? ', buddy here' : ''}${i == m.home ? ', home' : ''}',
-                          onTap: () => _toward(i),
+                          onTap: () => _tapCell(i),
                           excludeSemantics: true,
                           child: const SizedBox.expand(),
                         ),

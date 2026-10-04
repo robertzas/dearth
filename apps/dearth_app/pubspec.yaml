@@ -64,3 +64,4 @@ flutter:
   assets:
     - assets/demo/
     - assets/sounds/animals/
+    - assets/voice/

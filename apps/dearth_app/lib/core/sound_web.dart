@@ -15,6 +15,11 @@ class WebSound implements SoundPlayer {
   web.AudioContext? _ctx;
   final Map<Sfx, Future<web.AudioBuffer>> _buffers = {};
 
+  /// Voice clips decoded lately, oldest first, a few dozen at most.
+  final Map<String, Future<web.AudioBuffer>> _voices = {};
+  web.AudioBufferSourceNode? _speaking;
+  static const _keepVoices = 32;
+
   @override
   Future<void> play(Sfx sfx, {double volume = 1, double rate = 1}) async {
     try {
@@ -30,6 +35,31 @@ class WebSound implements SoundPlayer {
       source.start();
     } on Object {
       // No audio device or a blocked context: sound is never essential.
+    }
+  }
+
+  @override
+  Future<void> say(String clip, {double volume = 1}) async {
+    try {
+      final ctx = _ctx ??= web.AudioContext();
+      if (ctx.state == 'suspended') unawaited(ctx.resume().toDart.then((_) {}, onError: (Object _) {}));
+      final pending = _voices.remove(clip) ?? voiceBytes(clip).then((b) => ctx.decodeAudioData(b.buffer.toJS).toDart);
+      _voices[clip] = pending;
+      if (_voices.length > _keepVoices) _voices.remove(_voices.keys.first)?.ignore();
+      final buffer = await pending;
+      try {
+        _speaking?.stop();
+      } on Object {
+        // Already finished.
+      }
+      final source = ctx.createBufferSource()..buffer = buffer;
+      final gain = ctx.createGain()..gain.value = volume;
+      source.connect(gain);
+      gain.connect(ctx.destination);
+      source.start();
+      _speaking = source;
+    } on Object {
+      _voices.remove(clip)?.ignore();
     }
   }
 }

@@ -156,3 +156,23 @@ export async function hold(page: Page, target: Locator, ms = 3300): Promise<void
   await page.mouse.up();
 }
 
+
+/** Opens [game] from Ava's Toybox, switching it on early first when it's for an older kid. */
+export async function openToyboxGame(page: Page, game: string, early = false): Promise<void> {
+  await openDemo(page, '/toybox');
+  if (early) {
+    await hold(page, tid(page, 'toybox.grownups'));
+    await expect(tids(page, 'screen.settings').first()).toBeVisible();
+    await tap(await scrollTo(page, `toybox.on.${game}`));
+    await goTo(page, 'toybox');
+  }
+  await tap(await scrollTo(page, `toybox.game.${game}`));
+  await expect(tid(page, `game.${game}`)).toBeVisible();
+}
+
+/** Every element's id that starts with [prefix], in index order when they end in a number. */
+export async function idsUnder(page: Page, prefix: string): Promise<string[]> {
+  const all = await tids(page, prefix).evaluateAll((els) => els.map((e) => e.getAttribute('flt-semantics-identifier')!));
+  const index = (id: string) => Number(id.split('.').pop());
+  return all.sort((a, b) => (isNaN(index(a)) || isNaN(index(b)) ? a.localeCompare(b) : index(a) - index(b)));
+}

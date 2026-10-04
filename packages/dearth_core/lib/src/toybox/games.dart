@@ -52,6 +52,13 @@ const List<GameInfo> kExpansionGames = [
   GameInfo('stories', 'What Happens Next', '🎞️', minMonths: 42, skills: ['Stories', 'Cause and effect'], levels: 3),
   GameInfo('sudoku', 'Picture Sudoku', '🧮', minMonths: 48, skills: ['Logic'], levels: 6),
   GameInfo('differences', 'Spot the Difference', '🔎', minMonths: 48, skills: ['Attention'], levels: 5),
+  GameInfo('letters', 'Letter Sounds', '🔤', minMonths: 36, skills: ['Phonics'], levels: 5),
+  GameInfo('rhymes', 'Rhyme Time', '🎩', minMonths: 48, skills: ['Hearing sounds'], levels: 3),
+  GameInfo('ispy', 'I Spy', '👀', minMonths: 36, skills: ['Vocabulary', 'Attention'], levels: 5),
+  GameInfo('tracing', 'Letter & Name Tracing', '✏️', minMonths: 42, skills: ['Pre-writing'], levels: 5),
+  GameInfo('numbers', 'Number Tracing', '🔢', minMonths: 42, skills: ['Numerals'], levels: 3),
+  // A calm-down: breaths aren't won, so sessions move it along (3 → 5 breaths).
+  GameInfo('breathe', 'Breathing Buddy', '🌬️', minMonths: 36, skills: ['Calming down'], levels: 3, freePlay: true),
 ];
 
 GameInfo? gameById(String id) => kGames.where((g) => g.id == id).firstOrNull;

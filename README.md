@@ -68,7 +68,11 @@ back.
   (real animal recordings), Shape Sorter, Xylophone & Drums, Jigsaw (cut
   from the family's photos), Memory Match, Feed the Monster, Counting
   Garden, Patterns, Odd One Out, Shadow Match, Small to Big, Finger
-  Mazes, What Happens Next, Picture Sudoku and Spot the Difference. Each kid sees the games that suit their age, and every game
+  Mazes, What Happens Next, Picture Sudoku, Spot the Difference, Letter
+  Sounds, Rhyme Time, I Spy, Letter & Name Tracing (kids trace their own
+  name), Number Tracing and Breathing Buddy. The letter, word and number
+  games talk: every line is a clip bundled with the app, so they work on a
+  display with no text-to-speech. Each kid sees the games that suit their age, and every game
   adapts: three wins in a row go up a level, three misses ease off, and
   nothing ever says "wrong". Grown-ups set a daily time limit and opening
   hours (a game says goodnight when time is up), cap the volume, switch
@@ -354,8 +358,12 @@ The bundled recipes show photos of similar dishes from
 
 The Toybox's farm animals are recordings by Joseph Sardin from
 [BigSoundBank.com](https://bigsoundbank.com), released under CC0
-(`tool/sounds/animals.py` rebuilds them). Every other sound is synthesized
-in the app.
+(`tool/sounds/animals.py` rebuilds them). Its voice is
+[Piper](https://github.com/rhasspy/piper) (MIT) speaking with the voice it
+trained on the [LJ Speech](https://keithito.com/LJ-Speech-Dataset/)
+dataset, which is in the public domain; `tool/sounds/voice.py` makes the
+clips from the lines in `dearth_core`. Every other sound is synthesized in
+the app.
 
 ## License
 

@@ -4,6 +4,7 @@ import 'package:meta/meta.dart';
 
 import 'games.dart';
 import 'rounds.dart';
+import 'words.dart';
 
 // Rounds of the Toybox expansion set (SPEC FR-TOY-03, Appendix B, M4), made
 // from a Random so a test can replay them. Drawing and touch live in the
@@ -482,6 +483,13 @@ MazeRound mazeRound(int level, Random rng) {
   return MazeRound(cols, rows, open);
 }
 
+// ──────────────────────────── Breathing Buddy ───────────────────────────────
+
+/// Breaths per session, by level (Appendix B: 3 → 5).
+const List<int> kBreaths = [3, 4, 5];
+
+int breathsFor(int level) => kBreaths[(level - 1).clamp(0, kBreaths.length - 1)];
+
 // ──────────────────────────────── Results ───────────────────────────────────
 
 /// Sequencing, size order, sudoku and the like: on a small board, right
@@ -498,6 +506,7 @@ List<String> get kExpansionPictures => [
       ...kSizePictures,
       ...kSudokuFruit,
       for (final k in kSceneKits.values) ...k,
+      ...kWordPictures,
       for (final s in kStories) ...s,
       for (final g in kExpansionGames) g.emoji,
     ];

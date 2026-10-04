@@ -1,10 +1,13 @@
 import '../game_host.dart';
+import 'breathe.dart';
 import 'bubbles.dart';
 import 'coloring.dart';
 import 'counting.dart';
 import 'differences.dart';
 import 'farm.dart';
+import 'ispy.dart';
 import 'jigsaw.dart';
+import 'letters.dart';
 import 'mazes.dart';
 import 'memory.dart';
 import 'monster.dart';
@@ -12,11 +15,13 @@ import 'music.dart';
 import 'oddone.dart';
 import 'paint.dart';
 import 'patterns.dart';
+import 'rhymes.dart';
 import 'shadows.dart';
 import 'shapes.dart';
 import 'sizes.dart';
 import 'stories.dart';
 import 'sudoku.dart';
+import 'tracing.dart';
 
 /// Every game's playfield, by game id (SPEC FR-TOY-02/03). The launcher
 /// shows only games that have one.
@@ -39,4 +44,10 @@ final Map<String, GameBuilder> kGameBuilders = {
   'stories': StoriesGame.new,
   'sudoku': SudokuGame.new,
   'differences': DifferencesGame.new,
+  'letters': LettersGame.new,
+  'rhymes': RhymesGame.new,
+  'ispy': SpyGame.new,
+  'tracing': TracingGame.new,
+  'numbers': NumbersGame.new,
+  'breathe': BreatheGame.new,
 };

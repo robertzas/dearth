@@ -54,6 +54,11 @@ abstract interface class SoundPlayer {
   /// [volume] 0…1 (timers chime louder as they keep ringing). [rate] speeds
   /// the sound up or down, and its pitch with it (xylophone bars, pops).
   Future<void> play(Sfx sfx, {double volume = 1, double rate = 1});
+
+  /// Speaks a bundled voice clip (`assets/voice/<clip>.mp3`, made offline by
+  /// tool/sounds/voice.py: the frame has no text-to-speech). A new line
+  /// stops the one still speaking, so prompts never talk over each other.
+  Future<void> say(String clip, {double volume = 1});
 }
 
 /// Plays nothing (tests, and platforms without an audio engine).
@@ -62,6 +67,15 @@ class SilentSound implements SoundPlayer {
 
   @override
   Future<void> play(Sfx sfx, {double volume = 1, double rate = 1}) async {}
+
+  @override
+  Future<void> say(String clip, {double volume = 1}) async {}
+}
+
+/// A voice clip's encoded bytes.
+Future<Uint8List> voiceBytes(String clip) async {
+  final data = await rootBundle.load('assets/voice/$clip.mp3');
+  return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
 }
 
 /// The encoded sound of [sfx]: a synthesized WAV, or a bundled recording.

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_soloud/flutter_soloud.dart';
 
 import 'sound.dart';
@@ -11,6 +13,12 @@ SoundPlayer createSoundPlayer() => SoLoudSound();
 class SoLoudSound implements SoundPlayer {
   Future<bool>? _ready;
   final Map<Sfx, Future<AudioSource>> _sources = {};
+
+  /// Voice clips decoded lately, oldest first: a few dozen at most, so a
+  /// long session of words doesn't fill a 2 GB frame's memory.
+  final Map<String, Future<AudioSource>> _voices = {};
+  SoundHandle? _speaking;
+  static const _keepVoices = 32;
 
   Future<bool> _init() async {
     try {
@@ -38,6 +46,25 @@ class SoLoudSound implements SoundPlayer {
       }
     } on Object {
       _sources.remove(sfx)?.ignore(); // retry the load next time
+    }
+  }
+
+  @override
+  Future<void> say(String clip, {double volume = 1}) async {
+    try {
+      if (!await (_ready ??= _init())) return;
+      final pending = _voices.remove(clip) ?? voiceBytes(clip).then((b) => SoLoud.instance.loadMem('voice-$clip', b));
+      _voices[clip] = pending; // newest last
+      if (_voices.length > _keepVoices) {
+        final oldest = _voices.keys.first;
+        unawaited(_voices.remove(oldest)!.then(SoLoud.instance.disposeSource, onError: (Object _) {}));
+      }
+      final source = await pending;
+      final last = _speaking;
+      if (last != null) unawaited(SoLoud.instance.stop(last).catchError((Object _) {}));
+      _speaking = SoLoud.instance.play(source, volume: volume);
+    } on Object {
+      _voices.remove(clip)?.ignore();
     }
   }
 }

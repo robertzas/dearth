@@ -227,7 +227,7 @@ Hearth behind its *Family Membership*. Dearth has no subscription.
 | Google Play Services | **None** | No `google_sign_in` or FCM on the frame. OAuth happens on the Hub. |
 | System WebView | `com.android.webview` 124.0.6367.219 (already upgraded) | Fine for embedding the YouTube player only. |
 | Sensors | Accelerometer (Mi3da), **ambient light** (pt3r850). **No proximity sensor, no camera** (despite feature flags). | Light sensor → auto brightness and night mode. Wake on presence must come from Home Assistant motion sensors. |
-| Audio | Speaker; no TTS engine installed | Use parent-recorded clips and Home Assistant TTS (§13.8) for voice. |
+| Audio | Speaker; no TTS engine installed | Use parent-recorded clips and Home Assistant TTS (§13.8) for voice; the Toybox bundles pre-generated clips (FR-TOY-07). |
 | Storage | 26 GB, 24 GB free | Plenty for photo and music caches (default caps in §12.5). |
 | Kiosk | FreeKiosk v2.0.0-beta.4 is Device Owner and HOME launcher | Phase 1 runs Dearth under FreeKiosk **External App mode** (§15). |
 
@@ -1147,7 +1147,12 @@ her thinking* from age 2 to 5, adapt to her level, and respect family limits.
   (**Kenney CC0** game assets, **Fluent Emoji** MIT, commissioned or
   generated illustrations reviewed for style consistency), CC0 sound
   effects, and parent or grandparent voice recordings. **No ads, no links,
-  no purchases, no network needed** (family photos are pre-cached).
+  no purchases, no network needed** (family photos are pre-cached). The
+  games' own voice (letters and their sounds, words, rhymes, I Spy clues,
+  numbers, breathing prompts) is pre-generated offline with Piper's
+  public-domain LJSpeech voice and bundled, since the frame has no TTS
+  engine; letter sounds are written as phonemes so they come out as sounds
+  ("buh", a short "a"), not names.
 - **FR-TOY-08 [M3]** Engineering: each game is a self-contained module built
   on `CustomPainter`/sprites (no physics engine) with a T1 frame budget
   test. Sound effects use flutter_soloud for under 30 ms latency (verify in

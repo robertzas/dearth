@@ -29,14 +29,18 @@ class GameController {
   /// Plays [sfx] at the Toybox's volume (capped by the grown-ups).
   void sound(Sfx sfx, {double volume = 1, double rate = 1}) => _state._sound(sfx, volume: volume, rate: rate);
 
+  /// Speaks a voice clip at the Toybox's volume (letters, words, prompts).
+  void say(String clip) => _state._say(clip);
+
   /// A gentle "try again": a soft sound, never a failure screen. The game
   /// shows its own hint.
   void cue() => sound(Sfx.nope, volume: 0.6);
 
   /// A round ended: records it, celebrates a win, and moves the ladder (the
   /// next round reads [level]). [level] overrides the round's level, for a
-  /// mode played at its own (the music toy's echo game).
-  Future<void> finishRound(String result, {String? emoji, int? level}) => _state._finishRound(result, emoji: emoji, level: level);
+  /// mode played at its own (the music toy's echo game). A [calm] round
+  /// isn't cheered: confetti would undo a calm-down.
+  Future<void> finishRound(String result, {String? emoji, int? level, bool calm = false}) => _state._finishRound(result, emoji: emoji, level: level, calm: calm);
 }
 
 /// Builds one game's playfield.
@@ -122,21 +126,29 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     unawaited(ref.read(soundProvider).play(sfx, volume: (volume * cap).clamp(0, 1), rate: rate));
   }
 
-  Future<void> _record(String result, {int? level}) async {
+  void _say(String clip) {
+    final cap = ref.read(toyboxSettingsProvider).volume;
+    if (cap <= 0) return;
+    unawaited(ref.read(soundProvider).say(clip, volume: cap));
+  }
+
+  /// Records the time since the last record as a round. A short visit to a
+  /// free-play game is a peek, not a play; a [finished] round always counts.
+  Future<void> _record(String result, {int? level, bool finished = false}) async {
     final now = _now;
     final ms = now - _unrecordedFrom;
     _unrecordedFrom = now;
-    if (ms < 3000 && result == GameResult.played) return; // a peek, not a play
+    if (ms < 3000 && result == GameResult.played && !finished) return;
     await recordRound(ref, kidId: widget.kid.id, game: widget.game.id, level: level ?? _level, result: result, durationMs: ms);
   }
 
-  Future<void> _finishRound(String result, {String? emoji, int? level}) async {
+  Future<void> _finishRound(String result, {String? emoji, int? level, bool calm = false}) async {
     _history.add((level: level ?? _level, result: result));
-    if (result != GameResult.miss && mounted) {
+    if (result != GameResult.miss && !calm && mounted) {
       celebrate(context, emoji: emoji ?? widget.game.emoji, message: randomPraise(_random));
       _sound(Sfx.cheer);
     }
-    await _record(result, level: level);
+    await _record(result, level: level, finished: true);
     if (mounted) setState(() => _level = startLevel(widget.game, _history, pinned: _pinned));
     _checkTime();
   }

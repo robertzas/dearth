@@ -51,3 +51,5 @@ perf-reports/
 screenshots/
 
 .kilo
+# Python bytecode from the tools in tool/.
+__pycache__/
