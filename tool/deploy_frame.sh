@@ -546,7 +546,22 @@ else
   PUSHED=1
   if corner_live; then changed "Magic corner on screen ($(corner_window) px, $CORNER)"; else problem "The magic corner still isn't on screen. Try --reboot"; fi
 fi
-# A fresh install stops Dearth; FreeKiosk relaunches it, but don't wait on that.
+# Uninstalling Dearth also prunes it from the Device Owner's lock-task list,
+# and FreeKiosk can't launch an app that isn't on the list: the frame sits on
+# "waiting for application" forever, and a bare `am start` is refused with a
+# lock-task mode violation. Sending the settings again makes FreeKiosk
+# rebuild the list and launch Dearth.
+if [ $ROOT_SHELL = 1 ] && [ -n "$(sh_ pm path "$APP")" ] && [[ "$(sh_ cat /data/system/device_policies.xml)" != *"\"$APP\""* ]]; then
+  if [ $CHECK = 1 ]; then
+    differs "Dearth isn't on the lock-task list: FreeKiosk couldn't start it"
+  elif [ $PUSHED = 0 ]; then
+    [ "$(fk_push)" != pin ] || die "FreeKiosk refused the PIN. Pass the device's current one with --pin"
+    PUSHED=1
+    changed "Dearth back on the lock-task list (an uninstall prunes it)"
+  fi
+fi
+# A fresh install also stops Dearth; when no settings went out this run,
+# FreeKiosk relaunches it by itself, but don't wait on that.
 if [ $INSTALLED = 1 ] && [ $PUSHED = 0 ]; then
   sh_ am start -n "$APP/.MainActivity" >/dev/null
 fi
@@ -582,6 +597,10 @@ else
   sh_ locksettings set-disabled true >/dev/null
   changed "Lock screen off"
 fi
+# The vendor status bar refuses to die under lock task: it hangs over Dearth
+# as an empty strip unless the app hides the bars itself, and older builds
+# didn't. policy_control forces Dearth full screen whatever the build.
+setting global policy_control immersive.full="$APP" "No status-bar strip over Dearth"
 if [ -n "$DENSITY" ]; then
   density=$(sh_ wm density | sed -n 's/^Override density: //p')
   if [ "$density" = "$DENSITY" ]; then

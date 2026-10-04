@@ -1133,9 +1133,12 @@ her thinking* from age 2 to 5, adapt to her level, and respect family limits.
   - Build-a-Creature, Music Sequencer
   - Weather Dress-Up, Freeze Dance, Breathing Buddy
   - Story Time with family voice recordings
-  - Numbers and letters: Dot-to-Dot, Big & Little Letters, Frog Hop, Word
-    Builder (added 2026-10-04: number order, comparing and adding; capitals
-    and small letters, alphabet order and first words)
+  - Numbers and letters (added 2026-10-04): Dot-to-Dot, Big & Little
+    Letters, Frog Hop, Word Builder, Hear the Sound, Sight Words, Banana
+    Balance, Who Has More?, Name Zoo, Tallies, Hundred Square — number
+    order, comparing and adding; capitals and small letters, alphabet
+    order, word building, listening, sight words, first names, tallying and
+    counting past twenty
 - **FR-TOY-04 [M3]** **Adaptive difficulty:** each game tracks success rate,
   time and hints. It levels up after consistent success, eases off after
   repeated misses, and **never shows failure screens** (gentle retry cues
@@ -2664,6 +2667,13 @@ points, not limits.
 | Big & Little Letters | 3.5+ | Letter recognition: capitals and small letters | Little letters find their big letters; the voice names each pair | 3 look-alike pairs (c C, o O, s S) → 5 pairs that look different (a A, g G) → b, d, p and q | M4 |
 | Frog Hop | 3.5+ | Number line, one more and one less, first adding | A frog hops along numbered lily pads: "Hop to 6!", "One more than 4!", "3 and 2 more!" as hops | 0–5 → 0–10 → one more / one less → adding as hops | M4 |
 | Word Builder | 4.5+ | Phonics: blending and spelling | Build the picture's word (cat, sun, bed) from letter tiles; each tile says its sound and the voice blends the word at the end | Missing first letter → missing last → all three → four-letter words | M4 |
+| Hear the Sound | 3+ | Phonics, listening | "Which letter says sss?" — the sound alone, no word; she taps the letter that says it | easy sounds (a, m, s, p, t) → similar pairs (b/p, d/t, k/g) → digraph sounds (sh, ch, th) with their letters together | M4 |
+| Sight Words | 4+ | Early reading, whole words | Words on signs and labels; the voice says the word, she taps it | 2-letter (a, I, go, no) → common 3-letter (the, and, can, stop) → 4-letter (here, with, look) → two-word labels (the bus) | M4 |
+| Banana Balance | 3+ | Comparing quantities | A see-saw with two plates of bananas; "Which side has more?" — it tips when she chooses | pictured piles → pictured vs. the numeral → two numerals | M4 |
+| Who Has More? | 3.5+ | Comparing numerals | Two cars, buses or kids with numbers; "Which one is more, 3 or 7?" then "which is fewer?" | 0–9 → 0–20 → more-versus-fewer mixed → order three | M4 |
+| Name Zoo | 3.5+ | Reading first names | Animal queue at the zoo gate, each wanting a name card; she taps the card for the name the voice spells | her own name → her family's and buddies' names → short names built letter by letter | M4 |
+| Tallies | 3.5+ | Keeping count | Each rabbit that hops past makes a tally mark, made by the kid's taps; the fifth crosses the four | 1–5 one by one → counting on past five (6–10) → match a tally count to its numeral | M4 |
+| Hundred Square | 5+ | Counting past 20 | A 100 square with decoys; the voice asks for a number and the grid lights the row when she's right | the first row (1–10) → the first two rows (1–20) → anywhere up to 100 | M4 |
 
 ### Appendix C: Chores & rewards by age
 

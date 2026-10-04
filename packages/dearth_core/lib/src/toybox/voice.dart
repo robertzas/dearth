@@ -1,4 +1,5 @@
 import 'creature.dart';
+import 'dots.dart';
 import 'words.dart';
 
 // What the Toybox says (SPEC FR-TOY-03). The kitchen frame has no
@@ -49,6 +50,12 @@ String countClip(int n) => 'count_$n';
 /// "Purple!"
 String colorClip(String color) => 'color_${voiceSlug(color)}';
 
+/// "Find the number seven."
+String findNumberClip(int n) => 'find_num_$n';
+
+/// "It's a star!": the picture the dots made.
+String dotsDoneClip(DotPicture p) => 'dots_${p.id}';
+
 /// Lines that aren't about one letter or word.
 abstract final class VoiceLine {
   static const traceName = 'trace_name';
@@ -58,9 +65,33 @@ abstract final class VoiceLine {
   static const breatheOut = 'breathe_out';
   static const breatheDone = 'breathe_done';
   static const makeCreature = 'make_creature';
+  static const dotsNumbers = 'dots_numbers';
+  static const dotsLetters = 'dots_letters';
 }
 
-const List<String> _numbers = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+const List<String> _numbers = [
+  'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', //
+  'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty',
+];
+
+/// Where espeak's English (which this voice was trained on) says another
+/// word than an American would: a letter Z is "zed", a zebra a "zebb-ra".
+/// Accents are fine (the voice says its own vowels); these words aren't.
+const Map<String, String> _american = {
+  'Z': '[[zˈiː]]',
+  'zebra': '[[zˈiːbɹə]]',
+  'banana': '[[bɐnˈanə]]',
+  'tomato': '[[təmˈeɪtəʊ]]',
+};
+
+final RegExp _americanWord = RegExp('\\b(${_american.keys.join('|')})\\b', caseSensitive: false);
+
+/// [line] with [_american] words in their phonemes (outside [[ ]] only).
+String _americanize(String line) => line.splitMapJoin(
+      RegExp(r'\[\[.*?\]\]'),
+      onMatch: (m) => m[0]!,
+      onNonMatch: (text) => text.replaceAllMapped(_americanWord, (m) => _american[m[0]!] ?? _american[m[0]!.toLowerCase()] ?? m[0]!),
+    );
 
 const Map<String, String> _shapeClues = {
   'round': 'something round',
@@ -106,8 +137,11 @@ Map<String, String> _lines() {
   for (final l in kLetterSounds.where((l) => l.starts)) {
     lines[spyClip(SpyClue.letter, l.letter)] = '$spy something that starts with ${l.letter}. ${_sound(l)}!';
   }
-  for (var n = 0; n <= 10; n++) {
+  for (var n = 0; n <= 20; n++) {
     lines[numberClip(n)] = '${_cap(_numbers[n])}.';
+  }
+  for (var n = 1; n <= 20; n++) {
+    lines[findNumberClip(n)] = 'Find the number ${_numbers[n]}.';
   }
   lines[countClip(0)] = 'Zero. Nothing at all!';
   for (var n = 1; n <= 10; n++) {
@@ -131,5 +165,11 @@ Map<String, String> _lines() {
   for (final c in kCreaturePaints) {
     lines[colorClip(c)] = '${_cap(c)}!';
   }
-  return lines;
+  lines[VoiceLine.dotsNumbers] = 'Join the dots! Start at one.';
+  // Alone, "A" is read as the word "a".
+  lines[VoiceLine.dotsLetters] = 'Join the dots! Start at [[ˈeɪ]].';
+  for (final p in kDotPictures) {
+    lines[dotsDoneClip(p)] = "It's ${p.phrase}!";
+  }
+  return lines.map((id, line) => MapEntry(id, _americanize(line)));
 }

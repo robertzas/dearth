@@ -35,7 +35,7 @@ Useful commands (details in `README.md`):
 
 ## In progress
 
-- In progress: 6.2 Toybox (owner request: the toybox and all of its games). Done: the launch set (10 games), the expansion set's first batch (8 games without voice), its voice games (Letter Sounds, Rhyme Time, I Spy, Letter & Name Tracing, Number Tracing, Breathing Buddy) with 513 Piper clips, and Build-a-Creature. Owner request (2026-10-04): four number and letter games, in SPEC (FR-TOY-03, Appendix B), built one at a time and each deployed to the frame (owner's rule: finish, deploy, stop): **Dot-to-Dot (in progress)**, then Big & Little Letters, Frog Hop, Word Builder. After them: Freeze Dance, Music Sequencer, Weather Dress-Up, Who's That?, Story Time. Later: Toddler Lock (§9.3), Memory Match's family faces, saving paintings to a gallery (with the Proud wall, FR-KID-19). The owner should listen to the letter sounds on the frame (`tool/sounds/voice.py letter_b …` remakes single clips).
+- In progress: 6.2 Toybox (owner request: the toybox and all of its games). Done: the launch set (10 games), the expansion set's first batch (8 games without voice), its voice games (Letter Sounds, Rhyme Time, I Spy, Letter & Name Tracing, Number Tracing, Breathing Buddy) with 513 Piper clips, and Build-a-Creature. Owner request (2026-10-04): many number and letter games (3–6), all in SPEC (FR-TOY-03, Appendix B), built one at a time and each deployed to the frame (owner's rule: finish, deploy, stop): **Dot-to-Dot (in progress)**, then Big & Little Letters, Frog Hop, Word Builder, Hear the Sound, Sight Words, Banana Balance, Who Has More?, Name Zoo, Tallies, Hundred Square, then Freeze Dance, Music Sequencer, Weather Dress-Up, Who's That?, Story Time. Later: Toddler Lock (§9.3), Memory Match's family faces, saving paintings to a gallery (with the Proud wall, FR-KID-19). The owner should listen to the letter sounds on the frame (`tool/sounds/voice.py letter_b …` remakes single clips).
 - Owner decisions (2026-10-04), in this order: (1) bundled catalog recipes get TheMealDB photos, shown when online (matched meals' image URLs; the Hub proxies them); (2) list sync goes to **Google Tasks** (two-way, to-do and shopping lists, over the Hub's Google connection; Keep has no API for personal accounts); (3) the Toybox expansion set, all 20 games, with letter, rhyme and I-Spy voices pre-generated offline by Piper (public-domain LJSpeech voice) and bundled (the frame has no TTS); Story Time uses family recordings.
 - Next: 6.3 music box, then the family Google calendar offer (FR-CAL-04) and Google reminders mapping on the Hub.
 - Then: 3.2 Android platform channel (FreeKiosk bridge, light sensor, a "setting the time…" state until the frame's clock syncs), 7.1 perf script, CI action major upgrades.
@@ -316,6 +316,19 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
 - **2026-10-03** Follow-ups: bundle a Fluent Emoji subset (SPEC §11.3; web
   currently fetches Noto Color Emoji at runtime), slim the Hub image, Postgres
   backend, weather/recipe key settings UI.
+- **2026-10-04** Frame stuck on FreeKiosk's "waiting for application": a
+  botched `--replace` (throwaway CI keys, 08:49) had uninstalled Dearth's
+  files but left a dangling package entry, and the uninstall pruned
+  `app.dearth` from the Device Owner lock-task list, so FreeKiosk couldn't
+  launch Dearth at all (ActivityManager refuses with a lock-task mode
+  violation; a manual `am start` returns "unknown error code 101"). Fixed by
+  `pm uninstall app.dearth` + reinstall, then re-sending the FreeKiosk
+  settings, which rebuilds the lock-task list. `deploy_frame.sh` now checks
+  `/data/system/device_policies.xml` for the entry (root shell) and re-sends
+  the settings when it's missing instead of a bare `am start` that lock task
+  refuses. Note: the reinstall was the latest GitHub release, so the frame
+  lost the morning's local build and its pairing (a known cost of the
+  throwaway CI signing keys until the release keystore lands).
 
 ## Log
 
@@ -350,4 +363,6 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
 - 2026-10-03 — Meals (step 5.1 core): planner, recipe sheet, slot picker, Discover, recipe box, cook mode, add to list; 8 meal-op unit tests; 9 Playwright journeys × 4 viewports (full suite: 109 passed, 7 skipped).
 - 2026-10-03 — Pushed to GitHub; CI run #1 green except the release job (artifact download); fixed → run #2 published `v0.1.0-build.2`.
 - 2026-10-03 — E2E run 2: 69 passed, 4 failed (quick-add preview had no readable text node; fixed by labeling the summary node), 7 skipped by design. README written (screenshots in `docs/images`, LFS).
+- 2026-10-04 — Kitchen frame stuck on FreeKiosk's "waiting for application": cleared a dangling `app.dearth` package entry (the APK dir was gone), reinstalled v0.1.0-build.6, rebuilt the pruned lock-task list via a FreeKiosk config push; `deploy_frame.sh` detects and repairs that state now. `--check` all green, Dearth in front.
+- 2026-10-04 — Frame showed an empty status-bar strip on top of build.6 (immersive mode landed after build.6, and this ROM's status bar survives lock task). Fixed live via `settings global policy_control immersive.full=app.dearth` and the same line went into `deploy_frame.sh`, so any build goes full screen on the frame; `--check` green. Note: the good news from the repair — the dangling-entry uninstall left `/data/data/app.dearth` in place, so the reinstalled app kept its pairing.
 
