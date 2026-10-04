@@ -21,7 +21,7 @@ class WeatherScreen extends ConsumerWidget {
     final t = DTheme.of(context);
     final report = ref.watch(weatherProvider).value;
     if (report == null) {
-      return tid(
+      return screenTid(
         'screen.weather',
         const Center(
           child: DEmptyState(
@@ -83,7 +83,7 @@ class WeatherScreen extends ConsumerWidget {
         _SourcesCard(report: report),
       ],
     ];
-    return tid('screen.weather', ListView(padding: EdgeInsets.all(t.pageMargin), children: children));
+    return screenTid('screen.weather', ListView(padding: EdgeInsets.all(t.pageMargin), children: children));
   }
 
   void _showAlert(BuildContext context, WxAlert a) => showDSheet<void>(

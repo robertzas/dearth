@@ -76,7 +76,7 @@ class _StickerBookScreenState extends ConsumerState<StickerBookScreen> {
     final page = (_page ?? newPage).clamp(0, lastPage);
     final onPage = [for (final p in placed) if (p.page == page) p];
     final placing = _picked != null && page == newPage;
-    return tid(
+    return screenTid(
       'screen.stickers',
       Material(
         color: t.colors.surface,
@@ -111,7 +111,12 @@ class _StickerBookScreenState extends ConsumerState<StickerBookScreen> {
                         GestureDetector(
                           excludeFromSemantics: true,
                           behavior: HitTestBehavior.opaque,
-                          onTapUp: placing ? (d) => _place(d.localPosition, size, page) : null,
+                          // Always listening, and asking at the tap: a tap right
+                          // after picking can land before the frame that would
+                          // attach a handler, and quick little fingers do that.
+                          onTapUp: (d) {
+                            if (_picked != null && page == newPage) _place(d.localPosition, size, page);
+                          },
                           child: Stack(
                             fit: StackFit.expand,
                             children: [

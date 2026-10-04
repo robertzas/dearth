@@ -6,14 +6,16 @@ import '../../core/data/calendar.dart';
 import '../../core/data/household.dart';
 import '../../core/providers.dart';
 
-/// Calendar views (SPEC FR-CAL-05…09). The People view comes in a one-day
+/// Calendar views (SPEC FR-CAL-05…10). The People view comes in a one-day
 /// and a three-day span; the switcher shows them as one "People" option.
+/// The timeline is the kids' picture day (FR-CAL-10).
 enum CalView {
   day('Day', 1),
   threeDay('3 days', 3),
   week('Week', 7),
   people('People', 1),
   people3('People', 3),
+  timeline('Timeline', 1),
   month('Month', 42),
   agenda('Agenda', 14);
 
@@ -23,8 +25,8 @@ enum CalView {
 
   bool get isPeople => this == people || this == people3;
 
-  /// Day columns on a time grid (everything but month and agenda).
-  bool get isGrid => this != month && this != agenda;
+  /// Day columns on a time grid.
+  bool get isGrid => this != month && this != agenda && this != timeline;
 
   static CalView? parse(String? s) => values.where((v) => v.name == s).firstOrNull;
 }
@@ -76,7 +78,7 @@ final calNavProvider = NotifierProvider<CalNavController, CalNav>(CalNavControll
 
 /// The days a view covers around [anchor].
 DayRange visibleRange(CalView view, LocalDate anchor, int weekStart) => switch (view) {
-      CalView.day || CalView.people => DayRange(anchor, 1),
+      CalView.day || CalView.people || CalView.timeline => DayRange(anchor, 1),
       CalView.threeDay || CalView.people3 => DayRange(anchor, 3),
       CalView.week => DayRange(anchor.startOfWeek(weekStart), 7),
       CalView.month => DayRange(anchor.startOfMonth.startOfWeek(weekStart), 42),

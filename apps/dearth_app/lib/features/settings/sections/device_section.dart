@@ -1,5 +1,6 @@
 import 'package:dearth_core/dearth_core.dart';
 import 'package:dearth_ui/dearth_ui.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -124,6 +125,16 @@ class DeviceSection extends ConsumerWidget {
                 await ref.read(sessionProvider.notifier).set(session.copyWith(role: v));
               },
             ),
+            // The activity's orientation is Android's alone (FR-DEV-05).
+            if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android)
+              ChoiceRow<String>(
+                title: 'Orientation',
+                subtitle: s.isPersonal ? 'Rotate follows your rotation lock' : 'Rotate follows the way the screen is turned',
+                idPrefix: 'device.orientation',
+                options: const [('auto', 'Rotate'), ('landscape', 'Landscape'), ('portrait', 'Portrait')],
+                value: const {'landscape', 'portrait'}.contains(s.orientation) ? s.orientation : 'auto',
+                onChanged: (v) => patch(const {}, columns: {'orientation': v}),
+              ),
             ChoiceRow<String?>(
               title: 'Effects',
               subtitle: 'Auto picks from this device’s memory and graphics',

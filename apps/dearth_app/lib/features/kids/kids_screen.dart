@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/data/household.dart';
+import '../calendar/views/kid_timeline.dart';
 import 'grown_ups.dart';
 import 'kid_widgets.dart';
 import 'kids_data.dart';
@@ -33,7 +34,7 @@ class KidsScreen extends ConsumerWidget {
       leading: kid == null ? null : DAvatar(colorIndex: kid.color, emoji: kid.emoji, name: kid.name, size: 56 * t.scale),
       actions: t.isPhone ? const [] : [tabs],
     );
-    return tid(
+    return screenTid(
       'screen.kids',
       Padding(
         padding: EdgeInsets.fromLTRB(t.pageMargin, t.pageMargin, t.pageMargin, 0),
@@ -61,12 +62,26 @@ class _KidView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = DTheme.of(context);
     final routines = ref.watch(kidRoutinesTodayProvider(kid.id));
+    final today = ref.watch(todayProvider);
     final size = MediaQuery.sizeOf(context);
     final wide = !t.isPhone && size.width > size.height && size.width > 1100 * t.scale;
     final gap = SizedBox(height: t.gutter);
     final routinesRow = routines.isEmpty
         ? null
         : Wrap(spacing: t.space.sm, runSpacing: t.space.sm, children: [for (final r in routines) RoutineTile(routine: r, kid: kid)]);
+    // Their day in pictures (FR-CAL-10): what's next, without reading.
+    final myDay = DCard(
+      id: 'kids.myday',
+      padding: EdgeInsets.all(t.space.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('My day', style: t.text.h2),
+          SizedBox(height: t.space.sm),
+          KidTimeline(kid: kid, date: today, compact: true),
+        ],
+      ),
+    );
     final rewards = <Widget>[
       JarCard(kid: kid),
       gap,
@@ -79,6 +94,8 @@ class _KidView extends ConsumerWidget {
     if (!wide) {
       return ListView(
         children: [
+          myDay,
+          gap,
           if (routinesRow != null) ...[routinesRow, gap],
           _Chart(kid: kid),
           gap,
@@ -92,6 +109,8 @@ class _KidView extends ConsumerWidget {
         Expanded(
           child: ListView(
             children: [
+              myDay,
+              gap,
               if (routinesRow != null) ...[routinesRow, gap],
               _Chart(kid: kid),
               gap,

@@ -42,6 +42,8 @@ back.
   talks to the kid by name: *"Ava, swim lesson in 15 minutes!"*
   Birthdays (with ages) and public holidays for the US, Canada and the UK
   appear without setup, and the holidays kids wait for count down on Home.
+  For kids who can't read yet, a picture timeline lays out their day in
+  morning, afternoon and evening, with the sun showing where "now" is.
   It adds automatic event emoji and learns from your edits. It subscribes
   to ICS calendars and connects to Google Calendar.
 - **Meals.** A week planner of days and meal slots, holding recipes or a
@@ -57,7 +59,8 @@ back.
   These are a reward jar with a surprise inside, a star bank with a goal,
   and a sticker book of painted scenes where each sticker is chosen and
   placed. Morning and bedtime routines run step by step with a visual
-  timer. Grown-ups approve, tick off household chores, and fill a family
+  timer, and each kid's screen starts with their day in pictures. Grown-ups
+  approve, tick off household chores, and fill a family
   goal together. Chores, routines and rewards are set up in Settings,
   starting from an age-sorted library of chores toddlers can really do.
 - **Weather.** The current conditions and a 36-hour chart with rain, sun
@@ -105,10 +108,11 @@ back.
 <img src="docs/images/calendar-phone.png" height="420" alt="Phone: calendar">
 </p>
 
-Still to come: voice prompts, a music box and toybox, a picture timeline
-for kids who can't read yet, and meal-plan templates. Integration with the
-FreeKiosk Android frame is coming too. [`PROGRESS.md`](PROGRESS.md) tracks the
-build, and [`SPEC.md`](SPEC.md) is the full product specification.
+Still to come: voice prompts, a music box and toybox, and meal-plan
+templates. On kiosk frames,
+Dearth will also turn the screen off at night and set its brightness itself.
+[`PROGRESS.md`](PROGRESS.md) tracks the build, and [`SPEC.md`](SPEC.md) is
+the full product specification.
 
 ## Try it
 
@@ -180,6 +184,65 @@ DEARTH_DATA_DIR=/var/lib/dearth DEARTH_ADMIN_PASSWORD=… /opt/dearth/bin/dearth
 | `DEARTH_CONTACT` | `dearth-hub` | The contact sent in the NWS User-Agent (their API asks for one). |
 | `DEARTH_LOG_LEVEL` | `info` | `fine`, `info`, `warning` or `severe`. |
 
+### A wall display (Android kiosk)
+
+[`tool/deploy_frame.sh`](tool/deploy_frame.sh) turns an Android tablet or
+photo frame into a Dearth wall display over the network. It also rebuilds
+one after a factory reset. Your computer needs `adb` (Android
+platform-tools), `curl` and `python3`.
+
+```bash
+tool/deploy_frame.sh 10.0.1.148 --check    # show what differs; change nothing
+tool/deploy_frame.sh 10.0.1.148            # set it up, or bring it up to date
+```
+
+It sets up:
+
+- **FreeKiosk** (a pinned release, checked against its SHA-256) as the
+  device owner and home app, locked to Dearth. FreeKiosk starts Dearth on
+  boot and brings it back if it closes.
+- **The way out:** tap the **bottom-right corner 5 times** within 2
+  seconds, then enter the PIN, **1234**. FreeKiosk's settings open, and you
+  can leave the kiosk from there. Pressing Volume Up 5 times also brings up
+  the PIN. Dearth keeps that corner free of controls. `--pin`, `--corner`
+  and `--taps` change the gesture.
+- **The display:**
+  - Auto-rotate and adaptive brightness are on, so the screen dims with
+    the room's light.
+  - The screen never sleeps, and there's no lock screen.
+  - Android's own screensaver is off (Dearth has its own).
+  - Wi-Fi stays on, and Dearth and FreeKiosk are exempt from battery
+    optimization.
+- **Dearth**, built for the device's CPU. By default it's the latest
+  release; `--apk FILE` installs a particular build, and `--build` builds
+  one on your computer.
+- **On a Joyhong JT215M frame**, the display density, the system animation
+  speed and the vendor apps to disable.
+
+Each step reads the device first and changes only what differs, so you can
+run the script again at any time. `--reboot` restarts the device at the
+end and checks that Dearth comes back by itself.
+
+**After a factory reset:**
+
+1. On the tablet, join Wi-Fi. Don't add a Google account: Android won't
+   take a device owner while any account is signed in.
+2. Turn on network debugging. The JT215M does this by itself on port 5555.
+   On other tablets, turn on **Developer options → USB debugging**, connect
+   a USB cable and run `adb tcpip 5555`.
+3. Run `tool/deploy_frame.sh <tablet-ip> --reboot`.
+4. On the tablet, pair Dearth with your Hub from its welcome screen.
+
+**Updating Dearth:** run the script again. An APK can only update the
+installed Dearth if both are signed with the same key. For example, a
+release can't update a `--build`. In that case `--replace` uninstalls
+Dearth first. That resets Dearth's data on the device, so pair it again
+afterwards.
+
+Vendor frames ship an old System WebView (Chromium 74). Add `--webview` to
+upgrade it to Chromium 124; Dearth will need that for YouTube in the music
+box.
+
 ## Development
 
 You need **Flutter 3.47.2** (Dart 3.13), **Git LFS**, and Node.js 20+ with
@@ -200,11 +263,37 @@ cd apps/dearth_app && flutter run -d chrome    # or -d linux, or an Android devi
 | Build every target this machine can | `tool/build_all.sh` (`--hub-image` also builds the Docker image) |
 | Web database runtime (sqlite3.wasm, drift worker) | `tool/web_assets.sh` |
 | App icons from the SVG source | `tool/icons/make_icons.sh` |
+| Set up, check or update an Android wall display | `tool/deploy_frame.sh <ip>` (`--check` changes nothing) |
 
 Every push to `main` runs the gate and the E2E suite and builds every
 platform: Android, web, Linux, Windows, macOS, iOS, Hub binaries and a
 multi-arch Hub image on GHCR. It then publishes a release
 `v<version>-build.<n>` ([workflow](.github/workflows/build.yml)).
+
+**Android signing.** An Android app only updates in place when the new APK
+is signed with the same key as the installed one. Without a release key,
+each CI run signs with a throwaway debug key, so every release has to be
+installed from scratch. To fix that, create one key and keep it, and its
+password, outside the repository (back both up):
+
+```bash
+keytool -genkeypair -keystore ~/.config/dearth/android-release.jks -storetype PKCS12 \
+  -alias dearth -keyalg RSA -keysize 4096 -validity 36500 -dname "CN=Dearth"
+```
+
+Local builds read it from `apps/dearth_app/android/key.properties`, which
+git ignores. Set `storeFile` (the keystore's path), `storePassword`,
+`keyAlias=dearth` and `keyPassword`. CI reads four repository secrets:
+
+| Secret | Value |
+|---|---|
+| `ANDROID_KEYSTORE_BASE64` | `base64 -w0 android-release.jks` |
+| `ANDROID_KEYSTORE_PASSWORD` | the keystore password |
+| `ANDROID_KEY_ALIAS` | `dearth` |
+| `ANDROID_KEY_PASSWORD` | the key password |
+
+Devices that have a differently signed Dearth installed need one last
+`tool/deploy_frame.sh <ip> --replace`, which resets Dearth's data on them.
 
 Read [`AGENTS.md`](AGENTS.md) before changing code. It covers the layout
 and the rules that keep the codebase coherent.
@@ -239,6 +328,13 @@ and relays them, and conflicts resolve as last-writer-wins per field
 | `hub/dearth_hub` | The Hub server |
 | `apps/dearth_app` | The Flutter app for every platform |
 | `e2e/` | The Playwright suite |
+
+## Credits
+
+The Toybox's farm animals are recordings by Joseph Sardin from
+[BigSoundBank.com](https://bigsoundbank.com), released under CC0
+(`tool/sounds/animals.py` rebuilds them). Every other sound is synthesized
+in the app.
 
 ## License
 

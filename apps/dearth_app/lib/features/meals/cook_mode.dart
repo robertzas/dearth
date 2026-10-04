@@ -151,7 +151,7 @@ class _CookModeState extends ConsumerState<CookMode> {
     );
     // A Material ancestor gives text its default style (no debug underline)
     // and ink a surface: this route sits above the app shell.
-    return tid(
+    return screenTid(
       'screen.cook',
       Material(
         color: t.colors.surface,

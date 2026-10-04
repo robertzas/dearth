@@ -23,11 +23,11 @@ class ListsScreen extends ConsumerWidget {
     final selected = listId ?? (wide ? lists.firstOrNull?.id : null);
 
     if (!wide && selected != null) {
-      return tid('screen.list', Padding(padding: EdgeInsets.all(t.pageMargin), child: ListDetail(listId: selected, showBack: true)));
+      return screenTid('screen.list', Padding(padding: EdgeInsets.all(t.pageMargin), child: ListDetail(listId: selected, showBack: true)));
     }
     final overview = _ListOverview(lists: lists, selected: wide ? selected : null);
-    if (!wide) return tid('screen.lists', Padding(padding: EdgeInsets.all(t.pageMargin), child: overview));
-    return tid(
+    if (!wide) return screenTid('screen.lists', Padding(padding: EdgeInsets.all(t.pageMargin), child: overview));
+    return screenTid(
       'screen.lists',
       Padding(
         padding: EdgeInsets.all(t.pageMargin),

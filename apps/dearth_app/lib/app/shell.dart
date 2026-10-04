@@ -30,18 +30,20 @@ class AppShell extends ConsumerWidget {
     final size = MediaQuery.sizeOf(context);
     final keepRecent = ref.watch(perfTierProvider) != PerfTier.t1;
     // The timer pill floats over the destinations, under sheets and dialogs
-    // (their buttons stay reachable) and clear of the navigation bars.
-    final body = Stack(
-      children: [
-        _BranchStack(current: shell.currentIndex, keepRecent: keepRecent, children: children),
-        const TimerPill(),
-      ],
-    );
+    // (their buttons stay reachable) and clear of the navigation bars. Beside
+    // the rail, the body reaches the screen's bottom-right corner, so the pill
+    // also keeps clear of a kiosk frame's magic corner.
+    Widget body({double corner = 0}) => Stack(
+          children: [
+            _BranchStack(current: shell.currentIndex, keepRecent: keepRecent, children: children),
+            TimerPill(cornerClearance: corner),
+          ],
+        );
     final landscape = size.width > size.height;
 
     if (t.displayClass == DisplayClass.phone) {
       return Scaffold(
-        body: SafeArea(bottom: false, child: body),
+        body: SafeArea(bottom: false, child: body()),
         bottomNavigationBar: _PhoneBar(current: shell.currentIndex, onSelect: _go),
       );
     }
@@ -50,13 +52,13 @@ class AppShell extends ConsumerWidget {
         body: Row(
           children: [
             _NavRail(current: shell.currentIndex, onSelect: _go),
-            Expanded(child: SafeArea(left: false, child: body)),
+            Expanded(child: SafeArea(left: false, child: body(corner: kKioskCornerClearance))),
           ],
         ),
       );
     }
     return Scaffold(
-      body: SafeArea(bottom: false, child: body),
+      body: SafeArea(bottom: false, child: body()),
       bottomNavigationBar: _BottomBar(current: shell.currentIndex, onSelect: _go),
     );
   }

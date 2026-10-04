@@ -194,7 +194,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         },
       ),
     );
-    return tid(
+    return screenTid(
       'screen.onboarding',
       Scaffold(
         body: Stack(

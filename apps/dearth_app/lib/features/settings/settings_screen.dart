@@ -85,8 +85,8 @@ class SettingsScreen extends ConsumerWidget {
     );
 
     if (!wide) {
-      if (current == null) return tid('screen.settings', Padding(padding: EdgeInsets.all(t.pageMargin), child: list));
-      return tid(
+      if (current == null) return screenTid('screen.settings', Padding(padding: EdgeInsets.all(t.pageMargin), child: list));
+      return screenTid(
         'screen.settings.${current.id}',
         ListView(
           padding: EdgeInsets.all(t.pageMargin),
@@ -101,7 +101,7 @@ class SettingsScreen extends ConsumerWidget {
         ),
       );
     }
-    return tid(
+    return screenTid(
       'screen.settings',
       Padding(
         padding: EdgeInsets.all(t.pageMargin),

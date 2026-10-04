@@ -12,11 +12,12 @@ import 'event_editor.dart';
 import 'event_ops.dart';
 import 'quick_add.dart';
 import 'views/agenda_view.dart';
+import 'views/kid_timeline.dart';
 import 'views/month_view.dart';
 import 'views/time_grid.dart';
 
-/// The calendar (SPEC §10.2): day, 3-day, week, month and agenda views with
-/// person filters, quick add and the full editor.
+/// The calendar (SPEC §10.2): day, 3-day, week, People, kid timeline, month
+/// and agenda views with person filters, quick add and the full editor.
 class CalendarScreen extends ConsumerWidget {
   const CalendarScreen({super.key});
 
@@ -35,7 +36,7 @@ class CalendarScreen extends ConsumerWidget {
     final title = switch (view) {
       CalView.month => monthYear(nav.anchor),
       CalView.agenda => 'From ${monthDay(range.start)}',
-      CalView.day || CalView.people => longDate(range.start),
+      CalView.day || CalView.people || CalView.timeline => longDate(range.start),
       _ => formatDateSpan(range.start, range.end.addDays(-1)),
     };
     final views = [
@@ -43,6 +44,7 @@ class CalendarScreen extends ConsumerWidget {
       CalView.threeDay,
       if (!t.isPhone || landscape) CalView.week,
       CalView.people,
+      CalView.timeline,
       CalView.month,
       CalView.agenda,
     ];
@@ -79,10 +81,11 @@ class CalendarScreen extends ConsumerWidget {
     final body = switch (view) {
       CalView.month => MonthView(anchor: nav.anchor, range: range),
       CalView.agenda => AgendaView(start: range.start),
+      CalView.timeline => KidTimelineView(date: range.start),
       _ => TimeGrid(range: range, people: view.isPeople, key: ValueKey('grid-${view.name}')),
     };
 
-    return tid(
+    return screenTid(
       'screen.calendar',
       Padding(
         padding: EdgeInsets.fromLTRB(t.pageMargin, t.pageMargin, t.pageMargin, t.isPhone ? 0 : t.pageMargin),

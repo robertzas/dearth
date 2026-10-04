@@ -31,12 +31,13 @@ Useful commands (details in `README.md`):
 | Web E2E (Playwright, 4 viewports) | `tool/e2e.sh` (`SKIP_BUILD=1` reuses the web build) |
 | Web DB runtime (sqlite3.wasm, drift worker) | `tool/web_assets.sh` |
 | App icons from the SVG source | `tool/icons/make_icons.sh` |
-| Deploy to the kitchen frame | `tool/deploy_frame.sh --help` (planned, step 7.1) |
+| Set up, check or update the kitchen frame | `tool/deploy_frame.sh 10.0.1.148` (`--check` changes nothing; `--help`) |
 
 ## In progress
 
-- Next: kid timeline (FR-CAL-10), then 6.3 music box / 6.2 toybox (instruments on `synth.dart`), then the family Google calendar offer (FR-CAL-04) and Google reminders mapping on the Hub.
-- Then: 3.2 Android platform channel (FreeKiosk bridge, light sensor), 7.1 deploy/perf scripts, CI action major upgrades.
+- In progress: 6.2 Toybox (owner request: the toybox and all of its games). Done: core rules (catalog, adaptive ladder, time budget, every launch-set game's rounds; 14 tests), game sounds (synth effects, drums, xylophone pitch by rate) and ten CC0 animal recordings (`tool/sounds/animals.py`). Next: the launcher, game host and the ten launch-set games with widget tests and E2E journeys, Settings → Toybox, then the expansion set (Appendix B, M4).
+- Next: 6.3 music box, then the family Google calendar offer (FR-CAL-04) and Google reminders mapping on the Hub.
+- Then: 3.2 Android platform channel (FreeKiosk bridge, light sensor, a "setting the time…" state until the frame's clock syncs), 7.1 perf script, CI action major upgrades.
 
 ## Plan & status
 
@@ -58,12 +59,12 @@ Milestones refer to `SPEC.md` §17. ✅ done · 🟡 partial · ⬜ not started.
 ### Phase 3 — App foundations
 - ✅ 3.1 dearth_ui: tokens, themes (Light/Evening/Night), display classes, uiScale, tiers, components (pressable, buttons, chips, avatar, emoji, segmented, stepper, sheets, dialogs, toasts, banners, empty states, PIN pad, text field, hold-to-activate), charts + tests
 - ✅ 3.3 Playwright E2E harness (`e2e/`): test Hub (fake providers, auto-approve, temp data dir), 4 viewport projects, `tid()` ids, `?e2e=1` semantics, journey specs (onboarding, pairing, home, calendar, lists, weather, photo frame, settings/PIN, kiosk, two-device sync)
-- 🟡 3.2 App core: ✅ device DB (native isolate / web wasm worker), sync client (bootstrap, bulk apply, outbox, repair, backoff, commands, telemetry), session + pairing onboarding, demo mode, router + adaptive shell (rail / bottom bar / phone bar, keep-alive budget), grown-up mode (PIN, relock, lockout), kiosk hold gesture → PIN → kiosk menu, idle engine + display modes (screensaver, night), toasts, global error handling, wake lock · ⬜ Android platform channel (FreeKiosk bridge, light sensor, brightness), corner-sequence step of the exit gesture, frame-stat telemetry
+- 🟡 3.2 App core: ✅ device DB (native isolate / web wasm worker), sync client (bootstrap, bulk apply, outbox, repair, backoff, commands, telemetry), session + pairing onboarding, demo mode, router + adaptive shell (rail / bottom bar / phone bar, keep-alive budget), grown-up mode (PIN, relock, lockout), kiosk hold gesture → PIN → kiosk menu, idle engine + display modes (screensaver, night), toasts, global error handling, wake lock, orientation per display (`app.dearth/display` channel: walls follow the accelerometer, phones keep their rotation lock, Settings → This display), immersive system bars on walls · ⬜ FreeKiosk bridge, light sensor, brightness, corner-sequence step of the exit gesture, frame-stat telemetry
 
 ### Phase 4 — M1 features
 _Every feature step below ships with unit tests **and** its Playwright journey specs._
 - ✅ 4.1 Home dashboard (Wall-L 3 columns, tablet 2 columns, Wall-P stacked, phone Today) + widgets: header (date/clock/weather/alerts/sync/lock), agenda + now-line, up next + conflicts, week strip, notes & countdowns, dinner, kids' chores, shopping
-- 🟡 4.2 Calendar: ✅ day / 3-day / week / month / agenda, person filters, event sheet, full editor with recurring scopes (this / following / all), quick add with preview, countdowns, auto + learned icons · ✅ M2: People view (lanes per person, Family lane, 1 or 3 days), long-press drag to move and bottom-edge resize (15-min snaps, haptics, edge auto-scroll, scope for repeating events, Undo, grown-up gated), weather on events (agenda, grid, sheet), reminders (editor field, per-calendar defaults, on-display banner that talks to kids by name, chime, fired once per device), birthdays & holidays (read-only virtual calendars: profile birthdays with ages and kid countdowns, bundled US/CA/GB public holidays with observed days, family observances, country from the time zone, duplicates of real events hidden) · ⬜ kid timeline (M3), family Google calendar offer, Google reminders mapping on the Hub, Nager.Date holidays for other countries
+- 🟡 4.2 Calendar: ✅ day / 3-day / week / month / agenda, person filters, event sheet, full editor with recurring scopes (this / following / all), quick add with preview, countdowns, auto + learned icons · ✅ M2: People view (lanes per person, Family lane, 1 or 3 days), long-press drag to move and bottom-edge resize (15-min snaps, haptics, edge auto-scroll, scope for repeating events, Undo, grown-up gated), weather on events (agenda, grid, sheet), reminders (editor field, per-calendar defaults, on-display banner that talks to kids by name, chime, fired once per device), birthdays & holidays (read-only virtual calendars: profile birthdays with ages and kid countdowns, bundled US/CA/GB public holidays with observed days, family observances, country from the time zone, duplicates of real events hidden) · ⬜ family Google calendar offer, Google reminders mapping on the Hub, Nager.Date holidays for other countries · ✅ M3: kid timeline (a picture day per kid in morning/afternoon/evening bands, the sun or moon at now, done ticks, events + routines + dinner, a Timeline view in the calendar and "My day" on the Kids screen, tap for a big picture card; routines start from it)
 - ✅ 4.3 Weather screen (now, 36 h chart with rain/sun/UV bands, rain summary, 10 days, sun & moon, what to wear, alerts, sources)
 - 🟡 4.4 Photos: ✅ curation grid (favorite/hide), screensaver (crossfade, portrait pairing, Hub pre-blur, precache, overlays with drift, long-press options, painted art-pack fallback), night clock · ⬜ verified against real Amazon/folder sources on the Hub
 - 🟡 4.5 Settings: ✅ household (location search, units, week start, clock), people (colors, roles, stages, buddies, PINs), this display (theme, size, distance, idle, night, role, tier), calendars (enable, default, ICS subscribe, Google connect incl. paste-back), photo frame & night, Hub & devices (status, approvals, enrollment codes, disconnect), about · ⬜ weather/recipe/integration keys page, diagnostics
@@ -74,11 +75,11 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
 
 ### Phase 6 — M3 features
 - 🟡 6.1 Kids: ✅ Kids destination (a tab per kid + Grown-ups), stage-aware chart of big picture cards, "I did it!" with celebrations (confetti / stars / bubbles, buddy, praise; calm at night; reduced-motion variant), Undo for 30 s, grown-up approvals behind the PIN, grants on the append-only ledger with stable ids (idempotent, converge across devices; undo appends reversals), reward jar with a surprise reveal, star bank with a pinned goal and redemption requests, sticker book (pick and place on painted theme scenes, pages), routine run mode (stepping-stone path, visual timer, debounced steps, progress saved), grown-ups' household chores (claim Anyone chores), family team goal, Settings → Kids & chores (chore editor with who/schedule/time/rewards/approval/voice line, age-sorted chore library, routine editor from templates with steps/timers/reorder, reward editor from ideas, jar size, sticker theme and star goal per kid) · ⬜ voice prompts / TTS playback, First–Then and choice boards, kindness hearts, growing garden, potty chart, proud wall, feelings check-in, adult rotation / fairness, approval notifications
-- ⬜ 6.2 Toybox: launcher + launch-set games
+- 🟡 6.2 Toybox: ✅ core rules (catalog, adaptive difficulty FR-TOY-04, time budget and hours FR-TOY-05, launch-set rounds), game sounds, CC0 animal recordings · ⬜ launcher, game host, the ten launch-set games, parent controls UI, expansion set (M4)
 - ⬜ 6.3 Music box: tiles, local files, YouTube, Spotify (via Hub)
 
 ### Phase 7 — Deployment tooling & CI
-- 🟡 7.1 ✅ tool/build_all.sh, tool/web_assets.sh, tool/e2e.sh, tool/icons/make_icons.sh · ⬜ tool/deploy_frame.sh (ADB over LAN, FreeKiosk External App mode, REST key, enrollment), tool/perf_gate.sh
+- 🟡 7.1 ✅ tool/build_all.sh, tool/web_assets.sh, tool/e2e.sh, tool/icons/make_icons.sh, tool/deploy_frame.sh (ADB over LAN: FreeKiosk pinned + Device Owner + HOME, External App mode locked to Dearth, magic corner + PIN, auto-rotate, adaptive brightness, Doze exemptions, JT215M preset, Dearth APK per ABI from a release / file / local build, `--check`, `--reboot` verification) · ⬜ Hub pairing and the FreeKiosk REST key handoff in deploy_frame.sh, tool/perf_gate.sh, a stable release signing key in CI
 - ✅ 7.2 GitHub Actions (`.github/workflows/build.yml`): analyze + unit tests, Playwright E2E, Android APKs, web, Linux, Windows, macOS, iOS (unsigned), Hub binaries (4 targets), multi-arch Hub image on GHCR, GitHub release on every push to main
 
 ### Phase 8 — Verification
@@ -219,6 +220,37 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
   no `eventTypes` filter, so Google birthday events are not filtered out.
   Other countries subscribe to an ICS holiday calendar; Nager.Date on the
   Hub is a follow-up.
+- **2026-10-03** Kitchen frame setup (`tool/deploy_frame.sh`). Findings on
+  the JT215M: FreeKiosk never had the SYSTEM_ALERT_WINDOW app-op (Device
+  Owner doesn't grant it on this ROM), so its exit overlay never existed and
+  no on-screen gesture could leave the kiosk. Tap-anywhere mode would count
+  any 5 quick taps in Dearth (a servings stepper), so the way out is an
+  invisible 48 dp button in the bottom-right corner, 5 taps in 2 s, then the
+  PIN; Dearth keeps that corner clear (`kKioskCornerClearance`, the timer
+  pill beside the rail). FreeKiosk's auto-brightness only sets its own
+  window, which does nothing behind Dearth, and its brightness management
+  forces manual mode: it's off, and Android's adaptive brightness (the ROM
+  has a lux curve; the pt3r850 sensor works) dims the panel until Dearth's
+  own curve (FR-DSP-02) lands.
+- **2026-10-03** The photo frame couldn't be woken by a tap (owner report):
+  `DisplayController.wake()` didn't count as activity, so the idle timer
+  restarted from the last touch *before* the screensaver, long expired, and
+  sent the frame straight back to its photos (the night clock too). Every
+  app-level test runs the idle engine off (`e2e`), which hid it;
+  `test/display_test.dart` now drives it on a fake clock (`idleClockProvider`).
+- **2026-10-03** Kiosk frames: Dearth goes immersive on wall displays (the
+  status bar was an empty strip under FreeKiosk's lock task) and asks for
+  `fullSensor` orientation. The JT215M ROM restores Android's auto-rotate from
+  `persist.sys.autorotation` at every boot (`deploy_frame.sh` sets it), but
+  Dearth no longer depends on that switch. The frame has no RTC: it boots at
+  1970-01-01 until NTP syncs, which Dearth should show as "setting the time"
+  rather than dates and ops stamped in 1970 (follow-up).
+- **2026-10-03** Every CI release so far was signed with that runner's
+  throwaway debug key (no `ANDROID_KEYSTORE_*` secrets), so no release can
+  update another in place: phones and frames must uninstall (data reset)
+  between builds. Follow-up for the owner: a release keystore kept outside
+  the repo plus the four secrets (README → Android signing); local builds
+  pick it up from `apps/dearth_app/android/key.properties` (gitignored).
 - **2026-10-03** Follow-ups: bundle a Fluent Emoji subset (SPEC §11.3; web
   currently fetches Noto Color Emoji at runtime), slim the Hub image, Postgres
   backend, weather/recipe key settings UI.
@@ -237,6 +269,8 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
 - 2026-10-03 — Home, Calendar (5 views, editor with recurring scopes, quick add), Weather, Lists, Photos + screensaver, Settings; 10 FR-CAL-13 tests, 6 sync-client tests against an in-process Hub, app flow test (steps 4.x, 5.2).
 - 2026-10-03 — `SyncStore.applyOpsBulk` + batched `replaceAll`; 200-seed equivalence test; 341 core tests green.
 - 2026-10-03 — Playwright E2E suite (4 projects) against a test Hub; app icons; Android/iOS/desktop identity (`app.dearth`); CI/CD workflow with releases; Git LFS.
+- 2026-10-03 — Kid timeline (FR-CAL-10: core layout + 5 tests, Timeline view, "My day" on the Kids screen, 2 widget tests, 2 E2E journeys); fixed the photo frame that a tap couldn't wake (2 idle-engine tests); immersive bars and accelerometer orientation on wall displays (3 tests); routine run mode no longer changes providers mid-build.
+- 2026-10-03 — `tool/deploy_frame.sh`: sets up, checks or updates an Android wall display over network ADB; the kitchen frame now has a working exit corner, auto-rotate, adaptive brightness and the current Dearth. README section for it.
 - 2026-10-03 — Kitchen timers (synced, pill on every screen, escalating chime, cook mode) and birthdays & holidays (virtual calendars, US/CA/GB rules, kid countdowns). Tests: 12 new core, 3 new app; E2E journeys for timers, holidays on the calendar and holiday countdowns.
 - 2026-10-03 — Calendar M2: People view, drag to move/resize, weather on events, reminders with banners and a synthesized chime (flutter_soloud native, WebAudio on web); toast timers cancel on dispose; event blocks fit their title lines; `tool/build_all.sh` executable again. Tests: 16 new core, 20 new app; E2E journeys for People, drag, forecast, reminders.
 - 2026-10-03 — Fixed the screensaver: fallback text style (yellow underline) on the clock and overlays, photo options that could never open, and a photo pool read while paused; screensaver widget tests + shared app test harness. E2E: 149 passed, 7 skipped.

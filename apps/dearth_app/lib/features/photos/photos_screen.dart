@@ -37,7 +37,7 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen> {
     ];
     final cols = t.isPhone ? 3 : (MediaQuery.sizeOf(context).width > 1400 ? 6 : 4);
 
-    return tid(
+    return screenTid(
       'screen.photos',
       CustomScrollView(
         slivers: [

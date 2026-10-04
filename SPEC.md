@@ -325,7 +325,7 @@ dearth/
 │   ├── dearth_integrations/   ← pure Dart provider adapters (used by Hub and Solo mode)
 │   └── dearth_ui/             ← design system: tokens, components, icons, motion,
 │                                widget gallery app for visual review
-├── tool/                      ← provision-frame.sh, perf_gate.sh, deploy-frames.sh, release.sh
+├── tool/                      ← deploy_frame.sh, perf_gate.sh, release.sh
 └── docs/                      ← setup guides (Google, WU, Amazon link, HA, FreeKiosk)
 ```
 
@@ -576,8 +576,8 @@ results. Recipe results are fetched on demand and persisted only when saved.
 - **No open web from kid areas.** The YouTube player is curated-IDs only,
   with related-video navigation blocked and logo/title links covered by a
   touch-absorbing layer (§13.7).
-- FreeKiosk's 5-tap settings gesture is PIN-protected, so toddler taps can't
-  escape the app (§15.1).
+- FreeKiosk's way out (a magic corner tapped 5 times, then a PIN) can't be
+  passed by toddler taps, so they can't escape the app (§15.1).
 
 ### 9.4 Remote access & web security
 - The Hub serves LAN clients and, through the owner's HTTPS domain, remote
@@ -2298,43 +2298,55 @@ domain and must allow WebSocket upgrades on `/api/sync`.
 
 ### 15.1 Phase 1: the kitchen frame under FreeKiosk "External App" mode
 
-The current frame state (2026-10-02): FreeKiosk v2.0.0-beta.4 is **Device
-Owner** and the HOME launcher, in WebView mode pointing at the old webapp.
-The original vendor app `com.fujia.calendar` is still installed.
-**Switching the frame to Dearth happens only after the initial release is
-ready** (owner's plan).
+The frame state (2026-10-03): FreeKiosk v2.0.0-beta.4 is **Device Owner**
+and the HOME launcher, in External App mode locked to Dearth. The owner
+switched it from the old webapp while v1 is still in progress, so the frame
+is a working test bed. `tool/deploy_frame.sh` (§15.2) sets all of the below
+up, including after a factory reset.
 
 1. Build `apps/dearth_app` release APK for **armeabi-v7a**, signed with the
    Dearth release key.
 2. `adb install` it, then pair the device with the Hub (QR flow).
 3. Reconfigure FreeKiosk to **External App mode** targeting Dearth's
-   package id. Keep auto-relaunch on exit or crash, the PIN-protected 5-tap
+   package id. Keep auto-relaunch on exit or crash, the PIN-protected magic-corner
    settings gesture, and boot autostart.
 4. Disable FreeKiosk's screensaver; keep its REST API on, bound to
    localhost, with the key handed to Dearth during provisioning.
-5. Optionally `pm disable-user com.fujia.calendar`. **Never disable
+5. Dearth hides the system bars on wall displays (immersive) and follows
+   the accelerometer (`fullSensor`), whatever Android's auto-rotate switch
+   says.
+6. Optionally `pm disable-user com.fujia.calendar`. **Never disable
    `com.waophoto.fota`**: it crash-loops this ROM (see the FreeKiosk skill notes).
-6. Verify with Dearth's own remote screenshot (FR-ADM-02) and the Admin →
+7. Verify with Dearth's own remote screenshot (FR-ADM-02) and the Admin →
    Devices health view.
 
-**Toddler consideration:** FreeKiosk's 5-tap gesture opens a PIN prompt.
-Repeated toddler taps can surface that prompt but never get past it. M0
-verifies the gesture's hit area doesn't overlap Dearth's primary controls.
+**Toddler consideration:** the magic corner is an invisible 48 dp button
+8 dp from the bottom-right corner; 5 taps on it within 2 s open a PIN
+prompt. Repeated toddler taps can surface that prompt but never get past
+it. Dearth keeps the bottom-right corner free of controls
+(`kKioskCornerClearance`); FreeKiosk's tap-anywhere mode is not used,
+because any 5 quick taps in Dearth would trigger it. FreeKiosk needs the
+"display over other apps" app-op for the corner to exist at all: Device
+Owner does not grant it on the JT215M ROM.
 
 ### 15.2 Provisioning script
 
-`tool/provision-frame.sh <ip> --hub <url> [--role kitchen] [--orientation landscape]`
+`tool/deploy_frame.sh <ip> [--check] [--build | --apk FILE] [--reboot]`
 reuses the logic and quirk handling of the old `setup-freekiosk.sh`. It
-installs or upgrades the APK, writes the FreeKiosk External App config twice
-(the known beta.4 config-ordering quirk), sets up the FreeKiosk REST key
-handoff, sets the display timeout policy, and verifies by reboot. It is
-idempotent and safe to re-run.
+installs or upgrades FreeKiosk (pinned, SHA-256 checked) and the Dearth APK
+for the device's ABI, makes FreeKiosk Device Owner and HOME, writes the
+External App config (a second time when the beta.4 config-ordering quirk
+leaves the old overlay running), turns on auto-rotate and adaptive
+brightness, and verifies by reboot. Every step reads the device first and
+changes only what differs; `--check` reports without changing anything.
+Still to come: pairing with a Hub (`--hub <url>`) and the FreeKiosk REST
+key handoff (§13.9).
 
 ### 15.3 App updates
 
 | Mode | How updates install |
 |---|---|
-| Under FreeKiosk (Phase 1) | `tool/deploy-frames.sh` pushes the new APK over LAN ADB to all frames (developer path). In-app "Update available" for others, **if** the system installer UI can appear under FreeKiosk's lock task (M0 check). |
+| Under FreeKiosk (Phase 1) | `tool/deploy_frame.sh` pushes the new APK over LAN ADB, one frame per run (developer path). In-app "Update available" for others, **if** the system installer UI can appear under FreeKiosk's lock task (M0 check). |
 | Dearth as Device Owner/launcher (M5, optional) | **Silent** `PackageInstaller` sessions from the Hub's APK feed, with staged rollout (one frame first) and automatic rollback if the new version fails to report healthy within 10 min. |
 | Phones | Android: APK channel from the Hub (or a store later). iPhone: the PWA updates on reload. |
 

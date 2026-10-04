@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { button, expectText, goTo, isPhone, longPressDrag, openDemo, replaceText, tap, textOf, tid, typeInto } from './helpers';
+import { button, expectText, goTo, isPhone, longPressDrag, openDemo, replaceText, scrollTo, tap, textOf, tid, typeInto } from './helpers';
 
 test.describe('Calendar', () => {
   test('FR-CAL-12: quick add parses natural language with a live preview', async ({ page }, info) => {
@@ -117,6 +117,16 @@ test.describe('Calendar', () => {
     await expectText(tid(page, 'reminder.title'), 'Ava, piano in');
     await tap(tid(page, 'reminder.ok'));
     await expect(tid(page, 'reminder.banner')).toHaveCount(0);
+  });
+
+  test('FR-CAL-10: the kid timeline is Ava’s day in pictures, the sun at now', async ({ page }) => {
+    await openDemo(page, '/calendar');
+    await tap(tid(page, 'cal.view.timeline'));
+    await expect(tid(page, 'timeline.p-ava')).toBeVisible();
+    await expectText(tid(page, 'timeline.p-ava.stop.routine-rt-morning'), /Good morning.*done/);
+    await expect(tid(page, 'timeline.p-ava.now')).toBeVisible();
+    await tap(await scrollTo(page, 'timeline.p-ava.stop.event-ev-swim'));
+    await expectText(tid(page, 'timeline.sheet.when'), 'At 9:00 AM · in 30 min');
   });
 
   test('FR-CAL-18: holidays are on the calendar, read-only', async ({ page }) => {

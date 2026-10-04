@@ -129,3 +129,108 @@ Float32List tapTock() => normalize(strike(midiToHz(79), seconds: 0.12, partials:
 
 /// One xylophone bar (toybox instrument), [midi] note.
 Float32List xylophoneNote(int midi) => normalize(strike(midiToHz(midi), seconds: 1.1, partials: kMalletPartials), peak: 0.7);
+
+// ──────────────────────────────── Toybox ───────────────────────────────────
+// Game effects (SPEC FR-TOY-08): short, round and never harsh. Noise comes
+// from a seeded generator, so every build sounds the same.
+
+Float32List _render(double seconds, double Function(double t, int i) sample, {int rate = kSynthRate}) {
+  final out = Float32List((seconds * rate).round());
+  for (var i = 0; i < out.length; i++) {
+    out[i] = sample(i / rate, i);
+  }
+  return out;
+}
+
+/// −1…1 white noise, repeatable.
+Float32List _noise(double seconds, {int seed = 7, int rate = kSynthRate}) {
+  final rng = math.Random(seed);
+  return _render(seconds, (_, _) => rng.nextDouble() * 2 - 1, rate: rate);
+}
+
+/// A sine whose pitch slides from [from] to [to] Hz (exponentially), with
+/// an exponential [decay] (seconds to fall to ~37 %).
+Float32List _sweep(double from, double to, double seconds, {double decay = 0.1, double attack = 0.003, int rate = kSynthRate}) {
+  var phase = 0.0;
+  return _render(seconds, (t, _) {
+    final hz = from * math.pow(to / from, t / seconds);
+    phase += 2 * math.pi * hz / rate;
+    final env = math.min(1.0, t / attack) * math.exp(-t / decay);
+    return math.sin(phase) * env;
+  }, rate: rate);
+}
+
+/// [noise] through a one-pole high-pass ([cutoff] Hz), shaped by [decay].
+Float32List _hiss(double seconds, {double cutoff = 4000, double decay = 0.05, int seed = 7, int rate = kSynthRate}) {
+  final n = _noise(seconds, seed: seed, rate: rate);
+  final rc = 1 / (2 * math.pi * cutoff), a = rc / (rc + 1 / rate);
+  var prevIn = 0.0, prevOut = 0.0;
+  for (var i = 0; i < n.length; i++) {
+    final y = a * (prevOut + n[i] - prevIn);
+    prevIn = n[i];
+    prevOut = y;
+    n[i] = y * math.exp(-(i / rate) / decay);
+  }
+  return n;
+}
+
+/// [noise] through a one-pole low-pass ([cutoff] Hz): rumbles and crunches.
+Float32List _rumble(Float32List s, {double cutoff = 900, int rate = kSynthRate}) {
+  final dt = 1 / rate, rc = 1 / (2 * math.pi * cutoff), a = dt / (rc + dt);
+  var y = 0.0;
+  for (var i = 0; i < s.length; i++) {
+    y += a * (s[i] - y);
+    s[i] = y;
+  }
+  return s;
+}
+
+/// A bubble popping: a quick upward blip with a click.
+Float32List popSound() => mix([(0, _sweep(380, 1100, 0.09, decay: 0.03)), (0, _hiss(0.012, cutoff: 2500, decay: 0.003))], peak: 0.6);
+
+/// Fireworks and fairy dust: high bells sprinkled over a third of a second.
+Float32List sparkleSound() {
+  final rng = math.Random(3);
+  return mix([
+    for (var i = 0; i < 7; i++) (i * 0.045 + rng.nextDouble() * 0.02, strike(1800 + rng.nextDouble() * 2400, seconds: 0.35, partials: const [(1, 1, 0.12), (2.76, 0.3, 0.05)])),
+  ], peak: 0.45);
+}
+
+/// A springy "boing": a low note that wobbles and settles.
+Float32List boingSound() {
+  var phase = 0.0;
+  return normalize(_render(0.45, (t, _) {
+    final hz = 180 * (1 + 0.35 * math.exp(-t / 0.12) * math.sin(2 * math.pi * 14 * t));
+    phase += 2 * math.pi * hz / kSynthRate;
+    return math.sin(phase) * math.min(1.0, t / 0.004) * math.exp(-t / 0.16);
+  }), peak: 0.55);
+}
+
+/// A piece clicking into place.
+Float32List snapSound() => mix([(0, _hiss(0.03, cutoff: 1800, decay: 0.006)), (0.004, strike(1400, seconds: 0.08, partials: kMalletPartials))], peak: 0.55);
+
+/// The monster munching: three crunchy bites.
+Float32List munchSound() => mix([
+      for (var i = 0; i < 3; i++) (i * 0.13, normalize(_rumble(_hiss(0.09, cutoff: 300, decay: 0.03, seed: 11 + i), cutoff: 1600), peak: 1)),
+    ], peak: 0.6);
+
+/// A gentle "uh-uh": two soft notes down. Never a buzzer (FR-TOY-04).
+Float32List nopeSound() => mix([
+      (0, strike(midiToHz(64), seconds: 0.35, partials: kMalletPartials)),
+      (0.16, strike(midiToHz(60), seconds: 0.45, partials: kMalletPartials)),
+    ], peak: 0.4);
+
+/// A round won: a marimba run up with sparkles on top.
+Float32List cheerSound() => mix([
+      for (final (i, m) in const [72, 76, 79, 84, 88].indexed) (i * 0.08, strike(midiToHz(m), seconds: 0.9, partials: kMalletPartials)),
+      (0.36, sparkleSound()),
+    ], peak: 0.65);
+
+/// One counted flower: a short mallet note (the game raises its pitch).
+Float32List blipSound() => normalize(strike(midiToHz(72), seconds: 0.3, partials: kMalletPartials, attack: 0.002), peak: 0.55);
+
+/// Drums for the music toy: kick, snare, hi-hat, tom.
+Float32List kickDrum() => normalize(_sweep(150, 42, 0.32, decay: 0.12, attack: 0.002), peak: 0.85);
+Float32List snareDrum() => mix([(0, _hiss(0.2, cutoff: 1200, decay: 0.07, seed: 5)), (0, _sweep(210, 170, 0.12, decay: 0.05))], peak: 0.7);
+Float32List hatDrum() => normalize(_hiss(0.08, cutoff: 6000, decay: 0.02, seed: 9), peak: 0.45);
+Float32List tomDrum() => normalize(_sweep(130, 90, 0.4, decay: 0.15), peak: 0.75);

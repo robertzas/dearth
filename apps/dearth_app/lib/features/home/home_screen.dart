@@ -16,7 +16,7 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = DTheme.of(context);
     final hasKids = ref.watch(kidsProvider).isNotEmpty;
-    return tid(
+    return screenTid(
       'screen.home',
       LayoutBuilder(builder: (context, box) {
         final m = t.pageMargin;

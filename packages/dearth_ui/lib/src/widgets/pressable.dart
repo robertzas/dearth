@@ -12,6 +12,13 @@ import '../tokens/metrics.dart';
 /// Playwright suite selects on. Identifiers are part of the test contract.
 Widget tid(String id, Widget child) => Semantics(identifier: id, container: true, child: child);
 
+/// A whole screen's test id. Its children always keep their own semantics
+/// nodes: text merged into the screen's node would give it a role, and when
+/// the screen's data arrived and that text moved into a child, Flutter web
+/// rebuilt the node without its identifier (`screen.kids` went missing on
+/// some loads).
+Widget screenTid(String id, Widget child) => Semantics(identifier: id, container: true, explicitChildNodes: true, child: child);
+
 /// The one tappable primitive (SPEC §11.1, §12.3): a layer-backed press scale
 /// and highlight instead of Material ink sparkle, generous hit areas, an
 /// optional deliberate long press (≥ 600 ms), and button semantics with an

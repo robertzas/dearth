@@ -1,13 +1,12 @@
 import 'package:flutter_soloud/flutter_soloud.dart';
 
 import 'sound.dart';
-import 'synth.dart';
 
 SoundPlayer createSoundPlayer() => SoLoudSound();
 
 /// Native playback through flutter_soloud (SPEC §7.4): low latency for kid
-/// taps and toy instruments. Each sound is synthesized once, on first use,
-/// and kept in memory. Starts the engine lazily, so a display that never
+/// taps and toy instruments. Each sound is synthesized (or read from the
+/// bundle) once, on first use, and kept in memory. Starts the engine lazily, so a display that never
 /// plays a sound never opens the audio device.
 class SoLoudSound implements SoundPlayer {
   Future<bool>? _ready;
@@ -25,11 +24,18 @@ class SoLoudSound implements SoundPlayer {
   }
 
   @override
-  Future<void> play(Sfx sfx, {double volume = 1}) async {
+  Future<void> play(Sfx sfx, {double volume = 1, double rate = 1}) async {
     try {
       if (!await (_ready ??= _init())) return;
-      final source = await (_sources[sfx] ??= SoLoud.instance.loadMem('dearth-${sfx.name}.wav', wavBytes(samplesFor(sfx))));
-      SoLoud.instance.play(source, volume: volume);
+      final source = await (_sources[sfx] ??= soundBytes(sfx).then((b) => SoLoud.instance.loadMem('dearth-${sfx.name}', b)));
+      if (rate == 1) {
+        SoLoud.instance.play(source, volume: volume);
+      } else {
+        // Paused first, so the pitch is set before the first sample plays.
+        final handle = SoLoud.instance.play(source, volume: volume, paused: true);
+        SoLoud.instance.setRelativePlaySpeed(handle, rate);
+        SoLoud.instance.setPause(handle, false);
+      }
     } on Object {
       _sources.remove(sfx)?.ignore(); // retry the load next time
     }

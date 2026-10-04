@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/data/household.dart';
 import '../core/env.dart';
+import '../core/platform/system_ui.dart';
 import '../core/providers.dart';
 
 // ───────────────────────────── Theme resolution ─────────────────────────────
@@ -69,6 +70,36 @@ final themeModeProvider = Provider<DThemeMode>((ref) {
   return ref.watch(isDaylightProvider) ? DThemeMode.light : DThemeMode.evening;
 });
 
+// ─────────────────────────────── Orientation ────────────────────────────────
+
+/// How the screen turns (SPEC FR-DEV-05). A wall display follows the
+/// accelerometer even when Android's own auto-rotate is off: frame ROMs can
+/// switch it off at every boot, and nobody is there to switch it back. A
+/// personal device keeps its user's rotation lock. The setting can also hold
+/// the display in landscape or portrait.
+String orientationMode({required bool personal, required String setting}) => switch (setting) {
+      'landscape' => 'landscape',
+      'portrait' => 'portrait',
+      _ => personal ? 'user' : 'sensor',
+    };
+
+/// Applies [orientationMode] each time it changes.
+final orientationProvider = Provider<String>((ref) {
+  final mode = ref.watch(deviceSettingsProvider.select((s) => orientationMode(personal: s.isPersonal, setting: s.orientation)));
+  unawaited(applyOrientation(mode));
+  return mode;
+});
+
+/// Wall displays hide Android's status bar: under a kiosk it's an empty
+/// strip across the top (its contents are locked away), and a frame has no
+/// notifications to show anyway. Personal devices keep theirs. True while
+/// the bars are hidden.
+final systemBarsProvider = Provider<bool>((ref) {
+  final hidden = !ref.watch(deviceSettingsProvider.select((s) => s.isPersonal));
+  unawaited(applySystemBars(hidden: hidden));
+  return hidden;
+});
+
 /// Performance tier for this device (SPEC §6.2), with the device override.
 final perfTierProvider = Provider<PerfTier>((ref) {
   final override = ref.watch(deviceSettingsProvider.select((s) => s.tierOverride));
@@ -99,6 +130,10 @@ class DisplayState {
       DisplayState(mode: mode ?? this.mode, wokeAtMs: wokeAtMs ?? this.wokeAtMs, keepAwakeUntilMs: keepAwakeUntilMs ?? this.keepAwakeUntilMs);
 }
 
+/// The idle engine's clock, epoch ms. It measures time since the last touch,
+/// not "today" (that goes through HouseholdTime); tests replace it.
+final idleClockProvider = Provider<int Function()>((ref) => () => DateTime.now().millisecondsSinceEpoch);
+
 /// The idle engine: tracks touches, enters the screensaver after the idle
 /// timeout and Night during the night schedule; any touch wakes.
 class DisplayController extends Notifier<DisplayState> {
@@ -111,7 +146,7 @@ class DisplayController extends Notifier<DisplayState> {
     // Re-evaluate when the night schedule or settings change.
     ref.listen(isNightTimeProvider, (_, night) => _evaluate(night: night));
     ref.listen(deviceSettingsProvider, (_, _) => _restartIdle());
-    ref.listen(_idleMinutesProvider, (_, _) => _restartIdle());
+    ref.listen(householdIdleMinutesProvider, (_, _) => _restartIdle());
     Future.microtask(_restartIdle);
     return const DisplayState();
   }
@@ -121,7 +156,7 @@ class DisplayController extends Notifier<DisplayState> {
     return !s.isPersonal && !ref.read(envProvider).e2e;
   }
 
-  int get _now => DateTime.now().millisecondsSinceEpoch;
+  int get _now => ref.read(idleClockProvider)();
 
   /// Any touch on the app.
   void activity() {
@@ -133,7 +168,12 @@ class DisplayController extends Notifier<DisplayState> {
     _restartIdle();
   }
 
+  /// A touch on the photo frame, the night clock or a dark screen. It counts
+  /// as activity: the idle timeout runs from here, not from the last touch
+  /// before the screen went idle, which had long expired and sent a woken
+  /// frame straight back to its photos.
   void wake() {
+    _lastActivityMs = _now;
     state = state.copyWith(mode: DisplayMode.active, wokeAtMs: _now);
     _restartIdle();
   }
@@ -154,7 +194,7 @@ class DisplayController extends Notifier<DisplayState> {
     if (!_enabled) return;
     final night = ref.read(isNightTimeProvider) && ref.read(deviceSettingsProvider).nightMode;
     final s = ref.read(deviceSettingsProvider);
-    final int minutes = s.idleMinutes ?? ref.read<int>(_idleMinutesProvider);
+    final int minutes = s.idleMinutes ?? ref.read<int>(householdIdleMinutesProvider);
     // In Night, a touch shows a dim UI for 60 s, then Night resumes.
     final timeout = night ? const Duration(seconds: 60) : Duration(minutes: minutes.clamp(1, 240));
     final since = _now - _lastActivityMs;
@@ -189,7 +229,8 @@ class DisplayController extends Notifier<DisplayState> {
   }
 }
 
-final _idleMinutesProvider = Provider<int>((ref) {
+/// The household's screensaver timeout in minutes; a device can override it.
+final householdIdleMinutesProvider = Provider<int>((ref) {
   final v = ref.watch(settingMapProvider(SettingKeys.screensaver));
   return (v['idleMinutes'] as num?)?.toInt() ?? 5;
 });

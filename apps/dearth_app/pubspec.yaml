@@ -63,3 +63,4 @@ flutter:
   generate: false
   assets:
     - assets/demo/
+    - assets/sounds/animals/

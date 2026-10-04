@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:dearth_app/core/sound.dart';
 import 'package:dearth_app/core/synth.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -37,6 +38,29 @@ void main() {
     expect(peak(successRun()), closeTo(0.6, 1e-6));
     expect(peak(tapTock()), closeTo(0.35, 1e-6));
     expect(peak(xylophoneNote(72)), closeTo(0.7, 1e-6));
+  });
+
+  test('toybox sounds (FR-TOY-08): audible, never clipped, short and soft-edged', () {
+    for (final sfx in Sfx.values.where((s) => !kAnimalSounds.contains(s))) {
+      final s = samplesFor(sfx);
+      expect(peak(s), inInclusiveRange(0.3, 0.9), reason: sfx.name);
+      expect(s.length / kSynthRate, lessThan(sfx == Sfx.reminder || sfx == Sfx.timer ? 3 : 1.5), reason: sfx.name);
+      // The last 5 ms fade out: no click when a sound ends.
+      final tail = s.sublist(s.length - kSynthRate ~/ 200);
+      expect(peak(tail), lessThan(0.08), reason: '${sfx.name} ends with a click');
+    }
+    expect(samplesFor(Sfx.cheer), isNot(samplesFor(Sfx.success)));
+  });
+
+  test('every farm animal is a bundled recording', () async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    for (final sfx in kAnimalSounds) {
+      final bytes = await soundBytes(sfx);
+      // An MP3: an ID3 tag or a frame sync.
+      final mp3 = (bytes[0] == 0x49 && bytes[1] == 0x44 && bytes[2] == 0x33) || (bytes[0] == 0xFF && bytes[1] & 0xE0 == 0xE0);
+      expect((mp3, bytes.length > 2000), (true, true), reason: sfx.name);
+    }
+    expect(() => samplesFor(Sfx.cow), throwsArgumentError);
   });
 
   test('pitches follow equal temperament (A4 = 440 Hz)', () {

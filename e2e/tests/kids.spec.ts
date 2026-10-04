@@ -41,7 +41,7 @@ test.describe('Kids', () => {
 
   test('FR-KID-06/07: a routine runs step by step and keeps its progress', async ({ page }) => {
     await openDemo(page, '/kids');
-    await tap(tid(page, 'kids.routine.rt-morning'));
+    await tap(await scrollTo(page, 'kids.routine.rt-morning'));
     await expect(tid(page, 'screen.routine')).toBeVisible();
     await expectText(tid(page, 'routine.progress'), 'Step 1 of 6');
     await expectText(tid(page, 'routine.step'), 'Potty');
@@ -53,6 +53,18 @@ test.describe('Kids', () => {
     await expectText(tid(page, 'routine.timer'), 'Timer running');
     await tap(tid(page, 'routine.close'));
     await expectText(tid(page, 'kids.routine.rt-morning'), '1 of 6 steps');
+  });
+
+  test('FR-CAL-10: the Kids screen starts with Ava’s day in pictures; a routine starts from its picture', async ({ page }) => {
+    await openDemo(page, '/kids');
+    await expect(tid(page, 'kids.myday')).toBeVisible();
+    await expect(tid(page, 'timeline.p-ava.now')).toBeVisible();
+    // The morning routine's picture sits next to now, so it's on screen at
+    // every size (the strip scrolls sideways on phones, opening at now).
+    await tap(await scrollTo(page, 'timeline.p-ava.stop.routine-rt-morning'));
+    await expectText(tid(page, 'timeline.sheet.title'), 'Good morning');
+    await tap(tid(page, 'timeline.sheet.start'));
+    await expect(tid(page, 'screen.routine')).toBeVisible();
   });
 
   test('FR-KID-05: grown-ups tick off household chores', async ({ page }) => {

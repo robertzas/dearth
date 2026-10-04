@@ -10,6 +10,13 @@ import '../core/providers.dart';
 import 'display_state.dart';
 import 'grown_up.dart';
 
+/// How far controls keep from the bottom-right corner of the screen. Kiosk
+/// frames reach FreeKiosk's settings through a "magic corner" there
+/// (`tool/deploy_frame.sh`): an invisible 48 dp button, 8 dp from the edges,
+/// that takes every tap on it. Bottom-right is the corner Dearth leaves free:
+/// the others hold this clock, navigation and header actions.
+const double kKioskCornerClearance = 64;
+
 /// The rail clock. Holding it for 3 s starts the kiosk exit path (SPEC §9.3,
 /// PROGRESS decision 2026-10-02): hold → grown-up PIN → kiosk menu. A tap
 /// does nothing, so small hands can't open it.

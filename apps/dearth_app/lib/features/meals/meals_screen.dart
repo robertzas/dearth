@@ -71,7 +71,7 @@ class MealsScreen extends ConsumerWidget {
               tabs,
             ],
           );
-    return tid(
+    return screenTid(
       'screen.meals',
       Padding(
         padding: EdgeInsets.fromLTRB(t.pageMargin, t.pageMargin, t.pageMargin, 0),

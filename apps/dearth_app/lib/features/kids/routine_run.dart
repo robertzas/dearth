@@ -55,16 +55,21 @@ class _RoutineRunScreenState extends ConsumerState<RoutineRunScreen> {
   bool get _finished => _current < 0;
   bool get _calm => widget.routine.routine.kind == 'bedtime';
 
+  // Providers can't change while widgets build or unmount: keep-awake waits
+  // for the frame to finish, both ways.
   @override
   void initState() {
     super.initState();
-    _display.keepAwakeFor(const Duration(minutes: 20));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _display.keepAwakeFor(const Duration(minutes: 20));
+    });
   }
 
   @override
   void dispose() {
     _ticker?.cancel();
-    _display.keepAwakeFor(Duration.zero);
+    final display = _display;
+    Future.microtask(() => display.keepAwakeFor(Duration.zero));
     super.dispose();
   }
 
@@ -129,7 +134,7 @@ class _RoutineRunScreenState extends ConsumerState<RoutineRunScreen> {
     final n = _steps.length;
     final step = _finished ? null : _steps[_current];
     final big = (t.isPhone ? 140 : 210) * t.scale;
-    return tid(
+    return screenTid(
       'screen.routine',
       Material(
         color: t.colors.surface,

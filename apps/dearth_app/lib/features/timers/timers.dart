@@ -134,18 +134,23 @@ Future<void> showTimers(WidgetRef ref, [BuildContext? context]) async {
 /// hands in a kitchen); otherwise a tap opens the timers. Lives in the shell
 /// body, so sheets and dialogs cover it and it stays clear of the bars.
 class TimerPill extends ConsumerWidget {
-  const TimerPill({super.key});
+  const TimerPill({super.key, this.cornerClearance = 0});
+
+  /// Extra lift off the bottom edge, where the body reaches the screen's
+  /// bottom-right corner (a kiosk frame's magic corner).
+  final double cornerClearance;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final all = ref.watch(kitchenTimersProvider).value ?? const <KitchenTimer>[];
     if (all.isEmpty) return const SizedBox.shrink();
-    return const _Pill();
+    return _Pill(cornerClearance: cornerClearance);
   }
 }
 
 class _Pill extends ConsumerStatefulWidget {
-  const _Pill();
+  const _Pill({required this.cornerClearance});
+  final double cornerClearance;
 
   @override
   ConsumerState<_Pill> createState() => _PillState();
@@ -217,7 +222,7 @@ class _PillState extends ConsumerState<_Pill> with SingleTickerProviderStateMixi
     return Align(
       alignment: Alignment.bottomRight,
       child: Padding(
-        padding: EdgeInsets.all(t.space.lg),
+        padding: EdgeInsets.fromLTRB(t.space.lg, t.space.lg, t.space.lg, t.space.lg + widget.cornerClearance),
         child: DPressable(
           id: 'timers.pill',
           onTap: ringing ? () => stopFinishedTimers(ref) : () => showTimers(ref, context),

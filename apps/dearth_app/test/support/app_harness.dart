@@ -91,7 +91,13 @@ void expectNoFallbackText([Finder? within]) {
 class RecordingSound implements SoundPlayer {
   final played = <(Sfx, double)>[];
 
+  /// The rate of each sound in [played] (pitch, for instruments).
+  final rates = <double>[];
+
   @override
-  Future<void> play(Sfx sfx, {double volume = 1}) async => played.add((sfx, volume));
+  Future<void> play(Sfx sfx, {double volume = 1, double rate = 1}) async {
+    played.add((sfx, volume));
+    rates.add(rate);
+  }
 }
 

@@ -120,6 +120,8 @@ class _AppFrameState extends ConsumerState<AppFrame> with WidgetsBindingObserver
     final active = display == DisplayMode.active;
     // Finished timers ring on every display, whatever it shows (FR-TMR-01).
     ref.listen(timerAlarmProvider, (_, _) {});
+    ref.listen(orientationProvider, (_, _) {});
+    ref.listen(systemBarsProvider, (_, _) {});
     return Theme(
       data: _theme!,
       child: _Effects(
