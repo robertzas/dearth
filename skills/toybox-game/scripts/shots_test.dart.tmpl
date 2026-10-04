@@ -1,0 +1,74 @@
+// TEMPORARY visual review for a Toybox game (skills/toybox-game, Step 5).
+// Renders the game through the real Toybox to PNGs at the four layout sizes,
+// with the app's fonts and a color emoji font, so you can look at it.
+//
+//   cp skills/toybox-game/scripts/shots_test.dart.tmpl apps/dearth_app/test/zz_shots_test.dart
+//   cd apps/dearth_app && SHOT_GAME=creature SHOT_LEVELS=1,3 flutter test --no-pub test/zz_shots_test.dart
+//   # PNGs: $SHOT_OUT (default: <system temp>/toybox-shots), named <game>_l<level>_<W>x<H>[_<state>].png
+//   # Contact sheet: montage <out>/*.png -tile 4x -geometry 480x+4+4 sheet.png
+//
+// Add the states you need to see (a hint, the finish) in `states` below.
+// Delete apps/dearth_app/test/zz_shots_test.dart before committing.
+import 'dart:io';
+import 'dart:ui' as ui;
+
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import 'support/toybox_harness.dart';
+
+final String _out = Platform.environment['SHOT_OUT'] ?? '${Directory.systemTemp.path}/toybox-shots';
+
+Future<void> _font(String family, String path) async {
+  final loader = FontLoader(family)..addFont(Future.value(ByteData.sublistView(File(path).readAsBytesSync())));
+  await loader.load();
+}
+
+/// Writes the whole screen as `<_out>/<name>.png`.
+Future<void> shot(WidgetTester tester, String name) async {
+  final image = await captureImage(tester.binding.rootElement!);
+  final bytes = await tester.runAsync(() => image.toByteData(format: ui.ImageByteFormat.png));
+  Directory(_out).createSync(recursive: true);
+  File('$_out/$name.png').writeAsBytesSync(bytes!.buffer.asUint8List());
+}
+
+/// Extra states to capture after the game opens: a name and how to get
+/// there (taps, pumps). Example: ('hint', (tester) async { … two wrong taps … }).
+final List<(String, Future<void> Function(WidgetTester))> states = [];
+
+void main() {
+  setUpAll(() async {
+    // The theme asks for the fonts by their package names.
+    for (final f in ['PlusJakartaSans', 'Fredoka']) {
+      final path = '../../packages/dearth_ui/assets/fonts/$f.ttf';
+      await _font('packages/dearth_ui/$f', path);
+      await _font(f, path);
+    }
+    // Emoji come from the system font (Arch, Debian/Ubuntu, Fedora paths).
+    for (final path in ['/usr/share/fonts/noto/NotoColorEmoji.ttf', '/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf', '/usr/share/fonts/google-noto-emoji/NotoColorEmoji.ttf']) {
+      if (File(path).existsSync()) {
+        await _font('Noto Color Emoji', path);
+        break;
+      }
+    }
+  });
+
+  final game = Platform.environment['SHOT_GAME'] ?? (throw StateError('Set SHOT_GAME to a game id'));
+  final levels = (Platform.environment['SHOT_LEVELS'] ?? '1').split(',').map(int.parse);
+  for (final size in const [Size(1920, 1080), Size(1080, 1920), Size(844, 390), Size(390, 844)]) {
+    for (final level in levels) {
+      final name = '${game}_l${level}_${size.width.toInt()}x${size.height.toInt()}';
+      testWidgets(name, (tester) async {
+        final h = await openToyboxGame(tester, game, level: level, size: size);
+        await tester.pump(const Duration(seconds: 1));
+        await shot(tester, name);
+        for (final (state, reach) in states) {
+          await reach(tester);
+          await tester.pump(const Duration(milliseconds: 500));
+          await shot(tester, '${name}_$state');
+        }
+        await h.shutdown();
+      });
+    }
+  }
+}

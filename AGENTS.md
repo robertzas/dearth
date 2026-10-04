@@ -8,6 +8,13 @@ Read these first, in order:
 2. **`SPEC.md`**: the product contract. Requirement IDs (`FR-CAL-12`) are
    referenced from code comments and test names.
 3. This file: the rules that keep the codebase coherent.
+4. **The skill for your task**, if `skills/` has one. Each is a playbook
+   (`SKILL.md`, with references and scripts beside it) that any agent can
+   follow:
+   - `skills/toybox-game/SKILL.md`: adding, finishing or reworking a
+     Toybox game (design for pre-readers, rules, voice clips, art, speed on
+     the frame, tests, docs, deploy). Read it before touching
+     `lib/features/toybox/` or `dearth_core`'s `src/toybox/`.
 
 ## Layout
 
@@ -20,6 +27,7 @@ Read these first, in order:
 | `apps/dearth_app` | The Flutter app for every platform. Feature-first folders under `lib/features/<feature>/`. |
 | `e2e/` | Playwright end-to-end suite against the web build and a test Hub. |
 | `tool/` | `check.sh`, `codegen.sh`, `build_all.sh`, `e2e.sh`, `dev_hub.sh`, `web_assets.sh`, `deploy_frame.sh` (sets up, checks or updates an Android wall display over ADB), `icons/` (the SVG source of every app icon and `make_icons.sh`). Planned: `perf_gate.sh`. |
+| `skills/` | Task playbooks for agents, checked in with the code: `toybox-game/` (adding a Toybox game). |
 | `.github/` | `workflows/build.yml`: every push to `main` runs the gate and the E2E suite, builds every platform plus the Hub image, and publishes a GitHub release `v<version>-build.<run>`. `actions/setup`: shared Flutter, pub and LFS setup. |
 
 ## Golden rules
