@@ -369,7 +369,8 @@ class _Plate extends StatelessWidget {
           color: Colors.white,
           border: Border.all(color: glow ? const Color(0xFFFFC93C) : const Color(0xFFF1DCE6), width: glow ? size * 0.06 : size * 0.03),
           // A solid halo, not a blur: blurs are too slow to animate on a frame.
-          boxShadow: [if (glow) const BoxShadow(color: Color(0x77FFD54F), spreadRadius: 10), const BoxShadow(color: Color(0x14000000), offset: Offset(0, 4))],
+          // Always first, so only the halo animates.
+          boxShadow: [BoxShadow(color: glow ? const Color(0x77FFD54F) : const Color(0x00FFD54F), spreadRadius: glow ? 10 : 0), const BoxShadow(color: Color(0x14000000), offset: Offset(0, 4))],
         ),
       );
 }

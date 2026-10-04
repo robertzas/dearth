@@ -63,11 +63,12 @@ back.
   approve, tick off household chores, and fill a family
   goal together. Chores, routines and rewards are set up in Settings,
   starting from an age-sorted library of chores toddlers can really do.
-- **Toybox.** Ten games for ages 2 to 5, with no ads, no links and no
+- **Toybox.** Games for ages 2 to 5, with no ads, no links and no
   network needed: Bubble Pop, Paint Studio, Magic Coloring, Animal Farm
   (real animal recordings), Shape Sorter, Xylophone & Drums, Jigsaw (cut
-  from the family's photos), Memory Match, Feed the Monster and Counting
-  Garden. Each kid sees the games that suit their age, and every game
+  from the family's photos), Memory Match, Feed the Monster, Counting
+  Garden, Patterns, Odd One Out, Shadow Match, Small to Big, Finger
+  Mazes, What Happens Next, Picture Sudoku and Spot the Difference. Each kid sees the games that suit their age, and every game
   adapts: three wins in a row go up a level, three misses ease off, and
   nothing ever says "wrong". Grown-ups set a daily time limit and opening
   hours (a game says goodnight when time is up), cap the volume, switch

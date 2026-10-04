@@ -329,16 +329,28 @@ class _Layout {
   final double size;
 }
 
+/// A painted wooden shape, for other games (Odd One Out): [color] or its own.
+class ToyShapeView extends StatelessWidget {
+  const ToyShapeView(this.shape, {super.key, required this.size, this.color});
+  final ToyShape shape;
+  final double size;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) => RepaintBoundary(child: CustomPaint(size: Size.square(size), painter: _PiecePainter(shape, lifted: false, color: color)));
+}
+
 /// A painted wooden shape: a soft top light and a darker rim.
 class _PiecePainter extends CustomPainter {
-  const _PiecePainter(this.shape, {required this.lifted});
+  const _PiecePainter(this.shape, {required this.lifted, this.color});
   final ToyShape shape;
   final bool lifted;
+  final Color? color;
 
   @override
   void paint(Canvas canvas, Size size) {
     final s = size.shortestSide;
-    final color = kShapeColors[shape]!;
+    final color = this.color ?? kShapeColors[shape]!;
     final path = shapePath(shape, s);
     // A shadow under it: further when it's lifted.
     canvas.drawPath(path.shift(Offset(0, s * (lifted ? 0.09 : 0.04))), Paint()..color = const Color(0x33000000));
@@ -358,7 +370,7 @@ class _PiecePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_PiecePainter old) => old.shape != shape || old.lifted != lifted;
+  bool shouldRepaint(_PiecePainter old) => old.shape != shape || old.lifted != lifted || old.color != color;
 }
 
 /// The wooden board and its holes, each a dark cut with a shadow along its

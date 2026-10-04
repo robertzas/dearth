@@ -61,7 +61,7 @@ void main() {
     test('a grown-up can open a game early; launcher order stays', () {
       final ids = gamesFor(30, early: {'counting'}).map((g) => g.id).toList();
       expect(ids, contains('counting'));
-      expect(ids.last, 'counting');
+      expect(ids, [for (final g in kGames) if (ids.contains(g.id)) g.id], reason: 'in launcher order');
       expect(gamesFor(30, off: {'counting'}, early: {'counting'}).map((g) => g.id), contains('counting'), reason: 'early wins');
     });
 
@@ -179,6 +179,7 @@ void main() {
         ...kMemoryFaces,
         for (final f in kFoods) f.emoji,
         for (final a in kFarmAnimals) a.emoji,
+        ...kExpansionPictures,
       ];
       expect([for (final p in pictures) if (!draws(p)) p], isEmpty);
     });
@@ -186,6 +187,133 @@ void main() {
     test('bubbles speed up, then call a color', () {
       expect([for (var l = 1; l <= 4; l++) bubbleRound(l).colorCall], [false, false, true, true]);
       expect(bubbleRound(2).riseSeconds, lessThan(bubbleRound(1).riseSeconds));
+    });
+  });
+
+  group('expansion rounds (FR-TOY-03)', () {
+    test('patterns: the answer continues the rule; the top level grows a tower', () {
+      for (var seed = 0; seed < 60; seed++) {
+        for (var level = 1; level <= 3; level++) {
+          final r = patternRound(level, Random(seed));
+          final unit = level == 1 ? 2 : 3;
+          expect(r.shown.length, greaterThanOrEqualTo(unit * 2));
+          for (var i = unit; i < r.shown.length; i++) {
+            expect(r.shown[i], r.shown[i - unit], reason: 'seed $seed level $level');
+          }
+          expect(r.answer, r.shown[r.shown.length - unit]);
+          expect(r.choices, contains(r.answer));
+        }
+        final t = patternRound(4, Random(seed));
+        expect(t.towers, isTrue);
+        final sizes = [for (final s in t.shown) s.runes.length];
+        expect(t.answer.runes.length - sizes.last, sizes[1] - sizes[0]);
+        expect(t.choices.toSet().length, 3);
+      }
+    });
+
+    test('odd one out: three alike and one that isn’t, by color, shape, kind, then use', () {
+      for (var seed = 0; seed < 80; seed++) {
+        for (var level = 1; level <= 4; level++) {
+          final r = oddOneOut(level, Random(seed));
+          expect(r.items.length, 4);
+          final rest = [for (var i = 0; i < 4; i++) if (i != r.odd) r.items[i]];
+          final odd = r.items[r.odd];
+          switch (r.rule) {
+            case 'color':
+              String color(OddItem i) => kFoods.firstWhere((f) => f.emoji == i.emoji).color;
+              expect(rest.map(color).toSet().length, 1);
+              expect(color(odd), isNot(color(rest.first)));
+            case 'shape':
+              expect(rest.map((i) => i.shape).toSet().length, 1);
+              expect(odd.shape, isNot(rest.first.shape));
+            default:
+              final groups = r.rule == 'kind' ? kKinds : kUses;
+              final home = groups.entries.firstWhere((e) => e.value.contains(rest.first.emoji)).key;
+              expect(rest.every((i) => groups[home]!.contains(i.emoji)), isTrue, reason: '$seed ${r.rule}');
+              expect(groups[home]!.contains(odd.emoji), isFalse);
+          }
+        }
+      }
+      // No picture belongs to two groups of one level.
+      for (final groups in [kKinds, kUses]) {
+        final all = [for (final g in groups.values) ...g];
+        expect(all.toSet().length, all.length);
+      }
+    });
+
+    test('shadows, sizes and stories: right counts, every picture once, never pre-solved', () {
+      for (var seed = 0; seed < 40; seed++) {
+        for (var level = 1; level <= 4; level++) {
+          final sh = shadowRound(level, Random(seed));
+          expect(sh.pictures.length, kShadowCounts[level - 1]);
+          expect(sh.shadows.toSet(), sh.pictures.toSet());
+          if (level >= 3) {
+            expect(kShadowFamilies.values.any((f) => sh.pictures.every(f.contains)), isTrue, reason: 'look-alike shadows');
+          }
+          final sz = sizeRound(level, Random(seed));
+          expect(sz.scales.length, kSizeCounts[level - 1]);
+          expect([for (final i in sz.order) sz.scales[i]], [...sz.scales]..sort());
+        }
+        for (var level = 1; level <= 3; level++) {
+          final st = storyRound(level, Random(seed));
+          expect(st.story.length, kStoryLengths[level - 1]);
+          expect([...st.cards]..sort(), [...st.story]..sort());
+          expect(st.cards, isNot(st.story));
+        }
+      }
+      expect((expansionResult(0), expansionResult(1), expansionResult(2)), ('win', 'helped', 'miss'));
+      expect((expansionResult(1, size: 6), expansionResult(2, size: 6)), ('win', 'helped'));
+    });
+
+    test('picture sudoku: a valid grid with blanks that leave exactly one answer', () {
+      for (var seed = 0; seed < 60; seed++) {
+        for (var level = 1; level <= 6; level++) {
+          final r = sudokuRound(level, Random(seed));
+          expect(sudokuValid(r.solution), isTrue);
+          expect(r.blanks.length, kSudokuBlanks[level - 1]);
+          final puzzle = [for (var i = 0; i < 16; i++) r.blanks.contains(i) ? -1 : r.solution[i]];
+          expect(sudokuSolutions(puzzle), 1);
+        }
+      }
+    });
+
+    test('spot the difference: the two pictures differ exactly where the spots are', () {
+      for (var seed = 0; seed < 40; seed++) {
+        for (var level = 1; level <= 5; level++) {
+          final r = differenceRound(level, Random(seed));
+          expect(r.spots.length, kDifferenceCounts[level - 1]);
+          final changed = [for (var i = 0; i < r.left.length; i++) if (r.left[i] != r.right[i] && (r.left[i].emoji != r.right[i].emoji || r.left[i].size != r.right[i].size || r.left[i].flipped != r.right[i].flipped || r.left[i].y != r.right[i].y)) i];
+          expect(changed.length, r.spots.length, reason: 'seed $seed level $level');
+          for (final i in changed) {
+            final p = r.left[i];
+            expect(r.spots.any((s) => (s.$1 - p.x).abs() < 0.001 && (s.$2 - (p.y + r.right[i].y) / 2).abs() < 0.001), isTrue);
+          }
+          if (level <= 3) {
+            expect(changed.every((i) => r.right[i].size == 0 || r.right[i].emoji != r.left[i].emoji), isTrue, reason: 'early levels: missing or swapped');
+          }
+        }
+      }
+    });
+
+    test('finger mazes: one way home through a maze that grows', () {
+      for (var seed = 0; seed < 40; seed++) {
+        for (var level = 1; level <= 4; level++) {
+          final m = mazeRound(level, Random(seed));
+          expect((m.cols, m.rows), kMazeSizes[level - 1]);
+          expect(m.open.length, m.cols * m.rows - 1, reason: 'a perfect maze is a tree');
+          final path = m.path(m.start);
+          expect((path.first, path.last), (m.start, m.home));
+          for (var i = 1; i < path.length; i++) {
+            expect(m.connected(path[i - 1], path[i]), isTrue);
+          }
+        }
+      }
+    });
+
+    test('the expansion games join the catalog after the launch set', () {
+      expect(kGames.take(kLaunchGames.length), kLaunchGames);
+      expect(gameById('mazes')?.minMonths, 36);
+      expect(kGames.map((g) => g.id).toSet().length, kGames.length);
     });
   });
 }

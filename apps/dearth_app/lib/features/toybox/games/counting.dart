@@ -335,7 +335,8 @@ class _Choices extends StatelessWidget {
                 borderRadius: BorderRadius.circular(size * 0.24),
                 border: Border.all(color: hint == n ? const Color(0xFFFFC93C) : const Color(0xFFB9DFA0), width: hint == n ? 8 : 4),
                 // A solid halo, not a blur: blurs are too slow to animate on a frame.
-                boxShadow: [if (hint == n) const BoxShadow(color: Color(0x88FFD54F), spreadRadius: 12), ...t.elevation.e1],
+                // Always first, so only the halo animates (no blur change).
+                boxShadow: [BoxShadow(color: hint == n ? const Color(0x88FFD54F) : const Color(0x00FFD54F), spreadRadius: hint == n ? 12 : 0), ...t.elevation.e1],
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,

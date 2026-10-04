@@ -24,8 +24,12 @@ class GameInfo {
   final bool freePlay;
 }
 
-/// The launch set (FR-TOY-02), in launcher order.
-const List<GameInfo> kGames = [
+/// Every game, launcher order: the launch set (FR-TOY-02), then the
+/// expansion set (FR-TOY-03).
+const List<GameInfo> kGames = [...kLaunchGames, ...kExpansionGames];
+
+/// The launch set (FR-TOY-02).
+const List<GameInfo> kLaunchGames = [
   GameInfo('bubbles', 'Bubble Pop', '🎈', minMonths: 24, skills: ['Cause and effect'], levels: 4),
   GameInfo('paint', 'Paint Studio', '🎨', minMonths: 24, skills: ['Creativity', 'Fine motor'], levels: 3, freePlay: true),
   GameInfo('coloring', 'Magic Coloring', '🖍️', minMonths: 24, skills: ['Colors', 'Fine motor'], levels: 5),
@@ -36,6 +40,18 @@ const List<GameInfo> kGames = [
   GameInfo('memory', 'Memory Match', '🃏', minMonths: 30, skills: ['Working memory'], levels: 6),
   GameInfo('monster', 'Feed the Monster', '👾', minMonths: 30, skills: ['Classification'], levels: 4),
   GameInfo('counting', 'Counting Garden', '🌻', minMonths: 36, skills: ['Number sense'], levels: 4),
+];
+
+/// The expansion set (FR-TOY-03), in launcher order after the launch set.
+const List<GameInfo> kExpansionGames = [
+  GameInfo('patterns', 'Patterns', '🔁', minMonths: 36, skills: ['Logic'], levels: 4),
+  GameInfo('oddone', 'Odd One Out', '🔍', minMonths: 36, skills: ['Categorizing'], levels: 4),
+  GameInfo('shadows', 'Shadow Match', '👤', minMonths: 30, skills: ['Seeing shapes'], levels: 4),
+  GameInfo('sizes', 'Small to Big', '📏', minMonths: 30, skills: ['Ordering'], levels: 4),
+  GameInfo('mazes', 'Finger Mazes', '🧭', minMonths: 36, skills: ['Planning', 'Fine motor'], levels: 4),
+  GameInfo('stories', 'What Happens Next', '🎞️', minMonths: 42, skills: ['Stories', 'Cause and effect'], levels: 3),
+  GameInfo('sudoku', 'Picture Sudoku', '🧮', minMonths: 48, skills: ['Logic'], levels: 6),
+  GameInfo('differences', 'Spot the Difference', '🔎', minMonths: 48, skills: ['Attention'], levels: 5),
 ];
 
 GameInfo? gameById(String id) => kGames.where((g) => g.id == id).firstOrNull;

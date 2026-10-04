@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../app/grown_up.dart';
 import '../../../core/data/household.dart';
+import '../../toybox/games/registry.dart';
 import '../../toybox/toybox_data.dart';
 import '../../toybox/toybox_screen.dart';
 import '../settings_screen.dart';
@@ -78,7 +79,7 @@ class _ToyboxSectionState extends ConsumerState<ToyboxSection> {
             title: '${kid.name}’s games',
             footer: 'Kids see the games that suit their age. Switch one off to hide it, or on to let them try it early.',
             children: [
-              for (final g in kGames)
+              for (final g in kGames.where((g) => kGameBuilders.containsKey(g.id)))
                 _GameSwitch(game: g, kid: kid, months: months, settings: s, onChanged: (on) => _save((s) => s.withGame(kid.id, g.id, on: on, suits: g.minMonths <= months))),
             ],
           ),
@@ -86,7 +87,7 @@ class _ToyboxSectionState extends ConsumerState<ToyboxSection> {
             title: '${kid.name}’s levels',
             footer: 'Games move up after three wins in a row and ease off after three misses. Pin a level to hold it.',
             children: [
-              for (final g in kGames)
+              for (final g in kGames.where((g) => kGameBuilders.containsKey(g.id)))
                 ChoiceRow<int?>(
                   title: '${g.emoji} ${g.title}',
                   subtitle: 'Now at level ${ref.watch(gameLevelProvider((kid.id, g.id)))} of ${g.levels}',
