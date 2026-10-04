@@ -6,7 +6,6 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../app/grown_up.dart';
 import '../../../core/data/household.dart';
-import '../../../core/data/household_data.dart';
 import '../../../core/format.dart';
 import '../../../core/providers.dart';
 import '../../../shared/pickers.dart';

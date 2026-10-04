@@ -22,6 +22,10 @@ abstract final class SettingKeys {
   static const pantryStaples = 'meals.staples';
   static const weatherStation = 'weather.station';
 
+  /// Lists mirrored to Google Tasks: `{lists: [listId…], account?: email}`
+  /// (no account: the first Google account that allowed Tasks).
+  static const listsGoogleTasks = 'lists.google_tasks';
+
   /// How often the Hub fetches the weather: `{minutes: 5…60}`.
   static const weatherRefresh = 'weather.refresh';
   static const screensaver = 'display.screensaver';

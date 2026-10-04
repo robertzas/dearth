@@ -1,6 +1,5 @@
 import 'package:dearth_core/dearth_core.dart';
 
-import '../../core/data/household_data.dart' show sortKeyAfter;
 import '../calendar/event_ops.dart' show MakeOp;
 
 /// The local id of [r] once it's copied into the family box (SPEC FR-RCP-02).

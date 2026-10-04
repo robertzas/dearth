@@ -138,7 +138,14 @@ void mountAdminRoutes(Router r, HubContext ctx) {
       'google': {
         'hasClient': await has(SecretIds.googleClient, 'clientId'),
         'accounts': [
-          for (final id in await ctx.integrations.googleAccounts()) {'id': id, 'email': (await ctx.vault.getJson('${SecretIds.googleAccountPrefix}$id'))?['email']},
+          for (final id in await ctx.integrations.googleAccounts())
+            if (await ctx.vault.getJson('${SecretIds.googleAccountPrefix}$id') case final stored?)
+              {
+                'id': id,
+                'email': stored['email'],
+                // Whether the account allowed Google Tasks (list sync).
+                'tasks': '${(stored['tokens'] as Map?)?['scope'] ?? ''}'.contains(GoogleTasksApi.scope),
+              },
         ],
         'redirectUri': _googleRedirect(ctx),
       },
@@ -253,7 +260,8 @@ void mountAdminRoutes(Router r, HubContext ctx) {
     final verifier = pkceVerifier();
     final redirect = _googleRedirect(ctx);
     ctx.oauthStates[state] = {'provider': 'google', 'verifier': verifier, 'purpose': purpose, 'redirect': redirect, 'createdMs': DateTime.now().millisecondsSinceEpoch};
-    final scopes = [...GoogleOAuth.calendarScopes, if (purpose == 'photos') GoogleOAuth.photosPickerScope];
+    // Incremental consent: a purpose adds its scope to the calendar ones.
+    final scopes = [...GoogleOAuth.calendarScopes, if (purpose == 'photos') GoogleOAuth.photosPickerScope, if (purpose == 'tasks') GoogleTasksApi.scope];
     final url = oauth.authorizationUrl(redirectUri: redirect, state: state, scopes: scopes, codeChallenge: pkceChallenge(verifier));
     return jsonOk({'url': url.toString(), 'mode': ctx.config.hasHttpsPublicUrl ? 'callback' : 'paste', 'redirectUri': redirect});
   });
@@ -271,7 +279,7 @@ void mountAdminRoutes(Router r, HubContext ctx) {
     if (q['error'] != null) return htmlPage('Google sign-in cancelled', q['error']!, ok: false);
     try {
       final res = await _finishGoogle(ctx, q['code'], q['state']);
-      return htmlPage('Google connected', 'Signed in as ${res['email']}. You can close this tab — your calendars will appear on Dearth in a moment.');
+      return htmlPage('Google connected', 'Signed in as ${res['email']}. You can close this tab — your calendars and lists sync with Dearth in a moment.');
     } on HttpError catch (e) {
       return htmlPage('Google connection failed', e.message ?? e.code, ok: false);
     }
@@ -379,7 +387,9 @@ Future<Map<String, Object?>> _finishGoogle(HubContext ctx, String? code, String?
       'deleted': false,
     });
   }
-  ctx.scheduler.runNow('google-calendar');
+  ctx.scheduler
+    ..runNow('google-calendar')
+    ..runNow('google-tasks');
   return {'ok': true, 'email': accountId, 'calendars': calendars.length};
 }
 

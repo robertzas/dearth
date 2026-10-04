@@ -22,6 +22,7 @@ import 'connections.dart';
 import 'integrations.dart';
 import 'jobs/basic_jobs.dart';
 import 'jobs/google_job.dart';
+import 'jobs/google_tasks_job.dart';
 import 'jobs/photos_job.dart';
 import 'jobs/scheduler.dart';
 import 'kernel.dart';
@@ -66,6 +67,7 @@ class DearthHub {
       ..register(WeatherJob(integrations))
       ..register(IcsJob(integrations, jobs))
       ..register(google)
+      ..register(GoogleTasksJob(integrations, jobs, onTrigger: () => scheduler.runNow('google-tasks', delay: const Duration(seconds: 2))))
       ..register(PhotosJob(integrations, blobs, jobs, config))
       ..register(MaintenanceJob(kernel, blobs, config));
 

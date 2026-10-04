@@ -8,6 +8,7 @@ export 'src/calendar/ics.dart';
 export 'src/calendar/oauth.dart';
 export 'src/demo/demo_seed.dart';
 export 'src/http/fetcher.dart';
+export 'src/lists/google_tasks.dart';
 export 'src/music/music.dart';
 export 'src/photos/photos.dart';
 export 'src/recipes/catalog.dart';

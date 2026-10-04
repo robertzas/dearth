@@ -35,4 +35,5 @@ export 'src/toybox/rounds.dart';
 export 'src/util/ids.dart';
 export 'src/util/json.dart';
 export 'src/util/pin.dart';
+export 'src/util/sort_keys.dart';
 export 'src/weather/weather.dart';

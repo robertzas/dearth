@@ -9,6 +9,7 @@ import 'sections/device_section.dart';
 import 'sections/household_section.dart';
 import 'sections/hub_section.dart';
 import 'sections/kids_section.dart';
+import 'sections/lists_section.dart';
 import 'sections/people_section.dart';
 import 'sections/screensaver_section.dart';
 import 'sections/toybox_section.dart';
@@ -30,6 +31,7 @@ final List<SettingsSection> kSettingsSections = [
   SettingsSection('toybox', 'Toybox', 'Games, time and levels', Icons.toys_rounded, (_) => const ToyboxSection()),
   SettingsSection('device', 'This display', 'Theme, size, idle, night', Icons.tablet_mac_rounded, (_) => const DeviceSection()),
   SettingsSection('calendars', 'Calendars', 'Sources, colors, subscriptions', Icons.calendar_month_rounded, (_) => const CalendarsSection()),
+  SettingsSection('lists', 'Lists', 'Sync with Google Tasks', Icons.checklist_rounded, (_) => const ListsSection()),
   SettingsSection('screensaver', 'Photo frame & night', 'Screensaver and quiet hours', Icons.photo_rounded, (_) => const ScreensaverSection()),
   SettingsSection('hub', 'Hub & devices', 'Sync, pairing, devices', Icons.hub_rounded, (_) => const HubSection()),
   SettingsSection('about', 'About', 'Version and licenses', Icons.info_outline_rounded, (_) => const AboutSection()),

@@ -72,7 +72,7 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
 
 ### Phase 5 — M2 features
 - 🟡 5.1 Meals: ✅ week planner (grid on landscape, day list on portrait/phone; recipes or free text; per-entry servings; remove with undo), recipe sheet (servings scaling with friendly fractions, US/metric, add to plan, add ingredients to list, save to box, per-person face ratings), slot picker (search, "Pairs with your plan" with explanations, box, quick weeknights, Leftovers/Eat out/Takeout), Discover (search, pairs, quick, favorites, popular, Surprise me; Hub API or bundled catalog), recipe box (+ URL import on a Hub), cook mode (one step at a time, detected timers, step ingredients, keeps the display awake), week → shopping list (consolidated, sources, staples skipped), Home dinner card opens tonight's recipe · ⬜ templates / copy last week (FR-MEAL-04), leftovers links (FR-MEAL-03), per-period shopping view with check state (FR-SHOP-02..05), allergen/diet filters, cuisine passport, seasonal & "haven't had in a while" feeds, drag to move
-- 🟡 5.2 Lists ✅ (FR-LIST-01, aisle grouping for shopping, undo) · notes (display only) · ✅ kitchen timers (FR-TMR-01/02: named, presets + custom, synced so every display rings, floating pill on every screen, ring countdowns with pause / +1 min / cancel, a chime that grows louder, wakes the screensaver, cook-mode steps start them)
+- 🟡 5.2 Lists ✅ (FR-LIST-01, aisle grouping for shopping, undo; FR-LIST-03 Google Tasks sync) · notes (display only) · ✅ kitchen timers (FR-TMR-01/02: named, presets + custom, synced so every display rings, floating pill on every screen, ring countdowns with pause / +1 min / cancel, a chime that grows louder, wakes the screensaver, cook-mode steps start them)
 
 ### Phase 6 — M3 features
 - 🟡 6.1 Kids: ✅ Kids destination (a tab per kid + Grown-ups), stage-aware chart of big picture cards, "I did it!" with celebrations (confetti / stars / bubbles, buddy, praise; calm at night; reduced-motion variant), Undo for 30 s, grown-up approvals behind the PIN, grants on the append-only ledger with stable ids (idempotent, converge across devices; undo appends reversals), reward jar with a surprise reveal, star bank with a pinned goal and redemption requests, sticker book (pick and place on painted theme scenes, pages), routine run mode (stepping-stone path, visual timer, debounced steps, progress saved), grown-ups' household chores (claim Anyone chores), family team goal, Settings → Kids & chores (chore editor with who/schedule/time/rewards/approval/voice line, age-sorted chore library, routine editor from templates with steps/timers/reorder, reward editor from ideas, jar size, sticker theme and star goal per kid) · ⬜ voice prompts / TTS playback, First–Then and choice boards, kindness hearts, growing garden, potty chart, proud wall, feelings check-in, adult rotation / fairness, approval notifications
@@ -262,6 +262,15 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
   (`kids.toybox` → `off` / `early` keys `kidId.gameId`). Rounds are
   append-only `game_events`; the ladder (FR-TOY-04) is recomputed from them,
   so it converges across displays with no level table.
+- **2026-10-04** Google Tasks list sync (FR-LIST-03, owner's choice):
+  `planTaskSync` in dearth_integrations is a pure planner (per item, the
+  side that changed last wins; links remember when both sides last
+  matched, so the sync never hears its own writes as news; the first round
+  links equal words instead of doubling). The Hub's `GoogleTasksJob` keeps
+  links in its job state, polls every 3 min (Tasks has no push) and runs at
+  once on device edits. The Tasks scope is added by incremental consent
+  (`purpose=tasks`); `/api/admin/integrations` reports it per account.
+  `sortKeyAfter`/`sortKeyBetween` moved to dearth_core for the Hub.
 - **2026-10-04** Bundled recipes show TheMealDB photos of the closest dish
   (owner's choice over bundling photos): `catalogPhotoUrl` in the catalog,
   loaded when online (TheMealDB serves CORS headers, so the web demo shows
@@ -316,6 +325,7 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
 - 2026-10-03 — Home, Calendar (5 views, editor with recurring scopes, quick add), Weather, Lists, Photos + screensaver, Settings; 10 FR-CAL-13 tests, 6 sync-client tests against an in-process Hub, app flow test (steps 4.x, 5.2).
 - 2026-10-03 — `SyncStore.applyOpsBulk` + batched `replaceAll`; 200-seed equivalence test; 341 core tests green.
 - 2026-10-03 — Playwright E2E suite (4 projects) against a test Hub; app icons; Android/iOS/desktop identity (`app.dearth`); CI/CD workflow with releases; Git LFS.
+- 2026-10-04 — Google Tasks sync for lists (Settings → Lists); 5 integrations tests, 1 Hub end-to-end test against a fake Tasks API, 1 widget test.
 - 2026-10-04 — Recipe photos for the 24 bundled recipes (TheMealDB, matched by eye); 1 integrations test.
 - 2026-10-04 — Owner suggestions: on-screen volume (This display → Sound) and FreeKiosk's volume shortcut off in `deploy_frame.sh`; weather every 10 min, configurable per household. Tests: 1 core, 2 widget.
 - 2026-10-04 — Toybox launch set complete: Memory Match, Shape Sorter, Counting Garden, Feed the Monster, Magic Coloring (16 code-drawn pictures), Jigsaw (photos or art pack), Paint Studio; games can be opened early per kid; the Toybox keeps to Emoji 12 for the frame. Tests: 19 core toybox, 29 toybox widget, 11 E2E journeys × 4 viewports. Full E2E: 229 passed, 7 skipped; gate green (388 core, 104 app).

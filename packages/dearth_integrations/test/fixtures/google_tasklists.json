@@ -1,0 +1,8 @@
+{
+  "kind": "tasks#taskLists",
+  "etag": "\"LTEzNDg5MjY1MDI\"",
+  "items": [
+    {"kind": "tasks#taskList", "id": "MTU1ODk5NjA0MjQ4ODk0OTc4NjE6MDow", "etag": "\"LTEzNDg5MjY1MDI\"", "title": "My Tasks", "updated": "2026-09-30T14:02:11.000Z", "selfLink": "https://www.googleapis.com/tasks/v1/users/@me/lists/MTU1ODk5NjA0MjQ4ODk0OTc4NjE6MDow"},
+    {"kind": "tasks#taskList", "id": "R0dkUnFfbUZjYUg3ZkpnRA", "etag": "\"LTE1NjU5\"", "title": "Shopping", "updated": "2026-10-02T18:40:00.000Z", "selfLink": "https://www.googleapis.com/tasks/v1/users/@me/lists/R0dkUnFfbUZjYUg3ZkpnRA"}
+  ]
+}

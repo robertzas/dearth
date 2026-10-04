@@ -970,6 +970,13 @@ already on the list.
   private (§8.5).
 - **FR-LIST-02 [M2]** **Templates** ★: daycare bag, swim bag, beach day,
   vacation packing. Instantiate as a fresh checklist.
+- **FR-LIST-03 [M2]** **Google Tasks sync** (owner's choice; Google Keep has
+  no API for personal accounts): any list mirrors the Google task list of
+  the same name, two ways, through the Hub. Additions, ticks, edits and
+  deletions travel both ways; per item the side that changed last wins,
+  and on the first sync items with the same words are linked, not
+  doubled. Tasks has no push, so the Hub polls every 3 minutes; an edit on
+  a display syncs at once.
 - **FR-NOTE-01 [M1]** **Sticky notes & announcements:** color, optional
   target profiles or devices, start and expiry. Announcements appear as a
   Home banner and can chime once.

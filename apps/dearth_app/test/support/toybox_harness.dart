@@ -27,6 +27,3 @@ Future<List<(String, int, String)>> toyboxRounds(AppHarness h) async {
   final events = (await h.tester.runAsync(() => (h.db.select(h.db.gameEvents)..orderBy([(e) => OrderingTerm.asc(e.atMs)])).get()))!;
   return [for (final e in events) (e.game, e.level, e.result)];
 }
-
-/// The label a `tid()` node reads out.
-String labelOf(WidgetTester tester, String id) => tester.getSemantics(byId(id)).label;

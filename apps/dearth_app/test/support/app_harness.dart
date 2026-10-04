@@ -7,6 +7,7 @@ import 'package:dearth_core/dearth_core.dart';
 import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -18,7 +19,7 @@ class AppHarness {
   final ProviderContainer container;
   final DearthDb db;
 
-  static Future<AppHarness> boot(WidgetTester tester, {Size size = const Size(1920, 1080), DateTime? now, SoundPlayer sound = const SilentSound()}) async {
+  static Future<AppHarness> boot(WidgetTester tester, {Size size = const Size(1920, 1080), DateTime? now, SoundPlayer sound = const SilentSound(), List<Override> overrides = const []}) async {
     driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
     ensureTimeZones();
     tester.view.physicalSize = size;
@@ -32,14 +33,15 @@ class AppHarness {
       actorProvider.overrideWith((ref) => ref.watch(grownUpActorProvider)),
       // Tests never open the host's audio device.
       soundProvider.overrideWithValue(sound),
+      ...overrides,
     ]);
     await tester.pumpWidget(UncontrolledProviderScope(container: container, child: const DearthApp()));
     return AppHarness._(tester, container, db);
   }
 
   /// Boots, then starts the seeded demo household from onboarding.
-  static Future<AppHarness> demo(WidgetTester tester, {Size size = const Size(1920, 1080), SoundPlayer sound = const SilentSound()}) async {
-    final h = await boot(tester, size: size, sound: sound);
+  static Future<AppHarness> demo(WidgetTester tester, {Size size = const Size(1920, 1080), SoundPlayer sound = const SilentSound(), List<Override> overrides = const []}) async {
+    final h = await boot(tester, size: size, sound: sound, overrides: overrides);
     await h.settle();
     await tester.tap(byId('onboarding.demo'));
     await h.settle(30);
@@ -73,6 +75,9 @@ class AppHarness {
 
 /// A `tid()` node (AGENTS.md rule 10).
 Finder byId(String id) => find.byWidgetPredicate((w) => w is Semantics && w.properties.identifier == id);
+
+/// The label a `tid()` node reads out.
+String labelOf(WidgetTester tester, String id) => tester.getSemantics(byId(id)).label;
 
 /// Fails if any text on screen inherits MaterialApp's fallback style (the
 /// yellow double underline drawn for text outside every Material).

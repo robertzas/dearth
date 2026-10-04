@@ -77,6 +77,9 @@ back.
   sunset and the moon, what to wear, and alerts. Sources are Open-Meteo,
   NWS and Weather Underground, merged.
 - **Lists.** Shared shopping and to-do lists, grouped by aisle, with undo.
+  Any list can sync both ways with Google Tasks through the Hub (Settings →
+  Lists; your Google project needs the Tasks API enabled). Google Keep has
+  no API for personal accounts.
 - **Kitchen timers.** Named timers from preset chips or any length. A
   floating pill keeps them in view on every screen, and a finished timer
   chimes, louder each time, and wakes the display. Timers sync, so one

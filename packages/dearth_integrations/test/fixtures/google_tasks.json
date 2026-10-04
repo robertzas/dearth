@@ -1,0 +1,10 @@
+{
+  "kind": "tasks#tasks",
+  "etag": "\"MjAxNDgx\"",
+  "items": [
+    {"kind": "tasks#task", "id": "dGFzay1taWxr", "etag": "\"A1\"", "title": "Milk", "updated": "2026-10-03T15:00:00.000Z", "selfLink": "https://www.googleapis.com/tasks/v1/lists/R0dkUnFfbUZjYUg3ZkpnRA/tasks/dGFzay1taWxr", "position": "00000000000000000000", "status": "needsAction", "links": []},
+    {"kind": "tasks#task", "id": "dGFzay1lZ2dz", "etag": "\"A2\"", "title": "Eggs", "notes": "1 dozen", "updated": "2026-10-03T15:05:00.000Z", "position": "00000000000000000001", "status": "completed", "completed": "2026-10-03T15:05:00.000Z", "links": []},
+    {"kind": "tasks#task", "id": "dGFzay1vbGQ", "etag": "\"A3\"", "title": "Batteries", "updated": "2026-10-03T16:00:00.000Z", "position": "00000000000000000002", "status": "completed", "completed": "2026-10-02T10:00:00.000Z", "hidden": true, "links": []},
+    {"kind": "tasks#task", "id": "dGFzay1nb25l", "etag": "\"A4\"", "title": "Bread", "updated": "2026-10-03T16:30:00.000Z", "position": "00000000000000000003", "status": "needsAction", "deleted": true, "links": []}
+  ]
+}
