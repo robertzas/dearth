@@ -1,4 +1,5 @@
 import 'package:dearth_core/dearth_core.dart';
+import 'package:dearth_integrations/dearth_integrations.dart' show catalogPhotoUrl;
 import 'package:dearth_ui/dearth_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -24,12 +25,16 @@ class RecipeVisual extends ConsumerWidget {
     final t = DTheme.of(context);
     final r = radius ?? t.radius.card;
     final api = ref.watch(hubApiProvider);
+    // Tests stay offline: no photos from other sites.
+    final remote = !ref.watch(envProvider).e2e;
     final dpr = MediaQuery.devicePixelRatioOf(context);
     return SizedBox(
       height: height,
       child: LayoutBuilder(builder: (context, box) {
         final w = (box.maxWidth.isFinite ? box.maxWidth : 600) * dpr;
-        final url = _imageUrl(recipe?.imageBlob ?? data?.imageBlob, recipe?.imageUrl ?? data?.imageUrl, api, w.round());
+        // A catalog recipe saved before the catalog had photos finds its own.
+        final link = recipe?.imageUrl ?? data?.imageUrl ?? (recipe?.source == 'catalog' ? catalogPhotoUrl(recipe?.sourceId) : null);
+        final url = _imageUrl(recipe?.imageBlob ?? data?.imageBlob, remote ? link : null, api, w.round());
         final emoji = data != null && recipe == null ? recipeEmojiFor(data!.tags, data!.category, title) : recipeEmoji(recipe, title);
         final fallback = _EmojiTile(emoji: emoji, seed: title, radius: r);
         if (url == null) return fallback;

@@ -36,6 +36,7 @@ Useful commands (details in `README.md`):
 ## In progress
 
 - In progress: 6.2 Toybox (owner request: the toybox and all of its games). The launch set is done: all ten games with widget tests and E2E journeys, the launcher, game host and Settings → Toybox. Next: the expansion set (Appendix B, M4; letter and phonics games need voice clips), Toddler Lock (§9.3), Memory Match's family faces, saving paintings to a gallery (with the Proud wall, FR-KID-19).
+- Owner decisions (2026-10-04), in this order: (1) bundled catalog recipes get TheMealDB photos, shown when online (matched meals' image URLs; the Hub proxies them); (2) list sync goes to **Google Tasks** (two-way, to-do and shopping lists, over the Hub's Google connection; Keep has no API for personal accounts); (3) the Toybox expansion set, all 20 games, with letter, rhyme and I-Spy voices pre-generated offline by Piper (public-domain LJSpeech voice) and bundled (the frame has no TTS); Story Time uses family recordings.
 - Next: 6.3 music box, then the family Google calendar offer (FR-CAL-04) and Google reminders mapping on the Hub.
 - Then: 3.2 Android platform channel (FreeKiosk bridge, light sensor, a "setting the time…" state until the frame's clock syncs), 7.1 perf script, CI action major upgrades.
 
@@ -261,6 +262,12 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
   (`kids.toybox` → `off` / `early` keys `kidId.gameId`). Rounds are
   append-only `game_events`; the ladder (FR-TOY-04) is recomputed from them,
   so it converges across displays with no level table.
+- **2026-10-04** Bundled recipes show TheMealDB photos of the closest dish
+  (owner's choice over bundling photos): `catalogPhotoUrl` in the catalog,
+  loaded when online (TheMealDB serves CORS headers, so the web demo shows
+  them too; on a Hub they go through `/api/img`). Recipes saved before had
+  no `image_url`; the tile finds a catalog recipe's photo by `source_id`.
+  Tests stay offline: no remote photos when `AppEnv.e2e`.
 - **2026-10-04** Volume on the kitchen frame (owner request). The JT215M's
   first press of a volume button only shows the volume panel; the level
   moves from the second press on. FreeKiosk's "Volume Up 5 times" shortcut
@@ -309,6 +316,7 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
 - 2026-10-03 — Home, Calendar (5 views, editor with recurring scopes, quick add), Weather, Lists, Photos + screensaver, Settings; 10 FR-CAL-13 tests, 6 sync-client tests against an in-process Hub, app flow test (steps 4.x, 5.2).
 - 2026-10-03 — `SyncStore.applyOpsBulk` + batched `replaceAll`; 200-seed equivalence test; 341 core tests green.
 - 2026-10-03 — Playwright E2E suite (4 projects) against a test Hub; app icons; Android/iOS/desktop identity (`app.dearth`); CI/CD workflow with releases; Git LFS.
+- 2026-10-04 — Recipe photos for the 24 bundled recipes (TheMealDB, matched by eye); 1 integrations test.
 - 2026-10-04 — Owner suggestions: on-screen volume (This display → Sound) and FreeKiosk's volume shortcut off in `deploy_frame.sh`; weather every 10 min, configurable per household. Tests: 1 core, 2 widget.
 - 2026-10-04 — Toybox launch set complete: Memory Match, Shape Sorter, Counting Garden, Feed the Monster, Magic Coloring (16 code-drawn pictures), Jigsaw (photos or art pack), Paint Studio; games can be opened early per kid; the Toybox keeps to Emoji 12 for the frame. Tests: 19 core toybox, 29 toybox widget, 11 E2E journeys × 4 viewports. Full E2E: 229 passed, 7 skipped; gate green (388 core, 104 app).
 - 2026-10-03 — Toybox checkpoint: launcher, game host, Settings → Toybox, Bubble Pop, Animal Farm, Xylophone & Drums; 18 core tests, 7 widget tests, 4 E2E journeys × 4 viewports. Full E2E: 201 passed, 7 skipped.

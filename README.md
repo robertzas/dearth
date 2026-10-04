@@ -345,6 +345,9 @@ and relays them, and conflicts resolve as last-writer-wins per field
 
 ## Credits
 
+The bundled recipes show photos of similar dishes from
+[TheMealDB](https://www.themealdb.com), loaded when the display is online.
+
 The Toybox's farm animals are recordings by Joseph Sardin from
 [BigSoundBank.com](https://bigsoundbank.com), released under CC0
 (`tool/sounds/animals.py` rebuilds them). Every other sound is synthesized

@@ -174,6 +174,40 @@ String? catalogEmoji(String recipeId) {
 
 List<RecipeData>? _built;
 
+/// Each catalog recipe's photo: the closest dish on TheMealDB, shown when
+/// online (the Hub proxies it; owner's choice over bundling photos). Files
+/// under `https://www.themealdb.com/images/media/meals/`.
+const Map<String, String> _photos = {
+  'chicken-tacos': 'ypxvwv1505333929.jpg', // Crock Pot Chicken Baked Tacos
+  'cilantro-lime-rice': 'kw92t41604181871.jpg', // Japanese gohan rice
+  'black-bean-soup': 'x0mreq1784577446.jpg', // Black Bean soup
+  'quesadillas': 'qtuwxu1468233098.jpg', // Chicken Enchilada Casserole
+  'burrito-bowls': 'j8c1d51782772399.jpg', // Rice and Beans
+  'fish-tacos': 'uvuyxu1503067369.jpg', // Cajun spiced fish tacos
+  'spaghetti-bolognese': 'sutysw1468247559.jpg', // Spaghetti Bolognese
+  'mac-and-cheese': 'kpiu4t1782242131.jpg', // Macaroni Pie
+  'chicken-noodle-soup': 'lx1kkj1593349302.jpg', // Rosol (Polish Chicken Soup)
+  'fried-rice': 'wuyd2h1765655837.jpg', // Chicken Fried Rice
+  'teriyaki-salmon': 'xxyupu1468262513.jpg', // Honey Teriyaki Salmon
+  'lemon-herb-chicken': '4hzyvq1763792564.jpg', // Chicken wings with cumin, lemon & garlic
+  'banana-pancakes': 'sywswr1511383814.jpg', // Banana Pancakes
+  'turkey-meatballs': 'bnhfa71784662834.jpg', // Frikadeller - Danish Meatballs
+  'flatbread-pizza': 'x0lk931587671540.jpg', // Pizza Express Margherita
+  'greek-chicken-wraps': 'swo87v1763595282.jpg', // Shawarma chuck roast wrap
+  'beef-chili': 'uuqvwu1504629254.jpg', // Braised Beef Chilli
+  'broccoli-cheddar-soup': 'tvvxpv1511191952.jpg', // Broccoli & Stilton soup
+  'minestrone': 'xrrwpx1487347049.jpg', // Ribollita
+  'shepherds-pie': 'w8umt11583268117.jpg', // Vegetable Shepherds Pie
+  'overnight-oats': 'hyk47c1762772689.jpg', // Rømmegrøt (porridge)
+  'chicken-stir-fry': 'm0p0j81765568742.jpg', // Beef and Broccoli Stir-Fry
+  'pesto-pasta': 'wvqpwt1468339226.jpg', // Mediterranean Pasta Salad
+  'fruit-smoothie': 'pjbaq11784731571.jpg', // Creamy mango smoothie
+};
+
+/// The photo of catalog recipe [sourceId], for recipes saved before the
+/// catalog had photos.
+String? catalogPhotoUrl(String? sourceId) => _photos[sourceId] == null ? null : 'https://www.themealdb.com/images/media/meals/${_photos[sourceId]}';
+
 /// The bundled catalog as normalized recipes (built once).
 List<RecipeData> get recipeCatalog => _built ??= [
       for (final r in _catalog)
@@ -189,6 +223,7 @@ List<RecipeData> get recipeCatalog => _built ??= [
           tags: [r.$4.toLowerCase(), r.$7],
           ingredients: [for (final l in r.$8) parseIngredientLine(l)],
           steps: r.$9,
+          imageUrl: catalogPhotoUrl(r.$1),
           attribution: 'Dearth family recipes',
         ),
     ];

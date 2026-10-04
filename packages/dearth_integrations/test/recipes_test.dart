@@ -119,6 +119,16 @@ void main() {
   });
 
   group('bundled catalog', () {
+    test('every recipe has a photo on TheMealDB, also for rows saved before photos', () {
+      final photo = RegExp(r'^https://www\.themealdb\.com/images/media/meals/[a-z0-9]+\.jpg$');
+      for (final r in recipeCatalog) {
+        expect(r.imageUrl, matches(photo), reason: r.title);
+        expect(catalogPhotoUrl(r.sourceId), r.imageUrl);
+        expect(r.toFields()['image_url'], r.imageUrl, reason: 'saved with the recipe');
+      }
+      expect(catalogPhotoUrl('not-a-recipe'), isNull);
+    });
+
     test('every recipe parses cleanly and shares ingredients', () {
       expect(recipeCatalog.length, greaterThanOrEqualTo(20));
       for (final r in recipeCatalog) {
