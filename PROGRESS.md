@@ -261,6 +261,21 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
   (`kids.toybox` → `off` / `early` keys `kidId.gameId`). Rounds are
   append-only `game_events`; the ladder (FR-TOY-04) is recomputed from them,
   so it converges across displays with no level table.
+- **2026-10-04** Volume on the kitchen frame (owner request). The JT215M's
+  first press of a volume button only shows the volume panel; the level
+  moves from the second press on. FreeKiosk's "Volume Up 5 times" shortcut
+  counts *any* five volume changes within 2 s (`VolumeChangeReceiver`), so a
+  few quick presses opened its PIN screen instead of changing the volume.
+  `deploy_frame.sh` now turns it off (the magic corner stays). Dearth sets
+  the media volume itself on Android (Settings → This display → Sound,
+  `getVolume`/`setVolume` on `app.dearth/display`): a wall frame's buttons
+  are on its back.
+- **2026-10-04** Weather refresh (owner request): every 10 minutes by
+  default (5 with a personal weather station), or the household's
+  `weather.refresh` choice (5 min to 1 hour, Settings → Household). The
+  Auto theme already follows sunrise and sunset at the household location,
+  the same place the weather uses; with no location it falls back to
+  7:00–19:00.
 - **2026-10-04** Emoji on the kitchen frame: its Android 10 system font
   draws Emoji 12 at most (checked against the frame's
   `/system/fonts/NotoColorEmoji.ttf`), so anything newer is an empty box
@@ -294,6 +309,7 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
 - 2026-10-03 — Home, Calendar (5 views, editor with recurring scopes, quick add), Weather, Lists, Photos + screensaver, Settings; 10 FR-CAL-13 tests, 6 sync-client tests against an in-process Hub, app flow test (steps 4.x, 5.2).
 - 2026-10-03 — `SyncStore.applyOpsBulk` + batched `replaceAll`; 200-seed equivalence test; 341 core tests green.
 - 2026-10-03 — Playwright E2E suite (4 projects) against a test Hub; app icons; Android/iOS/desktop identity (`app.dearth`); CI/CD workflow with releases; Git LFS.
+- 2026-10-04 — Owner suggestions: on-screen volume (This display → Sound) and FreeKiosk's volume shortcut off in `deploy_frame.sh`; weather every 10 min, configurable per household. Tests: 1 core, 2 widget.
 - 2026-10-04 — Toybox launch set complete: Memory Match, Shape Sorter, Counting Garden, Feed the Monster, Magic Coloring (16 code-drawn pictures), Jigsaw (photos or art pack), Paint Studio; games can be opened early per kid; the Toybox keeps to Emoji 12 for the frame. Tests: 19 core toybox, 29 toybox widget, 11 E2E journeys × 4 viewports. Full E2E: 229 passed, 7 skipped; gate green (388 core, 104 app).
 - 2026-10-03 — Toybox checkpoint: launcher, game host, Settings → Toybox, Bubble Pop, Animal Farm, Xylophone & Drums; 18 core tests, 7 widget tests, 4 E2E journeys × 4 viewports. Full E2E: 201 passed, 7 skipped.
 - 2026-10-03 — Kid timeline (FR-CAL-10: core layout + 5 tests, Timeline view, "My day" on the Kids screen, 2 widget tests, 2 E2E journeys); fixed the photo frame that a tap couldn't wake (2 idle-engine tests); immersive bars and accelerometer orientation on wall displays (3 tests); routine run mode no longer changes providers mid-build.

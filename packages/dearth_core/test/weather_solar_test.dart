@@ -38,6 +38,14 @@ void main() {
     });
   });
 
+  test('weather updates every 10 minutes (5 with a station) unless the household picks', () {
+    expect(weatherRefresh(const {}, hasStation: false), const Duration(minutes: 10));
+    expect(weatherRefresh(const {}, hasStation: true), const Duration(minutes: 5));
+    expect(weatherRefresh(const {'minutes': 30}, hasStation: true), const Duration(minutes: 30));
+    expect(weatherRefresh(const {'minutes': 1}, hasStation: false), const Duration(minutes: 5), reason: 'not faster than the services like');
+    expect(weatherRefresh(const {'minutes': 600}, hasStation: false), const Duration(minutes: 60));
+  });
+
   test('WeatherReport JSON round-trip', () {
     const r = WeatherReport(
       fetchedMs: 1,

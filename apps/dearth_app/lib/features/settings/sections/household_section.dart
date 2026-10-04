@@ -44,6 +44,14 @@ class HouseholdSection extends ConsumerWidget {
               onTap: () => _pickLocation(context, ref),
             ),
             DListRow(title: 'Time zone', subtitle: h.timezone),
+            ChoiceRow<int?>(
+              title: 'Weather updates',
+              subtitle: 'How often the Hub checks the forecast',
+              idPrefix: 'household.weather',
+              options: [for (final m in kWeatherRefreshChoices) (m, m < 60 ? '$m min' : '1 hour')],
+              value: (ref.watch(settingMapProvider(SettingKeys.weatherRefresh))['minutes'] as num?)?.toInt() ?? 10,
+              onChanged: (v) => writer.commit([settingOp(writer, SettingKeys.weatherRefresh, {'minutes': v})]),
+            ),
           ],
         ),
         SettingsGroup(

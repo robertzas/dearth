@@ -1,6 +1,7 @@
 package app.dearth
 
 import android.content.pm.ActivityInfo
+import android.media.AudioManager
 import android.os.Bundle
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -23,6 +24,23 @@ class MainActivity : FlutterActivity() {
                     prefs().edit().putString(ORIENTATION, mode).apply()
                     applyOrientation(mode)
                     result.success(null)
+                }
+                // The media volume Dearth plays at (chimes, timers, the
+                // Toybox): a wall frame's own buttons are out of reach.
+                "getVolume" -> {
+                    val audio = getSystemService(AUDIO_SERVICE) as AudioManager
+                    result.success(listOf(audio.getStreamVolume(AudioManager.STREAM_MUSIC), audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)))
+                }
+                "setVolume" -> {
+                    val audio = getSystemService(AUDIO_SERVICE) as AudioManager
+                    val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                    try {
+                        audio.setStreamVolume(AudioManager.STREAM_MUSIC, ((call.arguments as? Int) ?: 0).coerceIn(0, max), 0)
+                        result.success(null)
+                    } catch (e: SecurityException) {
+                        // Do Not Disturb can refuse a change.
+                        result.error("volume", e.message, null)
+                    }
                 }
                 else -> result.notImplemented()
             }

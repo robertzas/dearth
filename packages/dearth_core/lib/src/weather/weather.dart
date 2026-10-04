@@ -588,6 +588,19 @@ List<WearItem> whatToWear({
   return items;
 }
 
+/// The choices for how often the weather updates, in minutes.
+const List<int> kWeatherRefreshChoices = [5, 10, 15, 30, 60];
+
+/// How often the Hub fetches the weather (SPEC §14.3): the household's
+/// choice (`weather.refresh`), else every 10 minutes, or 5 with a personal
+/// weather station, whose readings change that fast. Open-Meteo's free tier
+/// allows far more than either.
+Duration weatherRefresh(Map<String, Object?> setting, {required bool hasStation}) {
+  final minutes = (setting['minutes'] as num?)?.toInt();
+  if (minutes == null) return Duration(minutes: hasStation ? 5 : 10);
+  return Duration(minutes: minutes.clamp(5, 60));
+}
+
 /// °C → display value in the household's units.
 double displayTemp(double c, {required bool imperial}) => imperial ? c * 9 / 5 + 32 : c;
 double displayPrecip(double mm, {required bool imperial}) => imperial ? mm / 25.4 : mm;

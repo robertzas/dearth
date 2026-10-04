@@ -7,8 +7,9 @@
 #     home app, locked to Dearth: it starts Dearth on boot and brings it back
 #     if it exits.
 #   • Magic corner: tap the bottom-right corner 5 times within 2 seconds, then
-#     enter the PIN (1234), to reach FreeKiosk's settings. Pressing Volume Up
-#     5 times works too.
+#     enter the PIN (1234), to reach FreeKiosk's settings. The volume buttons
+#     just change the volume (FreeKiosk's "Volume Up 5 times" shortcut is off:
+#     it swallowed every Volume Up press).
 #   • Auto-rotate on. Adaptive brightness on, so the screen dims with the room.
 #     The screen never times out, there is no lock screen, Android's own
 #     screensaver is off (Dearth has its own) and Wi-Fi stays on.
@@ -428,7 +429,7 @@ FK_EXPECTED=(
   "@kiosk_return_tap_count=$TAPS|"
   "@kiosk_return_tap_timeout=$WINDOW|"
   "@kiosk_overlay_button_visible=false|"
-  "@kiosk_volume_up_5tap_enabled=true|Volume Up 5 times also asks for the PIN"
+  "@kiosk_volume_up_5tap_enabled=false|The volume buttons change the volume"
   "@kiosk_keep_screen_on=true|Screen stays on"
   "@brightness_management_enabled=false|Brightness left to Android (adaptive)"
   "@kiosk_auto_brightness_enabled=false|"
@@ -442,7 +443,7 @@ FK_EXTRAS=(
   --es pin "$PIN" --es lock_package "$APP" --es display_mode external_app --es external_app_mode single
   --es kiosk_enabled true --es auto_launch true --es auto_relaunch true --es back_button_mode immediate
   --es return_mode button --es return_button_position "$CORNER" --es return_tap_count "$TAPS"
-  --es return_tap_timeout "$WINDOW" --es overlay_button_visible false --es volume_up_5tap_enabled true
+  --es return_tap_timeout "$WINDOW" --es overlay_button_visible false --es volume_up_5tap_enabled false
   --es keep_screen_on true --es brightness_management_enabled false --es auto_brightness_enabled false
   --es screensaver_enabled false --es allow_notifications false --es allow_system_info false
   --es status_bar_enabled false --ez auto_start true
@@ -728,7 +729,7 @@ fi
 section "Summary"
 front=$(focus)
 [ "$front" = "$APP" ] && ok "Dearth ${APP_HAVE:-} is in front" || note "In front now: ${front:-unknown}"
-note "Back to FreeKiosk: tap the $CORNER corner $TAPS times within $TAP_SECONDS s (or press Volume Up 5 times), then the PIN."
+note "Back to FreeKiosk: tap the $CORNER corner $TAPS times within $TAP_SECONDS s, then the PIN."
 if [ $CHECK = 1 ]; then
   if [ $((DIFFS + PROBLEMS)) = 0 ]; then ok "Everything is set up"; exit 0; fi
   printf '  %d difference(s). Run without --check to fix them.\n' $((DIFFS + PROBLEMS))

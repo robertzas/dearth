@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dearth_core/dearth_core.dart';
 import 'package:dearth_ui/dearth_ui.dart';
 import 'package:flutter/foundation.dart';
@@ -6,8 +8,16 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../app/display_state.dart';
 import '../../../core/data/household.dart';
+import '../../../core/platform/system_ui.dart';
 import '../../../core/providers.dart';
+import '../../../core/sound.dart';
 import '../settings_screen.dart';
+
+/// This device's media volume as (level, max), where Dearth can set it.
+final mediaVolumeProvider = FutureProvider.autoDispose<(int, int)?>((ref) => mediaVolume());
+
+/// Volume steps a family can tell apart: share of the device's maximum.
+const List<(double, String)> kVolumeSteps = [(0, 'Off'), (0.25, 'Quiet'), (0.5, 'Medium'), (0.75, 'Loud'), (1, 'Max')];
 
 /// Per-device display settings (SPEC FR-DEV-05, §11.2 uiScale, §11.6 themes).
 class DeviceSection extends ConsumerWidget {
@@ -107,6 +117,26 @@ class DeviceSection extends ConsumerWidget {
                 title: 'Keep the screen on',
                 value: s.keepAwake,
                 onChanged: (v) => patch({'keepAwake': v}),
+              ),
+            ],
+          ),
+        if (ref.watch(mediaVolumeProvider).value case (final level, final max) when max > 0)
+          SettingsGroup(
+            title: 'Sound',
+            footer: 'Chimes, timers and the Toybox play at this volume. The buttons on the device change it too.',
+            children: [
+              ChoiceRow<double>(
+                title: 'Volume',
+                idPrefix: 'device.volume',
+                options: kVolumeSteps,
+                // The step nearest the device's level (its buttons move it too).
+                value: kVolumeSteps.map((s) => s.$1).reduce((a, b) => (a - level / max).abs() <= (b - level / max).abs() ? a : b),
+                onChanged: (v) async {
+                  await setMediaVolume((v * max).round());
+                  ref.invalidate(mediaVolumeProvider);
+                  // A chime at the new level, so it can be heard.
+                  if (v > 0) unawaited(ref.read(soundProvider).play(Sfx.reminder));
+                },
               ),
             ],
           ),

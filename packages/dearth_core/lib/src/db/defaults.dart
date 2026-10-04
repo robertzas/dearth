@@ -21,6 +21,9 @@ abstract final class SettingKeys {
   static const excludedIngredients = 'meals.excluded';
   static const pantryStaples = 'meals.staples';
   static const weatherStation = 'weather.station';
+
+  /// How often the Hub fetches the weather: `{minutes: 5…60}`.
+  static const weatherRefresh = 'weather.refresh';
   static const screensaver = 'display.screensaver';
   static const nightSchedule = 'display.night';
   static const toybox = 'kids.toybox';

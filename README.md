@@ -216,9 +216,10 @@ It sets up:
   boot and brings it back if it closes.
 - **The way out:** tap the **bottom-right corner 5 times** within 2
   seconds, then enter the PIN, **1234**. FreeKiosk's settings open, and you
-  can leave the kiosk from there. Pressing Volume Up 5 times also brings up
-  the PIN. Dearth keeps that corner free of controls. `--pin`, `--corner`
-  and `--taps` change the gesture.
+  can leave the kiosk from there. Dearth keeps that corner free of
+  controls. `--pin`, `--corner` and `--taps` change the gesture.
+- **The volume buttons** change the volume. FreeKiosk's "Volume Up 5 times"
+  shortcut stays off, because it swallowed every Volume Up press.
 - **The display:**
   - Auto-rotate and adaptive brightness are on, so the screen dims with
     the room's light.

@@ -1991,7 +1991,9 @@ health is shown with a "Reconnect" action when a refresh token is revoked.
 - Daily: `temperature_2m_max/min, precipitation_sum,
   precipitation_probability_max, precipitation_hours, sunshine_duration,
   daylight_duration, uv_index_max, sunrise, sunset, weather_code`
-- Cadence 30 min. Attribution: "Weather data by Open-Meteo.com" (CC BY 4.0).
+- Cadence: every 10 min by default (5 with a personal weather station), set
+  per household in Settings → Household (5 min to 1 hour). Attribution:
+  "Weather data by Open-Meteo.com" (CC BY 4.0).
   Free for non-commercial use.
 - **[M4]** Air quality via `air-quality-api.open-meteo.com` (US AQI; pollen
   where available).
@@ -2213,7 +2215,7 @@ generated from the shelf routes and committed.
 
 | Job | Cadence |
 |---|---|
-| Weather: WU current / WU forecast / Open-Meteo / NWS alerts | 5 min / 30 min / 30 min / 5 min |
+| Weather (WU current and forecast, Open-Meteo, NWS alerts, one run) | Every 10 min by default, 5 with a personal weather station; per household, 5 min to 1 hour |
 | Google Calendar | Push-triggered + fallback 10 min; channel renewal daily |
 | ICS feeds | Per source (default 6 h) |
 | Photos: Amazon share / folders / Immich pool top-up | 60 min / inotify or 15 min / 6 h |

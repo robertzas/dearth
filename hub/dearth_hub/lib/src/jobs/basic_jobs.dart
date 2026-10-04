@@ -16,13 +16,14 @@ final _log = Logger('jobs');
 class WeatherJob implements HubJob {
   WeatherJob(this.integrations);
   final Integrations integrations;
-  bool _hasStation = false;
+  Duration _every = weatherRefresh(const {}, hasStation: false);
 
   @override
   String get id => 'weather';
 
+  /// The household's choice (Settings → Household), read at every run.
   @override
-  Duration nextDelay() => Duration(minutes: _hasStation ? 5 : 30);
+  Duration nextDelay() => _every;
 
   @override
   Future<void> run() async {
@@ -31,7 +32,7 @@ class WeatherJob implements HubJob {
       await integrations.report('weather', ok: false, message: 'Set the household location to get weather');
       return;
     }
-    _hasStation = cfg.hasStation;
+    _every = weatherRefresh(await integrations.setting(SettingKeys.weatherRefresh), hasStation: cfg.hasStation);
     final db = integrations.db;
     final prevRow = await (db.select(db.weatherReports)..where((t) => t.id.equals(Ids.weather))).getSingleOrNull();
     final previous = WeatherReport.tryDecode(prevRow?.data);
