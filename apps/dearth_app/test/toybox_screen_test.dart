@@ -22,11 +22,10 @@ void main() {
     final handle = tester.ensureSemantics();
     final h = await AppHarness.demo(tester);
     await toybox(h);
-    for (final id in ['bubbles', 'farm', 'music']) {
-      expect(byId('toybox.game.$id'), findsOneWidget, reason: id);
+    for (final g in kGames.where((g) => g.minMonths <= 30)) {
+      expect(byId('toybox.game.${g.id}'), findsOneWidget, reason: g.id);
     }
     expect(byId('toybox.game.counting'), findsNothing, reason: 'counting is for 3+');
-    expect(byId('toybox.game.paint'), findsNothing, reason: 'no playfield yet');
     expect(byId('toybox.new.bubbles'), findsOneWidget);
 
     await tester.tap(byId('toybox.game.bubbles'));

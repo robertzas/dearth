@@ -130,3 +130,29 @@ export async function longPressDrag(page: Page, target: Locator, dx: number, dy:
   await page.waitForTimeout(150);
   await page.mouse.up();
 }
+
+/** Drags the centre of [from] to the centre of [to] (or a point), as a finger would. */
+export async function drag(page: Page, from: Locator, to: Locator | { x: number; y: number }): Promise<void> {
+  const el = from.first();
+  await el.waitFor({ state: 'visible' });
+  const a = (await el.boundingBox())!;
+  const b = 'x' in to ? to : await (async () => {
+    const box = (await to.first().boundingBox())!;
+    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  })();
+  await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(b.x, b.y, { steps: 14 });
+  await page.waitForTimeout(80);
+  await page.mouse.up();
+}
+
+/** Holds a finger on [target] for [ms] (hold-to-activate controls). */
+export async function hold(page: Page, target: Locator, ms = 3300): Promise<void> {
+  const box = (await target.first().boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(ms);
+  await page.mouse.up();
+}
+

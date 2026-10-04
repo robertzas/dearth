@@ -26,7 +26,7 @@ class GameInfo {
 
 /// The launch set (FR-TOY-02), in launcher order.
 const List<GameInfo> kGames = [
-  GameInfo('bubbles', 'Bubble Pop', '🫧', minMonths: 24, skills: ['Cause and effect'], levels: 4),
+  GameInfo('bubbles', 'Bubble Pop', '🎈', minMonths: 24, skills: ['Cause and effect'], levels: 4),
   GameInfo('paint', 'Paint Studio', '🎨', minMonths: 24, skills: ['Creativity', 'Fine motor'], levels: 3, freePlay: true),
   GameInfo('coloring', 'Magic Coloring', '🖍️', minMonths: 24, skills: ['Colors', 'Fine motor'], levels: 5),
   GameInfo('farm', 'Animal Farm', '🐮', minMonths: 24, skills: ['Vocabulary', 'Listening'], levels: 3),

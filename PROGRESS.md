@@ -35,7 +35,7 @@ Useful commands (details in `README.md`):
 
 ## In progress
 
-- In progress: 6.2 Toybox (owner request: the toybox and all of its games). Done: core rules (catalog, adaptive ladder, time budget, every launch-set game's rounds and results; 18 tests), game sounds and ten CC0 animal recordings, the launcher (`/toybox`, a "Toys" destination), the game host, Settings → Toybox (time, hours, volume, per-kid game switches incl. opening a game early, level pins), and three games: Bubble Pop, Animal Farm, Xylophone & Drums (7 widget tests, 4 E2E journeys). The launcher hides games without a playfield. Next: Memory Match, Shape Sorter, Counting Garden, Feed the Monster, Magic Coloring, Jigsaw, Paint Studio (each with widget tests and an E2E journey), then the expansion set (Appendix B, M4).
+- In progress: 6.2 Toybox (owner request: the toybox and all of its games). The launch set is done: all ten games with widget tests and E2E journeys, the launcher, game host and Settings → Toybox. Next: the expansion set (Appendix B, M4; letter and phonics games need voice clips), Toddler Lock (§9.3), Memory Match's family faces, saving paintings to a gallery (with the Proud wall, FR-KID-19).
 - Next: 6.3 music box, then the family Google calendar offer (FR-CAL-04) and Google reminders mapping on the Hub.
 - Then: 3.2 Android platform channel (FreeKiosk bridge, light sensor, a "setting the time…" state until the frame's clock syncs), 7.1 perf script, CI action major upgrades.
 
@@ -75,7 +75,7 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
 
 ### Phase 6 — M3 features
 - 🟡 6.1 Kids: ✅ Kids destination (a tab per kid + Grown-ups), stage-aware chart of big picture cards, "I did it!" with celebrations (confetti / stars / bubbles, buddy, praise; calm at night; reduced-motion variant), Undo for 30 s, grown-up approvals behind the PIN, grants on the append-only ledger with stable ids (idempotent, converge across devices; undo appends reversals), reward jar with a surprise reveal, star bank with a pinned goal and redemption requests, sticker book (pick and place on painted theme scenes, pages), routine run mode (stepping-stone path, visual timer, debounced steps, progress saved), grown-ups' household chores (claim Anyone chores), family team goal, Settings → Kids & chores (chore editor with who/schedule/time/rewards/approval/voice line, age-sorted chore library, routine editor from templates with steps/timers/reorder, reward editor from ideas, jar size, sticker theme and star goal per kid) · ⬜ voice prompts / TTS playback, First–Then and choice boards, kindness hearts, growing garden, potty chart, proud wall, feelings check-in, adult rotation / fairness, approval notifications
-- 🟡 6.2 Toybox: ✅ core rules (catalog, adaptive difficulty FR-TOY-04, time budget and hours FR-TOY-05, launch-set rounds), game sounds, CC0 animal recordings, launcher (FR-TOY-01: picture tiles by age, "new!" sparkle, time left, grown-up corner), game host (levels, volume cap, two-minute warning, "the Toybox is sleeping"), parent controls (FR-TOY-05), Bubble Pop, Animal Farm, Xylophone & Drums · ⬜ Memory Match, Shape Sorter, Counting Garden, Feed the Monster, Magic Coloring, Jigsaw, Paint Studio, Toddler Lock (§9.3), expansion set (M4)
+- 🟡 6.2 Toybox: ✅ core rules (catalog, adaptive difficulty FR-TOY-04, time budget and hours FR-TOY-05, launch-set rounds and results), game sounds, CC0 animal recordings, launcher (FR-TOY-01: picture tiles by age, "new!" sparkle, time left, grown-up corner), game host (levels, volume cap, two-minute warning, "the Toybox is sleeping"), parent controls (FR-TOY-05: time, hours, volume, per-kid game switches incl. opening a game early, level pins), the launch set (FR-TOY-02): Bubble Pop, Paint Studio (brush, crayon, marker, spray, rainbow; stamps and scenes at level 2, mirror at 3; undo, new sheet), Magic Coloring (16 code-drawn pictures, 4 → 26 parts), Animal Farm, Shape Sorter (rotated holes at the top), Xylophone & Drums, Jigsaw (family photos or the art pack, 2 → 24 tabbed pieces), Memory Match (2 → 12 pairs), Feed the Monster (color → shape/kind → two at once), Counting Garden (1–3 → 1–10 → flashes) · ⬜ Toddler Lock (§9.3), Memory Match family faces, save paintings to a gallery, skills report (FR-TOY-06), expansion set (M4)
 - ⬜ 6.3 Music box: tiles, local files, YouTube, Spotify (via Hub)
 
 ### Phase 7 — Deployment tooling & CI
@@ -261,6 +261,21 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
   (`kids.toybox` → `off` / `early` keys `kidId.gameId`). Rounds are
   append-only `game_events`; the ladder (FR-TOY-04) is recomputed from them,
   so it converges across displays with no level table.
+- **2026-10-04** Emoji on the kitchen frame: its Android 10 system font
+  draws Emoji 12 at most (checked against the frame's
+  `/system/fonts/NotoColorEmoji.ttf`), so anything newer is an empty box
+  there. The Toybox uses Emoji 12 only (a core test guards its catalog;
+  Bubble Pop's tile is painted, blueberries left the monster's foods). 23
+  other source lines still use Emoji 13+ (chores like 🪥 brush teeth and
+  🪴, 🛝 in event icons, 🫙 the reward jar): they need the Fluent Emoji
+  assets of SPEC §11.3, or substitutes.
+- **2026-10-04** Toybox art is drawn in code, so the app ships no image
+  files for it: Magic Coloring's pictures are `Path` regions (each part's
+  visible area is the part minus everything above it, computed once), the
+  Jigsaw cuts a Hub photo at board size or a painted art-pack scene, and
+  Paint Studio bakes finished strokes into one image so a frame only draws
+  the stroke in progress. Pieces, cards and shapes each sit in their own
+  `RepaintBoundary`, so moving one repaints nothing else.
 - **2026-10-03** Follow-ups: bundle a Fluent Emoji subset (SPEC §11.3; web
   currently fetches Noto Color Emoji at runtime), slim the Hub image, Postgres
   backend, weather/recipe key settings UI.
@@ -279,6 +294,7 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
 - 2026-10-03 — Home, Calendar (5 views, editor with recurring scopes, quick add), Weather, Lists, Photos + screensaver, Settings; 10 FR-CAL-13 tests, 6 sync-client tests against an in-process Hub, app flow test (steps 4.x, 5.2).
 - 2026-10-03 — `SyncStore.applyOpsBulk` + batched `replaceAll`; 200-seed equivalence test; 341 core tests green.
 - 2026-10-03 — Playwright E2E suite (4 projects) against a test Hub; app icons; Android/iOS/desktop identity (`app.dearth`); CI/CD workflow with releases; Git LFS.
+- 2026-10-04 — Toybox launch set complete: Memory Match, Shape Sorter, Counting Garden, Feed the Monster, Magic Coloring (16 code-drawn pictures), Jigsaw (photos or art pack), Paint Studio; games can be opened early per kid; the Toybox keeps to Emoji 12 for the frame. Tests: 19 core toybox, 29 toybox widget, 11 E2E journeys × 4 viewports. Full E2E: 229 passed, 7 skipped; gate green (388 core, 104 app).
 - 2026-10-03 — Toybox checkpoint: launcher, game host, Settings → Toybox, Bubble Pop, Animal Farm, Xylophone & Drums; 18 core tests, 7 widget tests, 4 E2E journeys × 4 viewports. Full E2E: 201 passed, 7 skipped.
 - 2026-10-03 — Kid timeline (FR-CAL-10: core layout + 5 tests, Timeline view, "My day" on the Kids screen, 2 widget tests, 2 E2E journeys); fixed the photo frame that a tap couldn't wake (2 idle-engine tests); immersive bars and accelerometer orientation on wall displays (3 tests); routine run mode no longer changes providers mid-build.
 - 2026-10-03 — `tool/deploy_frame.sh`: sets up, checks or updates an Android wall display over network ADB; the kitchen frame now has a working exit corner, auto-rotate, adaptive brightness and the current Dearth. README section for it.

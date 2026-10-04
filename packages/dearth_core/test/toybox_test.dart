@@ -169,6 +169,20 @@ void main() {
       expect(kXylophoneMidi.length, 8);
     });
 
+    test('every picture is an Emoji 12 glyph: the kitchen frame (Android 10) draws nothing newer', () {
+      // Emoji 13+ in the blocks the toybox draws from (SPEC §6, Appendix A).
+      const emoji12 = {0x1FA70, 0x1FA71, 0x1FA72, 0x1FA73, 0x1FA78, 0x1FA79, 0x1FA7A, 0x1FA80, 0x1FA81, 0x1FA82, 0x1FA90, 0x1FA91, 0x1FA92, 0x1FA93, 0x1FA94, 0x1FA95};
+      const newer = {0x1F90C, 0x1F972, 0x1F977, 0x1F978, 0x1F979, 0x1F9A3, 0x1F9A4, 0x1F9AB, 0x1F9AC, 0x1F9AD, 0x1F9CB, 0x1F9CC, 0x1F6D6, 0x1F6D7, 0x1F6DC, 0x1F6DD, 0x1F6DE, 0x1F6DF, 0x1F6FB, 0x1F6FC, 0x1F7F0};
+      bool draws(String e) => e.runes.every((cp) => !newer.contains(cp) && !(cp >= 0x1FA70 && cp <= 0x1FAFF && !emoji12.contains(cp)));
+      final pictures = [
+        for (final g in kGames) g.emoji,
+        ...kMemoryFaces,
+        for (final f in kFoods) f.emoji,
+        for (final a in kFarmAnimals) a.emoji,
+      ];
+      expect([for (final p in pictures) if (!draws(p)) p], isEmpty);
+    });
+
     test('bubbles speed up, then call a color', () {
       expect([for (var l = 1; l <= 4; l++) bubbleRound(l).colorCall], [false, false, true, true]);
       expect(bubbleRound(2).riseSeconds, lessThan(bubbleRound(1).riseSeconds));

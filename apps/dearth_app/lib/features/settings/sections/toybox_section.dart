@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../app/grown_up.dart';
 import '../../../core/data/household.dart';
 import '../../toybox/toybox_data.dart';
+import '../../toybox/toybox_screen.dart';
 import '../settings_screen.dart';
 
 /// Toybox (SPEC FR-TOY-04/05): which games are on, how long and when kids
@@ -123,7 +124,7 @@ class _GameSwitch extends StatelessWidget {
     final age = '${game.minMonths ~/ 12}${game.minMonths % 12 == 6 ? '½' : ''}+';
     return DSwitchRow(
       id: 'toybox.on.${game.id}',
-      leading: DEmoji(game.emoji, size: 28 * t.scale),
+      leading: GameIcon(game, size: 28 * t.scale),
       title: game.title,
       subtitle: '$age · ${game.skills.join(', ')}${suits ? '' : (on ? ' · opened early' : ' · when ${kid.name} is older')}',
       value: on,

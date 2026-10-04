@@ -274,7 +274,7 @@ class _Drums extends StatelessWidget {
 
   static const _kit = [
     (Sfx.kick, 'Big drum', '🥁', Color(0xFFD9534F)),
-    (Sfx.snare, 'Snare', '🪘', Color(0xFF5B5BD6)),
+    (Sfx.snare, 'Snare', '👏', Color(0xFF5B5BD6)),
     (Sfx.tom, 'Tom', '🛢️', Color(0xFF2EB8A6)),
     (Sfx.hat, 'Cymbal', '🔔', Color(0xFFE5B53D)),
   ];

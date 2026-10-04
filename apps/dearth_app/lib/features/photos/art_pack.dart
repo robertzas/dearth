@@ -26,6 +26,9 @@ class ArtScene extends StatelessWidget {
   Widget build(BuildContext context) => RepaintBoundary(child: CustomPaint(painter: _ArtPainter(index % kArtCount), size: Size.infinite));
 }
 
+/// Paints art scene [index] into [canvas] (the Toybox's jigsaw cuts it up).
+void paintArt(Canvas canvas, Size size, int index) => _ArtPainter(index % kArtCount).paint(canvas, size);
+
 class _ArtPainter extends CustomPainter {
   _ArtPainter(this.index);
   final int index;

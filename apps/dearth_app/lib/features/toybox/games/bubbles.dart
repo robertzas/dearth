@@ -176,7 +176,7 @@ class BubbleGameState extends ConsumerState<BubbleGame> with SingleTickerProvide
     c.sound(Sfx.pop, rate: (1.45 - b.r / 120 * 0.7).clamp(0.75, 1.5));
     if (++_popped >= _round.targets) {
       final result = _call == null ? GameResult.win : resultFor(_slips, allowed: 2);
-      c.finishRound(result, emoji: '🫧').then((_) => _newRound());
+      c.finishRound(result, emoji: '🎈').then((_) => _newRound());
     } else {
       setState(() {});
     }

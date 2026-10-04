@@ -63,6 +63,15 @@ back.
   approve, tick off household chores, and fill a family
   goal together. Chores, routines and rewards are set up in Settings,
   starting from an age-sorted library of chores toddlers can really do.
+- **Toybox.** Ten games for ages 2 to 5, with no ads, no links and no
+  network needed: Bubble Pop, Paint Studio, Magic Coloring, Animal Farm
+  (real animal recordings), Shape Sorter, Xylophone & Drums, Jigsaw (cut
+  from the family's photos), Memory Match, Feed the Monster and Counting
+  Garden. Each kid sees the games that suit their age, and every game
+  adapts: three wins in a row go up a level, three misses ease off, and
+  nothing ever says "wrong". Grown-ups set a daily time limit and opening
+  hours (a game says goodnight when time is up), cap the volume, switch
+  games off or open them early, and pin levels.
 - **Weather.** The current conditions and a 36-hour chart with rain, sun
   and UV bands. It also shows a rain summary, a 10-day forecast, sunrise,
   sunset and the moon, what to wear, and alerts. Sources are Open-Meteo,
@@ -95,6 +104,10 @@ back.
 <td><img src="docs/images/stickers-wall-l.png" alt="Sticker book"></td>
 </tr>
 <tr>
+<td><img src="docs/images/toybox-wall-l.png" alt="The Toybox"></td>
+<td><img src="docs/images/coloring-wall-l.png" alt="Magic Coloring"></td>
+</tr>
+<tr>
 <td><img src="docs/images/home-tablet.png" alt="Home on a tablet"></td>
 <td><img src="docs/images/photos-wall-l.png" alt="Photo frame curation"></td>
 </tr>
@@ -108,8 +121,8 @@ back.
 <img src="docs/images/calendar-phone.png" height="420" alt="Phone: calendar">
 </p>
 
-Still to come: voice prompts, a music box and toybox, and meal-plan
-templates. On kiosk frames,
+Still to come: voice prompts, a music box, the Toybox's second set of
+games, and meal-plan templates. On kiosk frames,
 Dearth will also turn the screen off at night and set its brightness itself.
 [`PROGRESS.md`](PROGRESS.md) tracks the build, and [`SPEC.md`](SPEC.md) is
 the full product specification.

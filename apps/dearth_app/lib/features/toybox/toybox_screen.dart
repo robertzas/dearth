@@ -149,7 +149,7 @@ class _Tile extends ConsumerWidget {
           ),
           child: Stack(
             children: [
-              Center(child: Padding(padding: EdgeInsets.only(bottom: size * 0.14), child: DEmoji(game.emoji, size: size * 0.44))),
+              Center(child: Padding(padding: EdgeInsets.only(bottom: size * 0.14), child: GameIcon(game, size: size * 0.44))),
               Positioned(
                 left: t.space.sm,
                 right: t.space.sm,
@@ -193,6 +193,49 @@ class _Tile extends ConsumerWidget {
       ],
     );
   }
+}
+
+/// A game's picture: its emoji, or for Bubble Pop painted bubbles (the
+/// bubble emoji is newer than Android 10, so the kitchen frame can't draw it).
+class GameIcon extends StatelessWidget {
+  const GameIcon(this.game, {super.key, required this.size});
+  final GameInfo game;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) =>
+      game.id == 'bubbles' ? SizedBox.square(dimension: size, child: const RepaintBoundary(child: CustomPaint(painter: _BubblesIcon()))) : DEmoji(game.emoji, size: size);
+}
+
+class _BubblesIcon extends CustomPainter {
+  const _BubblesIcon();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = size.shortestSide;
+    const bubbles = [(0.42, 0.58, 0.3, Color(0xFFA066E8)), (0.76, 0.3, 0.19, Color(0xFFF06BA8)), (0.8, 0.76, 0.12, Color(0xFFF7C531)), (0.2, 0.2, 0.1, Color(0xFF4CC46A))];
+    final rim = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = s * 0.022
+      ..color = Colors.white.withValues(alpha: 0.95);
+    final shine = Paint()..color = Colors.white.withValues(alpha: 0.9);
+    for (final (x, y, r, color) in bubbles) {
+      final c = Offset(x * s, y * s), radius = r * s;
+      final fill = Paint()
+        ..shader = RadialGradient(
+          center: const Alignment(-0.35, -0.35),
+          colors: [Colors.white.withValues(alpha: 0.9), color.withValues(alpha: 0.7), color],
+          stops: const [0, 0.55, 1],
+        ).createShader(Rect.fromCircle(center: c, radius: radius));
+      canvas
+        ..drawCircle(c, radius, fill)
+        ..drawCircle(c, radius, rim)
+        ..drawOval(Rect.fromCenter(center: c + Offset(-radius * 0.38, -radius * 0.42), width: radius * 0.42, height: radius * 0.26), shine);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_BubblesIcon old) => false;
 }
 
 class _Chip extends StatelessWidget {

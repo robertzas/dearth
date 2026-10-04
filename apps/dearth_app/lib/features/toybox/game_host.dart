@@ -42,6 +42,24 @@ class GameController {
 /// Builds one game's playfield.
 typedef GameBuilder = Widget Function(GameController controller);
 
+/// The white pill at the top of a game that shows what it asks ("look!",
+/// "how many?", what the monster eats). Pictures, not words: she can't read
+/// yet.
+class GamePill extends StatelessWidget {
+  const GamePill({super.key, required this.children});
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = DTheme.of(context);
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: t.space.lg, vertical: t.space.sm),
+      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.92), borderRadius: t.radius.pill, boxShadow: t.elevation.e1),
+      child: Row(mainAxisSize: MainAxisSize.min, children: children),
+    );
+  }
+}
+
 /// Opens [game] full screen for [kid].
 Future<void> openGame(BuildContext context, WidgetRef ref, GameInfo game, Profile kid) {
   unawaited(markGameSeen(ref, kid.id, game.id));

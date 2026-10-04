@@ -124,7 +124,6 @@ const List<Food> kFoods = [
   Food('🥒', 'cucumber', color: 'green', round: false, kind: 'vegetable'),
   Food('🍇', 'grapes', color: 'purple', round: false, kind: 'fruit'),
   Food('🍆', 'eggplant', color: 'purple', round: false, kind: 'vegetable'),
-  Food('🫐', 'blueberries', color: 'blue', round: true, kind: 'fruit'),
   Food('🍊', 'orange', color: 'orange', round: true, kind: 'fruit'),
   Food('🥕', 'carrot', color: 'orange', round: false, kind: 'vegetable'),
   Food('🍩', 'donut', color: 'pink', round: true, kind: 'treat'),
