@@ -70,9 +70,10 @@ back.
   Garden, Patterns, Odd One Out, Shadow Match, Small to Big, Finger
   Mazes, What Happens Next, Picture Sudoku, Spot the Difference, Letter
   Sounds, Rhyme Time, I Spy, Letter & Name Tracing (kids trace their own
-  name), Number Tracing and Breathing Buddy. The letter, word and number
-  games talk: every line is a clip bundled with the app, so they work on a
-  display with no text-to-speech. Each kid sees the games that suit their age, and every game
+  name), Number Tracing, Breathing Buddy and Build-a-Creature (mix body
+  parts and paints; it dances and says its silly name). The letter, word
+  and number games talk: every line is a clip bundled with the app, so they
+  work on a display with no text-to-speech. Each kid sees the games that suit their age, and every game
   adapts: three wins in a row go up a level, three misses ease off, and
   nothing ever says "wrong". Grown-ups set a daily time limit and opening
   hours (a game says goodnight when time is up), cap the volume, switch

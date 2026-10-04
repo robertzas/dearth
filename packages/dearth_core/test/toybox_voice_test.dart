@@ -219,6 +219,11 @@ void main() {
         for (final s in kSpyShapes) spyClip(SpyClue.shape, s),
         for (var n = 0; n <= 10; n++) ...[numberClip(n), countClip(n)],
         VoiceLine.traceName, VoiceLine.traceNameDone, VoiceLine.breatheStart, VoiceLine.breatheIn, VoiceLine.breatheOut, VoiceLine.breatheDone,
+        VoiceLine.makeCreature,
+        for (final n in kCreatureNames) creatureNameClip(n),
+        for (final p in CreaturePart.values)
+          for (var i = 0; i < kCreatureOptions[p]!; i++) creaturePartClip(p, i),
+        for (final c in kCreaturePaints) colorClip(c),
       ];
       expect(asked.where((a) => !ids.contains(a)), isEmpty);
       expect(ids.difference(asked.toSet()), isEmpty, reason: 'no line nothing says');

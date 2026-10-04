@@ -9,6 +9,7 @@ import '../../app/grown_up.dart';
 import '../../app/router.dart';
 import '../../core/data/household.dart';
 import 'game_host.dart';
+import 'games/creature.dart';
 import 'games/registry.dart';
 import 'toybox_data.dart';
 
@@ -196,15 +197,21 @@ class _Tile extends ConsumerWidget {
 }
 
 /// A game's picture: its emoji, or for Bubble Pop painted bubbles (the
-/// bubble emoji is newer than Android 10, so the kitchen frame can't draw it).
+/// bubble emoji is newer than Android 10, so the kitchen frame can't draw it)
+/// and for Build-a-Creature one of its creatures.
 class GameIcon extends StatelessWidget {
   const GameIcon(this.game, {super.key, required this.size});
   final GameInfo game;
   final double size;
 
+  static const _creature = Creature({CreaturePart.body: 0, CreaturePart.face: 0, CreaturePart.top: 2, CreaturePart.legs: 1, CreaturePart.arms: 1}, 2);
+
   @override
-  Widget build(BuildContext context) =>
-      game.id == 'bubbles' ? SizedBox.square(dimension: size, child: const RepaintBoundary(child: CustomPaint(painter: _BubblesIcon()))) : DEmoji(game.emoji, size: size);
+  Widget build(BuildContext context) => switch (game.id) {
+        'bubbles' => SizedBox.square(dimension: size, child: const RepaintBoundary(child: CustomPaint(painter: _BubblesIcon()))),
+        'creature' => SizedBox.square(dimension: size, child: RepaintBoundary(child: CustomPaint(painter: CreaturePainter(_creature)))),
+        _ => DEmoji(game.emoji, size: size),
+      };
 }
 
 class _BubblesIcon extends CustomPainter {

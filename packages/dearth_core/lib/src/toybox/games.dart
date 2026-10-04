@@ -59,6 +59,8 @@ const List<GameInfo> kExpansionGames = [
   GameInfo('numbers', 'Number Tracing', '🔢', minMonths: 42, skills: ['Numerals'], levels: 3),
   // A calm-down: breaths aren't won, so sessions move it along (3 → 5 breaths).
   GameInfo('breathe', 'Breathing Buddy', '🌬️', minMonths: 36, skills: ['Calming down'], levels: 3, freePlay: true),
+  // Nothing to win: more parts and paints unlock with play.
+  GameInfo('creature', 'Build-a-Creature', '🦕', minMonths: 30, skills: ['Creativity', 'Language'], levels: 3, freePlay: true),
 ];
 
 GameInfo? gameById(String id) => kGames.where((g) => g.id == id).firstOrNull;

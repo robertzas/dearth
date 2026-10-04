@@ -3,6 +3,7 @@ import 'breathe.dart';
 import 'bubbles.dart';
 import 'coloring.dart';
 import 'counting.dart';
+import 'creature.dart';
 import 'differences.dart';
 import 'farm.dart';
 import 'ispy.dart';
@@ -50,4 +51,5 @@ final Map<String, GameBuilder> kGameBuilders = {
   'tracing': TracingGame.new,
   'numbers': NumbersGame.new,
   'breathe': BreatheGame.new,
+  'creature': CreatureGame.new,
 };

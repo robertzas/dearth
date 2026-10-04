@@ -1,3 +1,4 @@
+import 'creature.dart';
 import 'words.dart';
 
 // What the Toybox says (SPEC FR-TOY-03). The kitchen frame has no
@@ -45,6 +46,9 @@ String numberClip(int n) => 'num_$n';
 /// "One, two, three."
 String countClip(int n) => 'count_$n';
 
+/// "Purple!"
+String colorClip(String color) => 'color_${voiceSlug(color)}';
+
 /// Lines that aren't about one letter or word.
 abstract final class VoiceLine {
   static const traceName = 'trace_name';
@@ -53,6 +57,7 @@ abstract final class VoiceLine {
   static const breatheIn = 'breathe_in';
   static const breatheOut = 'breathe_out';
   static const breatheDone = 'breathe_done';
+  static const makeCreature = 'make_creature';
 }
 
 const List<String> _numbers = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
@@ -114,5 +119,17 @@ Map<String, String> _lines() {
   lines[VoiceLine.breatheIn] = 'Breathe in, and smell the flower.';
   lines[VoiceLine.breatheOut] = 'And blow out the candle.';
   lines[VoiceLine.breatheDone] = 'Well done. Your body feels calm.';
+  lines[VoiceLine.makeCreature] = "Let's make a silly creature!";
+  for (final name in kCreatureNames) {
+    lines[creatureNameClip(name)] = "I'm a $name!";
+  }
+  for (final MapEntry(key: part, value: words) in kCreaturePartWords.entries) {
+    for (var i = 0; i < words.length; i++) {
+      lines[creaturePartClip(part, i)] = '${_cap(words[i])}!';
+    }
+  }
+  for (final c in kCreaturePaints) {
+    lines[colorClip(c)] = '${_cap(c)}!';
+  }
   return lines;
 }

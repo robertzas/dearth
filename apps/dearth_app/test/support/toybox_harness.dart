@@ -10,6 +10,7 @@ import 'app_harness.dart';
 
 /// Opens [game] from Ava's Toybox on the demo household (she is 2½), at a
 /// pinned [level] when given. Games for older kids are opened early for her.
+/// Fails unless the game opened.
 Future<AppHarness> openToyboxGame(WidgetTester tester, String game, {RecordingSound? sound, int? level, Size size = const Size(1920, 1080)}) async {
   final h = await AppHarness.demo(tester, sound: sound ?? RecordingSound(), size: size);
   final info = gameById(game)!;
@@ -17,8 +18,13 @@ Future<AppHarness> openToyboxGame(WidgetTester tester, String game, {RecordingSo
   await h.write((w) => [settingOp(w, SettingKeys.toybox, settings.toJson())]);
   h.container.read(routerProvider).go('/toybox');
   await h.settle();
+  // On small screens the tile can be below the fold, where a tap misses
+  // and the test would quietly go on looking at the launcher.
+  await tester.ensureVisible(byId('toybox.game.$game'));
+  await h.settle();
   await tester.tap(byId('toybox.game.$game'));
   await h.settle();
+  expect(byId('game.$game'), findsOneWidget, reason: '$game should be open');
   return h;
 }
 
