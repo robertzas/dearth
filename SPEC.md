@@ -1770,15 +1770,17 @@ numbers refer to the JT215M (T1) in **profile** builds unless noted.
   re-rasterizes the whole scene every frame, and the GE8300's fill rate
   can't do ~10 M shaded pixels twice inside a 17.9 ms budget. The GPU has
   no clock headroom (504 MHz max, already reached under load).
-- **Shipped (owner decision 2026-10-05): Impeller at native resolution,
-  accepting the ~14 fps scroll.** The alternatives were measured, not
-  assumed: the time-boxed Skia opt-out hit **56.8 fps** (its raster cache
-  caches the tile layers), and Impeller reaches **57.0 fps at 540p / 32.6 at
-  720p** via `wm size` (quarter/half pixels) and 19.1 at 1080p with the
-  tiles enlarged — but the frame is partly a photo frame, and the owner
-  chose renderer longevity and photo/text crispness over scroll smoothness.
-  No renderer flag ships in the manifest; the opt-out stays documented here
-  as the measured fallback.
+- **Shipped (owner decision 2026-10-05): Impeller at native resolution.**
+  The time-boxed Skia opt-out was measured at 56.8 fps (raster cache caches
+  the tile layers), and Impeller reaches 57.0 fps at 540p / 32.6 at 720p via
+  `wm size` — but the frame is partly a photo frame, and the owner chose
+  renderer longevity and photo/text crispness over scroll smoothness. No
+  renderer flag ships in the manifest; the opt-out stays documented here as
+  the measured fallback. App-side cost work continues to close the gap:
+  removing the tile gradients (the launcher's dominant fill — one flat quad
+  per tile now) took the same scroll from ~14 to **45.2 fps** (median
+  22.1 ms, 2026-10-05); the remaining stride is the big-emoji and text
+  fill.
 - **Revisit on every Flutter upgrade** via the frame perf gate (§12.9):
   watch for PowerVR-Rogue GLES work (3.47.3's flutter/181315 fixed
   B-series PowerVR artifacts/perf, not Rogue fill rate), any Impeller

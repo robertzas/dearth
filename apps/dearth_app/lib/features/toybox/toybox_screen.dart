@@ -137,7 +137,6 @@ class _Tile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = DTheme.of(context);
     final hue = kGameHues[game.id] ?? t.colors.accent;
-    final light = Color.lerp(hue, Colors.white, 0.35)!;
     final level = ref.watch(gameLevelProvider((kid.id, game.id)));
     final tile = DPressable(
       id: 'toybox.game.${game.id}',
@@ -149,15 +148,19 @@ class _Tile extends ConsumerWidget {
       // on the frame (AGENTS rule 8).
       pressFeedback: false,
       onTap: () => openGame(context, ref, game, kid),
-      child: SizedBox(
-        width: size,
-        height: size,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(t.radius.l),
-            gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [light, hue]),
-            boxShadow: t.elevation.e1,
-          ),
+        child: SizedBox(
+          width: size,
+          height: size,
+          child: DecoratedBox(
+            // Solid, not a gradient: one flat fill per tile. The two-color
+            // gradient was the launcher's biggest fill cost on the frame's
+            // GPU (SPEC §12.3, AGENTS rule 8), and the white title and dots
+            // already sat on the `hue` end, so contrast is unchanged.
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(t.radius.l),
+              color: hue,
+              boxShadow: t.elevation.e1,
+            ),
           child: Stack(
             children: [
               Center(child: Padding(padding: EdgeInsets.only(bottom: size * 0.14), child: GameIcon(game, size: size * 0.44))),
