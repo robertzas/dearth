@@ -11,6 +11,7 @@ import '../../app/router.dart';
 import '../../core/data/household.dart';
 import 'game_host.dart';
 import 'games/creature.dart';
+import 'games/dots_pictures.dart';
 import 'games/registry.dart';
 import 'toybox_data.dart';
 
@@ -224,8 +225,9 @@ class _Tile extends ConsumerWidget {
 }
 
 /// A game's picture: its emoji, or for Bubble Pop painted bubbles (the
-/// bubble emoji is newer than Android 10, so the kitchen frame can't draw it)
-/// and for Build-a-Creature one of its creatures.
+/// bubble emoji is newer than Android 10, so the kitchen frame can't draw it),
+/// for Build-a-Creature one of its creatures, and for Dot-to-Dot a star half
+/// joined (a plain star reads as a reward, not a game).
 class GameIcon extends StatelessWidget {
   const GameIcon(this.game, {super.key, required this.size});
   final GameInfo game;
@@ -237,6 +239,7 @@ class GameIcon extends StatelessWidget {
   Widget build(BuildContext context) => switch (game.id) {
         'bubbles' => SizedBox.square(dimension: size, child: const RepaintBoundary(child: CustomPaint(painter: _BubblesIcon()))),
         'creature' => SizedBox.square(dimension: size, child: RepaintBoundary(child: CustomPaint(painter: CreaturePainter(_creature)))),
+        'dots' => SizedBox.square(dimension: size, child: RepaintBoundary(child: CustomPaint(painter: _DotsIcon(DTheme.of(context).text.kidTitle)))),
         _ => DEmoji(game.emoji, size: size),
       };
 }
@@ -270,6 +273,40 @@ class _BubblesIcon extends CustomPainter {
 
   @override
   bool shouldRepaint(_BubblesIcon old) => false;
+}
+
+/// Dot-to-Dot's tile: the star's five numbered dots, joined from 1 to 3
+/// along its outline.
+class _DotsIcon extends CustomPainter {
+  const _DotsIcon(this.font);
+  final TextStyle font;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final g = DotGeometry.of(dotArtOf('star'), 5);
+    canvas.save();
+    canvas.scale(size.shortestSide / 1000);
+    Paint line(double alpha, double width) => Paint()
+      ..color = Colors.white.withValues(alpha: alpha)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = width
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    canvas.drawPath(g.between(g.dots[2], g.length), line(0.35, 18));
+    canvas.drawPath(g.between(0, g.dots[2]), line(1, 58));
+    for (var i = 0; i < g.points.length; i++) {
+      canvas.drawCircle(g.points[i], 92, Paint()..color = Colors.white);
+      final label = TextPainter(
+        text: TextSpan(text: '${i + 1}', style: font.copyWith(fontSize: 110, height: 1, fontWeight: FontWeight.w700, color: const Color(0xFF2B2440))),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      label.paint(canvas, g.points[i] - Offset(label.width / 2, label.height / 2));
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_DotsIcon old) => old.font != font;
 }
 
 class _Chip extends StatelessWidget {

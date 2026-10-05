@@ -2682,7 +2682,7 @@ points, not limits.
 | Freeze Dance | 2+ | Movement, self-regulation | Dance until the music stops | Longer and shorter pauses, "dance like a frog!" | M4 |
 | Breathing Buddy | 3+ | Calm-down | Balloon inflates and deflates; "smell the flower, blow the candle" | 3 → 5 breaths | M4 |
 | Story Time | 2+ | Language, connection | Picture stories read in **family voices** (grandparents record from phones) | — | M4 |
-| Dot-to-Dot | 3+ | Number order, numerals, alphabet order | Join the dots in order to reveal a picture that comes alive; the voice says each number or letter, and which one to find after a wrong dot | 1→5 → 1→10 → 1→15 → 1→20 → A→M → A→Z | M4 |
+| Dot-to-Dot | 3+ | Number order, numerals, alphabet order | Join the dots in order (tap them or draw through them) to reveal one of 15 code-drawn pictures, which fills in and comes alive; each dot says its number or letter, a wrong one says which to find, and after two slips or a long pause a golden ring shows it | 1→5 → 1→10 → 1→15 → 1→20 → A→M → A→Z | M4 |
 | Big & Little Letters | 3.5+ | Letter recognition: capitals and small letters | Little letters find their big letters; the voice names each pair | 3 look-alike pairs (c C, o O, s S) → 5 pairs that look different (a A, g G) → b, d, p and q | M4 |
 | Frog Hop | 3.5+ | Number line, one more and one less, first adding | A frog hops along numbered lily pads: "Hop to 6!", "One more than 4!", "3 and 2 more!" as hops | 0–5 → 0–10 → one more / one less → adding as hops | M4 |
 | Word Builder | 4.5+ | Phonics: blending and spelling | Build the picture's word (cat, sun, bed) from letter tiles; each tile says its sound and the voice blends the word at the end | Missing first letter → missing last → all three → four-letter words | M4 |
