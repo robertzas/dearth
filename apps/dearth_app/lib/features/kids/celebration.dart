@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:dearth_ui/dearth_ui.dart';
+import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// Celebration styles from the catalog (SPEC FR-KID-20).
@@ -80,12 +81,23 @@ class _CelebrationState extends State<_Celebration> with SingleTickerProviderSta
     vsync: this,
     duration: Duration(milliseconds: widget.calm ? 3200 : (widget.big ? 3000 : 2300)),
   );
+  // The particles repaint through this, not the controller: on T1 every
+  // other tick is skipped, so the burst runs at the tier's ambient fps
+  // (SPEC §12.3) instead of stealing the whole raster budget.
+  final ValueNotifier<double> _phase = ValueNotifier<double>(0);
+  int _frames = 0;
   List<_Particle> _particles = const [];
 
   @override
   void initState() {
     super.initState();
+    _c.addListener(_push);
     _c.forward().whenComplete(widget.onDone);
+  }
+
+  void _push() {
+    if (DTheme.of(context).policy.ambientFps < 60 && (_frames++).isOdd) return;
+    _phase.value = _c.value;
   }
 
   @override
@@ -102,6 +114,7 @@ class _CelebrationState extends State<_Celebration> with SingleTickerProviderSta
   @override
   void dispose() {
     _c.dispose();
+    _phase.dispose();
     super.dispose();
   }
 
@@ -141,7 +154,7 @@ class _CelebrationState extends State<_Celebration> with SingleTickerProviderSta
         child: Stack(
           fit: StackFit.expand,
           children: [
-            RepaintBoundary(child: CustomPaint(painter: _ParticlePainter(_c, _particles, widget.style))),
+            RepaintBoundary(child: CustomPaint(painter: _ParticlePainter(_phase, _particles, widget.style))),
             Center(
               child: FadeTransition(
                 opacity: fade,
@@ -157,21 +170,25 @@ class _CelebrationState extends State<_Celebration> with SingleTickerProviderSta
                       child: Transform.rotate(angle: wiggle, child: child),
                     );
                   },
-                  child: tid(
-                    'celebration',
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (widget.buddy != null) ...[DEmoji(widget.buddy!, size: s), SizedBox(width: t.space.md)],
-                            DEmoji(widget.emoji, size: s),
-                          ],
-                        ),
-                        SizedBox(height: t.space.lg),
-                        pill,
-                      ],
+                  child: RepaintBoundary(
+                    // The emojis and the pill (with their shadow) record
+                    // once; the per-frame transforms above stay outside.
+                    child: tid(
+                      'celebration',
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (widget.buddy != null) ...[DEmoji(widget.buddy!, size: s), SizedBox(width: t.space.md)],
+                              DEmoji(widget.emoji, size: s),
+                            ],
+                          ),
+                          SizedBox(height: t.space.lg),
+                          pill,
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -194,7 +211,7 @@ class _HoldFade extends Curve {
 
 class _ParticlePainter extends CustomPainter {
   _ParticlePainter(this.anim, this.particles, this.style) : super(repaint: anim);
-  final Animation<double> anim;
+  final ValueListenable<double> anim;
   final List<_Particle> particles;
   final CelebrationStyle style;
 
@@ -219,7 +236,15 @@ class _ParticlePainter extends CustomPainter {
         case CelebrationStyle.stars:
           final d = Curves.easeOutCubic.transform(p) * (0.25 + q.speed * 0.35) * size.longestSide;
           final c = size.center(Offset.zero) + Offset(math.cos(q.angle), math.sin(q.angle)) * d;
-          canvas.drawPath(_star(c, unit * q.size * 1.3, q.angle + p * q.spin * 0.3), paint);
+          // One cached unit star, transformed per particle: a Path per star
+          // per frame was 80+ allocations on the frame's slow CPU.
+          canvas.save();
+          canvas.translate(c.dx, c.dy);
+          canvas.rotate(q.angle + p * q.spin * 0.3);
+          final s = unit * q.size * 1.3;
+          canvas.scale(s, s);
+          canvas.drawPath(_unitStar, paint);
+          canvas.restore();
         case CelebrationStyle.bubbles:
           final x = (q.x + math.sin(p * 4 + q.phase) * 0.04) * size.width;
           final y = (1.1 - p * (1.2 + q.speed * 0.5)) * size.height;
@@ -231,6 +256,8 @@ class _ParticlePainter extends CustomPainter {
       }
     }
   }
+
+  static final Path _unitStar = _star(Offset.zero, 1, 0);
 
   static Path _star(Offset c, double r, double rotation) {
     final path = Path();

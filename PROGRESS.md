@@ -316,6 +316,63 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
 - **2026-10-03** Follow-ups: bundle a Fluent Emoji subset (SPEC §11.3; web
   currently fetches Noto Color Emoji at runtime), slim the Hub image, Postgres
   backend, weather/recipe key settings UI.
+- **2026-10-04** Toybox scroll perf on the kitchen frame (owner report):
+  measured with `dumpsys SurfaceFlinger --latency` (HWUI `gfxinfo` sees
+  nothing under Flutter) — **14 fps steady while scrolling the game grid**
+  (median 71.7 ms, p90 89 ms, zero frames at the 56 Hz cadence; SPEC §12.1
+  budget p95 ≤ 17.9 ms). Renderer confirmed **Impeller-GLES** from the
+  engine's own log lines (`Using the Impeller rendering backend
+  (OpenGLES)` after the denylisted PowerVR Vulkan driver) — present in the
+  baseline build too; `gfxinfo`'s `Pipeline=Skia (OpenGL)` describes the
+  Android window's HWUI pipeline, not Flutter, and is meaningless for a
+  Flutter surface (arm32 armchair diagnosis trap). An `EnableImpeller`
+  manifest A/B was moot (engine default already picks Impeller-GLES on the
+  frame); flag reverted. The launcher's costs are code-side: one paint
+  layer for the whole `SingleChildScrollView`+`Wrap` grid (no per-tile
+  `RepaintBoundary`), a press `FadeTransition`/`ScaleTransition` firing at
+  every scroll start, blur-8 shadows and gradients on every tile, and the
+  tier machinery never engaging (`deviceRamMbProvider` is a stub, ROM
+  `ro.config.low_ram=true` ignored → frame runs as T3 with 60 fps caps and
+  blurs on). On Impeller (no raster cache), the scroll wins are: kill the
+  press layers, blur-free T1 tiles, a lazy `GridView` — `RepaintBoundary`
+  still pays on the CPU paint-record side and for isolated animations.
+- **2026-10-04** Toybox perf, resolved: implemented all the code suggestions
+  (lazy `GridView.builder` launcher with per-tile repaint boundaries,
+  `DPressable.pressFeedback` off on tiles, tier-aware `DElevation` (flat
+  offset shadows when `policy.blurAllowed` is false), the `getMemory`
+  platform channel + `lowRamDevice` wired into `detectTier` (the frame now
+  auto-detects t1: 1970 MB, `ro.config.low_ram=true`; a
+  `debugPrint` in `perfTierProvider` reports it at startup), the celebration
+  gate to `ambientFps` + RepaintBoundary'd center + a cached unit-star Path,
+  the four infinite hint pulses driven by gated tickers, and jigsaw's
+  shadow without a per-paint `path.shift`) — and the scroll barely moved:
+  the raster cost was Impeller re-drawing the whole scene per frame on a
+  fill-rate-starved GE8300. Per SPEC §12.2's ladder the frame now ships the
+  **Skia opt-out** (`EnableImpeller=false`, application-scoped meta-data):
+  grid scroll **14.0 → 56.8 fps** (median 71.7 → 17.6 ms, 85% of frames at
+  the 56 Hz cadence). Findings along the way: the tier override lives in
+  the `devices.tier_override` column (writing it into the settings JSON is
+  silently ignored); `uiautomator` can't see the tier and `screencap` is
+  blocked (FreeKiosk sets `disable-screen-capture`), so the SF `--latency`
+  triples are the measurement (HWUI `gfxinfo`'s `Pipeline=` line describes
+  the Android window, not Flutter); and the `(_frames++).isOdd` ambient
+  gates halve the *animation* rate but not the render rate — an active
+  `Ticker` keeps Flutter submitting (identical) frames at every vsync, so
+  T1 ambient still pays full raster. Follow-up: on T1, drive ambient motion
+  with a ~33 ms periodic one-shot instead of a hot ticker, and build
+  `tool/perf_gate.sh` to keep both renderers measured (SPEC §12.2).
+- **2026-10-05** Renderer decision, final (owner): keep **Impeller-GLES at
+  1080p** on the frame and accept the ~14 fps Toybox scroll — the Skia
+  opt-out (56.8 fps measured) was installed and then removed in favor of
+  the non-deprecated renderer and full-resolution photos/text; the manifest
+  carries no renderer flag. Evidence for the eventual revisit: beta
+  **3.49.0-0.2.pre** (side SDK in /tmp, pubspec.lock restored) measured
+  identical (14.0 fps); Impeller reaches 57.0 fps only at 540p (`wm size`,
+  quarter pixels — rejected for photo crispness) and 32.6 at 720p; userScale
+  1.6 at 1080p gives 19.1; the GPU has no clock headroom (504 MHz max under
+  load, `simple_ondemand`). Also found: at 720p + userScale 1.6 the wall nav
+  rail overflows and the Toybox button falls off the bottom — follow-up:
+  the rail needs to adapt (or scroll) at large scales/short screens.
 - **2026-10-04** Frame stuck on FreeKiosk's "waiting for application": a
   botched `--replace` (throwaway CI keys, 08:49) had uninstalled Dearth's
   files but left a dangling package entry, and the uninstall pruned
@@ -362,6 +419,8 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
 - 2026-10-03 — Kids (step 6.1 core): chart, celebrations, approvals, jar, stars, sticker book, routines, grown-ups' chores; 9 kids-op unit tests; 6 Playwright journeys × 4 viewports.
 - 2026-10-03 — Meals (step 5.1 core): planner, recipe sheet, slot picker, Discover, recipe box, cook mode, add to list; 8 meal-op unit tests; 9 Playwright journeys × 4 viewports (full suite: 109 passed, 7 skipped).
 - 2026-10-03 — Pushed to GitHub; CI run #1 green except the release job (artifact download); fixed → run #2 published `v0.1.0-build.2`.
+- 2026-10-04 — Toybox scroll perf (owner report: "kinda choppy"): measured 14 fps on the frame, implemented every suggestion (lazy launcher grid, no press layers on tiles, tier-wired DElevation + platform memory channel, gated celebrations and hint pulses, jigsaw shadow), then took SPEC §12.2's ladder to its end: the frame ships the Skia opt-out, 14.0 → 56.8 fps. Tests: 139 app widget tests green (harness scrolls the lazy grid with `dragUntilVisible`), 1 new tier token test, 104 Toybox E2E journeys × 4 viewports green.
+- 2026-10-05 — Flutter beta 3.49.0-0.2.pre built with a side SDK and measured on the frame: Impeller-GLES scroll unchanged (14.0 vs 14.4 fps) — no help, and the Skia opt-out was then removed by owner decision (Impeller @1080p, jank accepted; SPEC §12.2 documents the full evidence matrix). pubspec.lock restored; no tree SDK change.
 - 2026-10-03 — E2E run 2: 69 passed, 4 failed (quick-add preview had no readable text node; fixed by labeling the summary node), 7 skipped by design. README written (screenshots in `docs/images`, LFS).
 - 2026-10-04 — Kitchen frame stuck on FreeKiosk's "waiting for application": cleared a dangling `app.dearth` package entry (the APK dir was gone), reinstalled v0.1.0-build.6, rebuilt the pruned lock-task list via a FreeKiosk config push; `deploy_frame.sh` detects and repairs that state now. `--check` all green, Dearth in front.
 - 2026-10-04 — Frame showed an empty status-bar strip on top of build.6 (immersive mode landed after build.6, and this ROM's status bar survives lock task). Fixed live via `settings global policy_control immersive.full=app.dearth` and the same line went into `deploy_frame.sh`, so any build goes full screen on the frame; `--check` green. Note: the good news from the repair — the dangling-entry uninstall left `/data/data/app.dearth` in place, so the reinstalled app kept its pairing.

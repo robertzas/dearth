@@ -21,7 +21,7 @@ class DTheme extends ThemeExtension<DTheme> {
   })  : text = DType.scaled(scale, colors.inkPrimary, colors.inkSecondary),
         space = DSpace(scale),
         radius = DRadius(scale),
-        elevation = DElevation(colors.shadow, scale);
+        elevation = DElevation(colors.shadow, scale, blur: policy.blurAllowed);
 
   final DColors colors;
   final double scale;

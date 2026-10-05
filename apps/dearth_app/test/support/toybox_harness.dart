@@ -19,10 +19,14 @@ Future<AppHarness> openToyboxGame(WidgetTester tester, String game, {RecordingSo
   h.container.read(routerProvider).go('/toybox');
   await h.settle();
   // On small screens the tile can be below the fold, where a tap misses
-  // and the test would quietly go on looking at the launcher.
-  await tester.ensureVisible(byId('toybox.game.$game'));
+  // and the test would quietly go on looking at the launcher. The grid is
+  // lazy, so drag it until the tile is built and visible, then scroll it
+  // fully into view.
+  final tile = byId('toybox.game.$game');
+  await tester.dragUntilVisible(tile, find.byType(Scrollable), const Offset(0, -180), maxIteration: 40);
+  await tester.ensureVisible(tile);
   await h.settle();
-  await tester.tap(byId('toybox.game.$game'));
+  await tester.tap(tile);
   await h.settle();
   expect(byId('game.$game'), findsOneWidget, reason: '$game should be open');
   return h;

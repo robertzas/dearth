@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:dearth_core/dearth_core.dart';
 import 'package:dearth_ui/dearth_ui.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/sound.dart';
@@ -346,13 +347,31 @@ class _Pulse extends StatefulWidget {
   State<_Pulse> createState() => _PulseState();
 }
 
-class _PulseState extends State<_Pulse> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat(reverse: true);
+class _PulseState extends State<_Pulse> with TickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
+  late final Ticker _ticker = createTicker(_tick);
+  int _frames = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker.start();
+  }
 
   @override
   void dispose() {
+    _ticker.dispose();
     _c.dispose();
     super.dispose();
+  }
+
+  // The hint breathes forever: on the slowest displays it does so at the
+  // tier's ambient fps, not every vsync (SPEC §12.3).
+  void _tick(Duration elapsed) {
+    if (DTheme.of(context).policy.ambientFps < 60 && (_frames++).isOdd) return;
+    final cycle = _c.duration!.inMilliseconds * 2; // forward, then reverse
+    final p = (elapsed.inMilliseconds % cycle) / cycle;
+    _c.value = p < 0.5 ? p * 2 : 2 - p * 2;
   }
 
   @override

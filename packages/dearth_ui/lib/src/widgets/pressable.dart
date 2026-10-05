@@ -40,6 +40,7 @@ class DPressable extends StatefulWidget {
     this.haptic = false,
     this.behavior = HitTestBehavior.opaque,
     this.excludeSemantics = false,
+    this.pressFeedback = true,
   });
 
   final Widget child;
@@ -59,6 +60,11 @@ class DPressable extends StatefulWidget {
   /// Leaf controls whose [semanticLabel] already says everything set this so
   /// screen readers don't read the label and the child text twice.
   final bool excludeSemantics;
+
+  /// Off for items inside a scrolling grid: the press fade is an opacity
+  /// layer and the scale a transform over the item, and every scroll begins
+  /// with a pointer-down on some item (AGENTS rule 8). Taps still work.
+  final bool pressFeedback;
 
   @override
   State<DPressable> createState() => _DPressableState();
@@ -84,10 +90,11 @@ class _DPressableState extends State<DPressable> with SingleTickerProviderStateM
   }
 
   void _down() {
-    if (_interactive) _press.forward();
+    if (_interactive && widget.pressFeedback) _press.forward();
   }
 
   void _up() {
+    if (!widget.pressFeedback) return;
     if (_press.isAnimating || _press.value > 0) _press.reverse();
   }
 
@@ -114,17 +121,18 @@ class _DPressableState extends State<DPressable> with SingleTickerProviderStateM
       fit: StackFit.passthrough,
       children: [
         widget.child,
-        Positioned.fill(
-          child: IgnorePointer(
-            child: FadeTransition(
-              opacity: _press,
-              child: DecoratedBox(decoration: BoxDecoration(color: highlight, borderRadius: radius)),
+        if (widget.pressFeedback)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: FadeTransition(
+                opacity: _press,
+                child: DecoratedBox(decoration: BoxDecoration(color: highlight, borderRadius: radius)),
+              ),
             ),
           ),
-        ),
       ],
     );
-    if (widget.pressedScale != 1) content = ScaleTransition(scale: _scale, child: content);
+    if (widget.pressFeedback && widget.pressedScale != 1) content = ScaleTransition(scale: _scale, child: content);
 
     final gestures = <Type, GestureRecognizerFactory>{
       TapGestureRecognizer: GestureRecognizerFactoryWithHandlers<TapGestureRecognizer>(

@@ -1761,22 +1761,35 @@ numbers refer to the JT215M (T1) in **profile** builds unless noted.
 
 ### 12.2 Renderer strategy
 
-- On the frame, Flutter 3.47 uses **Impeller's OpenGL ES backend**: the
-  PowerVR Rogue Vulkan 1.0 driver is denylisted, as confirmed by engine
-  strings. The Skia opt-out (`--no-enable-impeller` /
-  `io.flutter.embedding.android.EnableImpeller=false`) still exists but logs
-  "[Action Required]: Impeller opt-out deprecated", and is slated for
-  removal.
-- **M0 benchmark** (`tool/perf_gate`, §12.9) measures every scenario on
-  Impeller-GLES and records Skia numbers for reference only.
-- If Impeller-GLES misses budgets, apply in order:
-  1. Tighten tier rules and component T1 variants.
-  2. Fix the specific hot path (pre-rasterize, simplify clips).
-  3. File upstream issues with reproductions.
-  4. Only as a time-boxed last resort, ship the Skia opt-out on a pinned
-     Flutter version, with an exit plan.
-- **Flutter version pinning:** display builds move to a new Flutter release
-  only after the perf gate passes on the frame.
+- On the frame, Flutter 3.47's engine picks **Impeller's OpenGL ES backend**
+  (the PowerVR Rogue Vulkan 1.0 driver is denylisted, as confirmed by engine
+  strings). Measured there (2026-10-04, `dumpsys SurfaceFlinger --latency` —
+  HWUI `gfxinfo` sees nothing under a Flutter surface), the Toybox grid
+  scroll is **GPU-bound at ~14 fps (median 71.7 ms/frame)**, steady across
+  content tier, shadow blur, press effects and lazy-grid changes: Impeller
+  re-rasterizes the whole scene every frame, and the GE8300's fill rate
+  can't do ~10 M shaded pixels twice inside a 17.9 ms budget. The GPU has
+  no clock headroom (504 MHz max, already reached under load).
+- **Shipped (owner decision 2026-10-05): Impeller at native resolution,
+  accepting the ~14 fps scroll.** The alternatives were measured, not
+  assumed: the time-boxed Skia opt-out hit **56.8 fps** (its raster cache
+  caches the tile layers), and Impeller reaches **57.0 fps at 540p / 32.6 at
+  720p** via `wm size` (quarter/half pixels) and 19.1 at 1080p with the
+  tiles enlarged — but the frame is partly a photo frame, and the owner
+  chose renderer longevity and photo/text crispness over scroll smoothness.
+  No renderer flag ships in the manifest; the opt-out stays documented here
+  as the measured fallback.
+- **Revisit on every Flutter upgrade** via the frame perf gate (§12.9):
+  watch for PowerVR-Rogue GLES work (3.47.3's flutter/181315 fixed
+  B-series PowerVR artifacts/perf, not Rogue fill rate), any Impeller
+  scene/caching work for the GLES backend, and the announced removal of
+  the opt-out (which retires the 56.8 fps fallback). Probe data:
+  beta 3.49.0-0.2.pre measured identical to pinned 3.47.2 (14.0 vs 14.4
+  fps) — record every probe's numbers here.
+- Escalation ladder for display perf: 1. tighten tier rules and component
+  T1 variants; 2. fix the specific hot path; 3. file upstream issues with
+  reproductions; 4. time-boxed Skia opt-out with an exit plan (measured
+  2026-10-04; not shipped by owner decision).
 
 ### 12.3 Rendering rules
 

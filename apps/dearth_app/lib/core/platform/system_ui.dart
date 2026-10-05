@@ -43,6 +43,20 @@ Future<void> setMediaVolume(int level) async {
   }
 }
 
+/// Total RAM in MB and whether Android calls this a low-RAM device — the
+/// inputs of the perf tier (SPEC §6.2). Android only; null elsewhere.
+Future<({int ramMb, bool lowRam})?> deviceMemory() async {
+  if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return null;
+  try {
+    final v = await _display.invokeListMethod<int>('getMemory');
+    return v == null || v.length < 2 ? null : (ramMb: v[0], lowRam: v[1] != 0);
+  } on MissingPluginException {
+    return null;
+  } on PlatformException {
+    return null;
+  }
+}
+
 /// Hides the phone-style system bars (status, navigation) or shows them
 /// again. Hidden, a swipe from the edge brings them back for a moment.
 Future<void> applySystemBars({required bool hidden}) async {

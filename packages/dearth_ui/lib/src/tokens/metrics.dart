@@ -39,12 +39,17 @@ class DRadius {
 /// Elevation: single analytic shadows only (SPEC §11.3, §12.3).
 @immutable
 class DElevation {
-  const DElevation(this.shadow, this.scale);
+  const DElevation(this.shadow, this.scale, {this.blur = true});
   final Color shadow;
   final double scale;
 
-  List<BoxShadow> get e1 => [BoxShadow(color: shadow.withValues(alpha: shadow.a * 0.55), offset: Offset(0, 2 * scale), blurRadius: 8 * scale)];
-  List<BoxShadow> get e2 => [BoxShadow(color: shadow, offset: Offset(0, 8 * scale), blurRadius: 24 * scale)];
+  /// A blurred shadow is a blur pass over the shadow's whole rect on every
+  /// paint. T1 devices (`TierPolicy.blurAllowed` false) get flat offset
+  /// shadows instead (SPEC §12.2: tiered component variants).
+  final bool blur;
+
+  List<BoxShadow> get e1 => [BoxShadow(color: shadow.withValues(alpha: shadow.a * 0.55), offset: Offset(0, 2 * scale), blurRadius: blur ? 8 * scale : 0)];
+  List<BoxShadow> get e2 => [BoxShadow(color: shadow, offset: Offset(0, 8 * scale), blurRadius: blur ? 24 * scale : 0)];
   List<BoxShadow> get none => const [];
 }
 

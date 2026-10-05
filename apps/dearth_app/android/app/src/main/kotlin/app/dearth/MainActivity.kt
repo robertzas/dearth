@@ -1,5 +1,6 @@
 package app.dearth
 
+import android.app.ActivityManager
 import android.content.pm.ActivityInfo
 import android.media.AudioManager
 import android.os.Bundle
@@ -30,6 +31,14 @@ class MainActivity : FlutterActivity() {
                 "getVolume" -> {
                     val audio = getSystemService(AUDIO_SERVICE) as AudioManager
                     result.success(listOf(audio.getStreamVolume(AudioManager.STREAM_MUSIC), audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)))
+                }
+                // Total RAM (MB) and the low-RAM flag: the perf tier (SPEC
+                // §6.2) that decides frame budgets and animation caps.
+                "getMemory" -> {
+                    val am = getSystemService(ACTIVITY_SERVICE) as ActivityManager
+                    val info = ActivityManager.MemoryInfo()
+                    am.getMemoryInfo(info)
+                    result.success(listOf((info.totalMem / (1024 * 1024)).toInt(), if (am.isLowRamDevice) 1 else 0))
                 }
                 "setVolume" -> {
                     val audio = getSystemService(AUDIO_SERVICE) as AudioManager

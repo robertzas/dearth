@@ -529,7 +529,13 @@ class _PiecePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (!placed) canvas.drawPath(path.shift(Offset(0, lifted ? 8 : 3)), Paint()..color = Color.fromRGBO(0, 0, 0, lifted ? 0.28 : 0.2));
+    if (!placed) {
+      // Translated, not path.shift: no new Path per paint.
+      canvas.save();
+      canvas.translate(0, lifted ? 8 : 3);
+      canvas.drawPath(path, Paint()..color = Color.fromRGBO(0, 0, 0, lifted ? 0.28 : 0.2));
+      canvas.restore();
+    }
     canvas
       ..save()
       ..clipPath(path)

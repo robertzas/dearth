@@ -104,17 +104,23 @@ class _Grid extends ConsumerWidget {
     return LayoutBuilder(builder: (context, box) {
       final gap = t.space.md;
       final cols = (box.maxWidth / (230 * t.scale)).floor().clamp(2, 5);
-      final size = (box.maxWidth - gap * (cols - 1)) / cols;
-      return SingleChildScrollView(
+      // A lazy grid (SPEC §12.3): only the visible tiles build and paint, and
+      // each gets its own repaint boundary, so scrolling doesn't re-paint the
+      // whole launcher on the frame's GPU (a Wrap in a SingleChildScrollView
+      // measured 14 fps there).
+      return GridView.builder(
         padding: EdgeInsets.only(bottom: t.pageMargin),
-        child: Wrap(
-          spacing: gap,
-          runSpacing: gap,
-          children: [
-            for (final g in games)
-              _Tile(game: g, kid: kid, size: size, isNew: seen != null && !seen.contains(g.id)),
-          ],
+        addAutomaticKeepAlives: false,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: cols,
+          crossAxisSpacing: gap,
+          mainAxisSpacing: gap,
         ),
+        itemCount: games.length,
+        itemBuilder: (context, i) {
+          final g = games[i];
+          return _Tile(game: g, kid: kid, size: (box.maxWidth - gap * (cols - 1)) / cols, isNew: seen != null && !seen.contains(g.id));
+        },
       );
     });
   }
@@ -138,6 +144,10 @@ class _Tile extends ConsumerWidget {
       semanticLabel: game.title,
       excludeSemantics: true,
       borderRadius: BorderRadius.circular(t.radius.l),
+      // No press fade/scale: opening the game is the feedback, and an
+      // opacity layer at every scroll start is what made dragging stutter
+      // on the frame (AGENTS rule 8).
+      pressFeedback: false,
       onTap: () => openGame(context, ref, game, kid),
       child: SizedBox(
         width: size,

@@ -9,7 +9,6 @@ import '../core/data/household.dart';
 import '../core/env.dart';
 import '../core/platform/system_ui.dart';
 import '../core/providers.dart';
-
 // ───────────────────────────── Theme resolution ─────────────────────────────
 
 /// Minutes-of-day window of the household night schedule, or null when off.
@@ -101,13 +100,19 @@ final systemBarsProvider = Provider<bool>((ref) {
 });
 
 /// Performance tier for this device (SPEC §6.2), with the device override.
+/// The platform's RAM answer arrives a moment after launch: until then the
+/// tier falls through to t3, then settles (the theme rebuilds once).
 final perfTierProvider = Provider<PerfTier>((ref) {
   final override = ref.watch(deviceSettingsProvider.select((s) => s.tierOverride));
-  return detectTier(isWeb: kIsWeb, isDesktop: AppEnv.isDesktop, override: override, totalRamMb: ref.watch(deviceRamMbProvider));
+  final m = ref.watch(deviceMemoryProvider).value;
+  final tier = detectTier(isWeb: kIsWeb, isDesktop: AppEnv.isDesktop, override: override, totalRamMb: m?.ramMb, lowRamDevice: m?.lowRam ?? false);
+  debugPrint('Dearth perf tier: ${tier.name}${m == null ? ' (platform memory unknown)' : ' (${m.ramMb} MB, low-ram: ${m.lowRam})'}');
+  return tier;
 });
 
-/// Total RAM in MB when the platform reports it (Android), else null.
-final deviceRamMbProvider = Provider<int?>((ref) => null);
+/// What Android reports about this device's memory, or null until (or
+/// unless) it answers. Feeds [perfTierProvider].
+final deviceMemoryProvider = FutureProvider<({int ramMb, bool lowRam})?>((ref) => deviceMemory());
 
 // ─────────────────────────────── Display modes ──────────────────────────────
 

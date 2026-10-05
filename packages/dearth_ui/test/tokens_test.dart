@@ -41,6 +41,16 @@ void main() {
       expect(TierPolicy.of(PerfTier.t1).blurAllowed, isFalse);
       expect(TierPolicy.of(PerfTier.t1).ambientFps, 30);
     });
+
+    test('§12.3 T1 shadows are flat offsets (no blur pass)', () {
+      const shadow = Color(0xFF000000);
+      final blurred = const DElevation(shadow, 1.5).e1.first;
+      final flat = const DElevation(shadow, 1.5, blur: false).e1.first;
+      expect(blurred.blurRadius, 8 * 1.5);
+      expect(flat.blurRadius, 0);
+      expect(flat.offset, blurred.offset);
+      expect(const DElevation(shadow, 1.5, blur: false).e2.first.blurRadius, 0);
+    });
   });
 
   group('SPEC §11.9 contrast (WCAG 2.2 AA)', () {
