@@ -135,6 +135,22 @@ void mountAdminRoutes(Router r, HubContext ctx) {
       'weather': {'hasKey': await has(SecretIds.wunderground, 'apiKey'), ...station},
       'spoonacular': {'hasKey': await has(SecretIds.spoonacular, 'apiKey')},
       'themealdb': {'hasKey': await has(SecretIds.themealdb, 'apiKey')},
+      // Settings → Recipes (FR-RCP-01, FR-RCP-13): keys are never sent back.
+      'recipes': await () async {
+        final off = await ctx.integrations.recipeSourcesOff();
+        return [
+          for (final source in kRecipeSources)
+            {
+              'id': source.id,
+              'name': source.name,
+              'note': source.note,
+              'needsKey': source.needsKey,
+              'hasKey': !source.needsKey || await has(source.id, 'apiKey'),
+              'on': !off.contains(source.id),
+              if (ctx.integrations.recipeQuotas[source.id] case final q?) 'quota': {'used': q.used, 'allowed': q.allowed, 'limit': q.limit},
+            },
+        ];
+      }(),
       'google': {
         'hasClient': await has(SecretIds.googleClient, 'clientId'),
         'accounts': [
@@ -176,6 +192,16 @@ void mountAdminRoutes(Router r, HubContext ctx) {
       case 'spoonacular' || 'themealdb':
         final key = str('apiKey');
         key == null || key.isEmpty ? await ctx.vault.remove(name) : await ctx.vault.putJson(name, {'apiKey': key});
+        ctx.recipes.clearCache();
+      case 'recipes':
+        final source = kRecipeSources.where((s) => s.id == str('source')).firstOrNull;
+        if (source == null) throw HttpError(400, 'unknown_source');
+        if (b['on'] is bool) await ctx.integrations.setRecipeSource(source.id, on: b['on']! as bool);
+        if (source.needsKey && b.containsKey('apiKey')) {
+          final key = str('apiKey');
+          key == null || key.isEmpty ? await ctx.vault.remove(source.id) : await ctx.vault.putJson(source.id, {'apiKey': key});
+        }
+        ctx.recipes.clearCache();
       case 'google':
         await ctx.vault.putJson(SecretIds.googleClient, {'clientId': str('clientId'), 'clientSecret': str('clientSecret')});
       case 'spotify':

@@ -61,7 +61,7 @@ class DearthHub {
     final jobs = JobStore(db);
     final scheduler = Scheduler(jobs);
     final blobs = BlobStore(db, config.blobDir);
-    final integrations = Integrations(kernel: kernel, vault: vault, config: config, fetcher: f);
+    final integrations = Integrations(kernel: kernel, vault: vault, config: config, fetcher: f, jobs: jobs);
     final google = GoogleCalendarJob(integrations, jobs, onTrigger: () => scheduler.runNow('google-calendar', delay: const Duration(seconds: 2)));
     scheduler
       ..register(WeatherJob(integrations))

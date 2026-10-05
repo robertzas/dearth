@@ -4,6 +4,25 @@ import '../db/database.dart';
 import '../util/json.dart';
 import 'ingredients.dart';
 
+/// Recipe sources by provider id, as the family sees them (SPEC FR-RCP-01).
+const Map<String, String> kRecipeSourceNames = {
+  'themealdb': 'TheMealDB',
+  'wikibooks': 'the Wikibooks Cookbook',
+  'racion': 'Racion',
+  'recipeapi': 'RecipeAPI.io',
+  'tasty': 'Tasty',
+  'spoonacular': 'Spoonacular',
+  'catalog': 'Dearth’s own recipes',
+};
+
+/// "From TheMealDB · also on the Wikibooks Cookbook and Tasty": who a
+/// recipe comes from (older rows say "Recipe from …" or "Via …").
+String recipeCredit(RecipeData r) {
+  final who = (r.attribution ?? 'the web').replaceFirst(RegExp(r'^(recipe from|from|via)\s+', caseSensitive: false), '');
+  final also = [for (final s in r.alsoFrom) kRecipeSourceNames[s] ?? s];
+  return ['From $who', if (also.isNotEmpty) 'also on ${also.join(' and ')}'].join(' · ');
+}
+
 /// Provider-neutral recipe (SPEC FR-RCP-02). Providers, the planner, the
 /// shopping list and the UI all speak this type.
 @immutable
@@ -29,6 +48,7 @@ class RecipeData {
     this.attribution,
     this.popularity,
     this.summary,
+    this.alsoFrom = const [],
   });
 
   factory RecipeData.fromRow(Recipe r) => RecipeData(
@@ -73,6 +93,7 @@ class RecipeData {
         attribution: j['attribution'] as String?,
         popularity: (j['popularity'] as num?)?.toDouble(),
         summary: j['summary'] as String?,
+        alsoFrom: [for (final s in j.arr('alsoFrom')) '$s'],
       );
 
   /// Local row id (or `provider:sourceId` for unsaved search results).
@@ -98,6 +119,10 @@ class RecipeData {
   final String? attribution;
   final double? popularity;
   final String? summary;
+
+  /// Other sources that have this dish, when a search merged the same
+  /// recipe from several (SPEC FR-RCP-13): their provider ids.
+  final List<String> alsoFrom;
 
   int? get minutes => totalMin ?? ((prepMin ?? 0) + (cookMin ?? 0) == 0 ? null : (prepMin ?? 0) + (cookMin ?? 0));
 
@@ -153,29 +178,49 @@ class RecipeData {
         'attribution': attribution,
         'popularity': popularity,
         'summary': summary,
+        if (alsoFrom.isNotEmpty) 'alsoFrom': alsoFrom,
       };
 
-  RecipeData copyWith({String? id, String? imageBlob}) => RecipeData(
+  RecipeData copyWith({
+    String? id,
+    String? imageBlob,
+    String? title,
+    String? imageUrl,
+    int? servings,
+    int? prepMin,
+    int? cookMin,
+    int? totalMin,
+    String? cuisine,
+    String? category,
+    List<String>? tags,
+    List<String>? diets,
+    List<Ingredient>? ingredients,
+    List<String>? steps,
+    String? summary,
+    List<String>? alsoFrom,
+  }) =>
+      RecipeData(
         id: id ?? this.id,
         source: source,
         sourceId: sourceId,
         url: url,
-        title: title,
-        imageUrl: imageUrl,
+        title: title ?? this.title,
+        imageUrl: imageUrl ?? this.imageUrl,
         imageBlob: imageBlob ?? this.imageBlob,
-        servings: servings,
-        prepMin: prepMin,
-        cookMin: cookMin,
-        totalMin: totalMin,
-        cuisine: cuisine,
-        category: category,
-        tags: tags,
-        diets: diets,
-        ingredients: ingredients,
-        steps: steps,
+        servings: servings ?? this.servings,
+        prepMin: prepMin ?? this.prepMin,
+        cookMin: cookMin ?? this.cookMin,
+        totalMin: totalMin ?? this.totalMin,
+        cuisine: cuisine ?? this.cuisine,
+        category: category ?? this.category,
+        tags: tags ?? this.tags,
+        diets: diets ?? this.diets,
+        ingredients: ingredients ?? this.ingredients,
+        steps: steps ?? this.steps,
         attribution: attribution,
         popularity: popularity,
-        summary: summary,
+        summary: summary ?? this.summary,
+        alsoFrom: alsoFrom ?? this.alsoFrom,
       );
 }
 

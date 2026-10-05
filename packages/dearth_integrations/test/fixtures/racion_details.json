@@ -1,0 +1,459 @@
+{
+ "kurinye_oladi_ovoschnaya_fantaziya": {
+  "id": "kurinye_oladi_ovoschnaya_fantaziya",
+  "slot": "snack",
+  "timeMin": 30,
+  "equipment": [
+   "stove"
+  ],
+  "tags": [
+   "meat",
+   "poultry",
+   "protein"
+  ],
+  "batch": false,
+  "keep": 2,
+  "freeze": true,
+  "image": "/media/recipe/2026/09/b16ba58c5a839b5327ff17c8.webp",
+  "title": "Chicken & Veggie Fritters with Mushrooms",
+  "description": "Crispy golden fritters made with ground chicken, zucchini, bell pepper, onion, and mushrooms.",
+  "steps": [
+   "Finely dice the onion and bell pepper, chop the mushrooms into small cubes, and grate the zucchini, then squeeze out the excess liquid.",
+   "Mix the vegetables and mushrooms with the ground chicken, then stir in an egg, flour, salt, and pepper until well combined.",
+   "Heat a skillet with oil over medium heat.",
+   "Spoon the mixture into the skillet, shaping small fritters about 1.5 cm thick.",
+   "Cook covered on low heat for 5–6 minutes per side until golden brown and the meat is no longer pink inside.",
+   "Transfer the fritters to paper towels and serve hot."
+  ],
+  "slotLabel": "Snack",
+  "ingredients": [
+   {
+    "ingredientId": "ground_chicken",
+    "name": "Ground chicken",
+    "amount": 100,
+    "unit": "g",
+    "pantry": false,
+    "image": "/images/ingredients/ground_chicken.webp"
+   },
+   {
+    "ingredientId": "zucchini",
+    "name": "Zucchini",
+    "amount": 40,
+    "unit": "g",
+    "pantry": false,
+    "image": "/images/ingredients/zucchini.webp"
+   },
+   {
+    "ingredientId": "eggs",
+    "name": "Eggs",
+    "amount": 1,
+    "unit": "pcs",
+    "pantry": false,
+    "image": "/images/ingredients/eggs.webp"
+   },
+   {
+    "ingredientId": "onion",
+    "name": "Onions",
+    "amount": 20,
+    "unit": "g",
+    "pantry": false,
+    "image": "/images/ingredients/onion.webp"
+   },
+   {
+    "ingredientId": "bell_pepper",
+    "name": "Bell peppers",
+    "amount": 35,
+    "unit": "g",
+    "pantry": false,
+    "image": "/images/ingredients/bell_pepper.webp"
+   },
+   {
+    "ingredientId": "mushrooms",
+    "name": "Button mushrooms",
+    "amount": 30,
+    "unit": "g",
+    "pantry": false,
+    "image": "/images/ingredients/mushrooms.webp"
+   },
+   {
+    "ingredientId": "flour",
+    "name": "Wheat flour",
+    "amount": 15,
+    "unit": "g",
+    "pantry": true,
+    "image": "/images/ingredients/flour.webp"
+   },
+   {
+    "ingredientId": "sunflower_oil",
+    "name": "Sunflower oil",
+    "amount": 10,
+    "unit": "ml",
+    "pantry": true,
+    "image": "/images/ingredients/sunflower_oil.webp"
+   },
+   {
+    "ingredientId": "salt",
+    "name": "Salt",
+    "amount": 2,
+    "unit": "g",
+    "pantry": true,
+    "image": "/images/ingredients/salt.webp"
+   },
+   {
+    "ingredientId": "black_pepper",
+    "name": "Ground black pepper",
+    "amount": 1,
+    "unit": "g",
+    "pantry": true,
+    "image": "/images/ingredients/black_pepper.webp"
+   }
+  ],
+  "kcal": 398.86,
+  "protein": 27.21,
+  "fat": 23.983,
+  "carb": 16.845,
+  "cost": 1.56,
+  "stats": {
+   "likes": 0,
+   "comments": 0,
+   "favorites": 0,
+   "liked": false,
+   "favorite": false,
+   "rating": 0,
+   "ratings": 0,
+   "myRating": 0
+  }
+ },
+ "chicken_bowl_rice": {
+  "id": "chicken_bowl_rice",
+  "slot": "lunch",
+  "timeMin": 30,
+  "equipment": [
+   "stove"
+  ],
+  "tags": [
+   "poultry",
+   "pp",
+   "protein"
+  ],
+  "batch": false,
+  "keep": 2,
+  "image": "/images/recipes/chicken_bowl_rice.webp",
+  "notes": {
+   "en": {
+    "why": "Sauté chicken at high heat first to render fat and lock in juices; low heat makes it rubbery. Stir constantly to avoid sticking and burning.",
+    "swaps": "Replace honey with 5g maple syrup for a less sweet taste. Use 10g frozen peas instead of cucumber for convenience.",
+    "mistakes": "Overcooking rice turns it mushy. Check texture after 10 minutes of simmering; it should be firm but tender.",
+    "keep": "Eat fresh or store for 2 days in the fridge; reheat chicken and veggies in a dry pan for 3 minutes. Freeze without egg.",
+    "serve": "Pair with a cold glass of green tea or miso soup to balance the meal’s richness and heat."
+   }
+  },
+  "title": "Chicken Bowl with Rice and Vegetables",
+  "description": "Balanced lunch: rice, chicken in teriyaki-light sauce, crunchy vegetables and egg, sprinkled with sesame.",
+  "steps": [
+   "Rinse the rice in cold water, cut the carrot into 0.5 cm julienne, cut the cucumber into 1 cm long slices, boil the egg hard for 7 minutes, dice the chicken into 2 cm pieces, prepare a 24 cm skillet, and heat it over medium heat.",
+   "On a preheated 24 cm skillet over high heat, sauté the chicken for 6 minutes until golden at the edges, stirring.",
+   "Add minced garlic to the chicken, pour in the soy sauce and honey, mix and warm for 1 minute so the chicken soaks up the sauce.",
+   "Add carrot and cucumber to the chicken, cook over medium heat for 4 minutes until tender, stirring frequently.",
+   "Assemble the dish: spread the rice on the bottom of the plate, top with the chicken and vegetables and the egg halves, sprinkle with sesame.",
+   "Serve hot, garnish with extra sesame if desired, and enjoy immediately."
+  ],
+  "slotLabel": "Lunch",
+  "ingredients": [
+   {
+    "ingredientId": "chicken_breast",
+    "name": "Chicken breast fillet",
+    "amount": 140,
+    "unit": "g",
+    "pantry": false,
+    "image": "/images/ingredients/chicken_breast.webp"
+   },
+   {
+    "ingredientId": "rice",
+    "name": "Long-grain rice",
+    "amount": 70,
+    "unit": "g",
+    "pantry": false,
+    "image": "/images/ingredients/rice.webp"
+   },
+   {
+    "ingredientId": "eggs",
+    "name": "Eggs",
+    "amount": 1,
+    "unit": "pcs",
+    "pantry": false,
+    "image": "/images/ingredients/eggs.webp"
+   },
+   {
+    "ingredientId": "cucumber",
+    "name": "Cucumbers",
+    "amount": 70,
+    "unit": "g",
+    "pantry": false,
+    "image": "/images/ingredients/cucumber.webp"
+   },
+   {
+    "ingredientId": "carrot",
+    "name": "Carrots",
+    "amount": 50,
+    "unit": "g",
+    "pantry": false,
+    "image": "/images/ingredients/carrot.webp"
+   },
+   {
+    "ingredientId": "soy_sauce",
+    "name": "Soy sauce",
+    "amount": 15,
+    "unit": "ml",
+    "pantry": true,
+    "image": "/images/ingredients/soy_sauce.webp"
+   },
+   {
+    "ingredientId": "honey",
+    "name": "Honey",
+    "amount": 5,
+    "unit": "g",
+    "pantry": true,
+    "image": "/images/ingredients/honey.webp"
+   },
+   {
+    "ingredientId": "garlic",
+    "name": "Garlic",
+    "amount": 3,
+    "unit": "g",
+    "pantry": false,
+    "image": "/images/ingredients/garlic.webp"
+   },
+   {
+    "ingredientId": "sesame",
+    "name": "Sesame seeds",
+    "amount": 3,
+    "unit": "g",
+    "pantry": true
+   },
+   {
+    "ingredientId": "sunflower_oil",
+    "name": "Sunflower oil",
+    "amount": 6,
+    "unit": "ml",
+    "pantry": true,
+    "image": "/images/ingredients/sunflower_oil.webp"
+   }
+  ],
+  "kcal": 604.5800000000002,
+  "protein": 46.94499999999999,
+  "fat": 16.049,
+  "carb": 68.18500000000002,
+  "cost": 2.01,
+  "stats": {
+   "likes": 0,
+   "comments": 0,
+   "favorites": 0,
+   "liked": false,
+   "favorite": false,
+   "rating": 0,
+   "ratings": 0,
+   "myRating": 0
+  }
+ },
+ "rulet_iz_kurinogo_okoroka_i_omleta": {
+  "id": "rulet_iz_kurinogo_okoroka_i_omleta",
+  "slot": "lunch",
+  "timeMin": 80,
+  "equipment": [
+   "oven",
+   "stove"
+  ],
+  "tags": [
+   "hearty",
+   "poultry",
+   "protein"
+  ],
+  "batch": false,
+  "keep": 3,
+  "image": "/media/recipe/2026/09/d07acb0287871624a7668dda.webp",
+  "title": "Chicken Breast Roll with Omelet",
+  "description": "A rolled chicken breast stuffed with a creamy omelet and leek, baked in foil. Serve in warm or chilled slices.",
+  "steps": [
+   "Whisk eggs with mayonnaise and a pinch of salt, let rest for 5–10 minutes.",
+   "Pour the mixture onto a greased skillet, cover, and cook on low heat for 4–5 minutes without flipping until the omelet sets. Cool.",
+   "Separate the chicken breast from the bone, keeping the skin intact, and flatten into a thin layer.",
+   "Tenderize the meat with a mallet, season with salt and pepper.",
+   "Slice the leek into thin rings and sprinkle over the meat.",
+   "Cover the meat with the omelet, roll tightly into a log, secure with kitchen twine, and wrap in foil.",
+   "Bake at 375°F (190°C) for 40–45 minutes until the juices run clear and the internal temperature reaches 185°F (85°C).",
+   "Let the roll rest for 10 minutes, remove the twine and foil, and slice into pieces."
+  ],
+  "slotLabel": "Lunch",
+  "ingredients": [
+   {
+    "ingredientId": "chicken_legs",
+    "name": "Chicken leg quarters",
+    "amount": 195,
+    "unit": "g",
+    "pantry": false
+   },
+   {
+    "ingredientId": "eggs",
+    "name": "Eggs",
+    "amount": 1.5,
+    "unit": "pcs",
+    "pantry": false,
+    "image": "/images/ingredients/eggs.webp"
+   },
+   {
+    "ingredientId": "mayo",
+    "name": "Mayonnaise",
+    "amount": 25,
+    "unit": "g",
+    "pantry": true,
+    "image": "/images/ingredients/mayo.webp"
+   },
+   {
+    "ingredientId": "leek",
+    "name": "Leek",
+    "amount": 25,
+    "unit": "g",
+    "pantry": false
+   },
+   {
+    "ingredientId": "sunflower_oil",
+    "name": "Sunflower oil",
+    "amount": 8,
+    "unit": "ml",
+    "pantry": true,
+    "image": "/images/ingredients/sunflower_oil.webp"
+   },
+   {
+    "ingredientId": "salt",
+    "name": "Salt",
+    "amount": 2,
+    "unit": "g",
+    "pantry": true,
+    "image": "/images/ingredients/salt.webp"
+   },
+   {
+    "ingredientId": "black_pepper",
+    "name": "Ground black pepper",
+    "amount": 1,
+    "unit": "g",
+    "pantry": true,
+    "image": "/images/ingredients/black_pepper.webp"
+   }
+  ],
+  "kcal": 717.18,
+  "protein": 43.449999999999996,
+  "fat": 56.175,
+  "carb": 3.53,
+  "cost": 0.98,
+  "stats": {
+   "likes": 0,
+   "comments": 0,
+   "favorites": 0,
+   "liked": false,
+   "favorite": false,
+   "rating": 0,
+   "ratings": 0,
+   "myRating": 0
+  }
+ },
+ "kurinye_grudki_v_gorchichnom_souse_s_ris": {
+  "id": "kurinye_grudki_v_gorchichnom_souse_s_ris",
+  "slot": "dinner",
+  "timeMin": 30,
+  "equipment": [
+   "stove"
+  ],
+  "tags": [
+   "poultry",
+   "protein"
+  ],
+  "batch": false,
+  "keep": 2,
+  "image": "/media/recipe/2026/09/1875be65b0153ad78b792b54.webp",
+  "title": "Chicken Breast in Mustard Cream Sauce with Rice",
+  "description": "Sliced chicken breast in a tangy cream-mustard sauce with caramelized onions, served over steamed rice.",
+  "steps": [
+   "Rinse the rice and cook in salted water for 15–18 minutes until tender, then drain.",
+   "Slice the onion into half-rings and sauté in oil for 3–4 minutes until just translucent.",
+   "Cut the chicken breast into strips, season with salt, and cook with the onions for 6–8 minutes until golden-brown.",
+   "Stir in the mustard and sour cream, mixing well.",
+   "Simmer the sauce on low heat for 3 minutes until it just begins to bubble; the chicken is done when no pink remains inside.",
+   "Serve over the rice."
+  ],
+  "slotLabel": "Dinner",
+  "ingredients": [
+   {
+    "ingredientId": "rice",
+    "name": "Long-grain rice",
+    "amount": 70,
+    "unit": "g",
+    "pantry": false,
+    "image": "/images/ingredients/rice.webp"
+   },
+   {
+    "ingredientId": "chicken_breast",
+    "name": "Chicken breast fillet",
+    "amount": 190,
+    "unit": "g",
+    "pantry": false,
+    "image": "/images/ingredients/chicken_breast.webp"
+   },
+   {
+    "ingredientId": "mustard",
+    "name": "Mustard",
+    "amount": 13,
+    "unit": "g",
+    "pantry": true,
+    "image": "/images/ingredients/mustard.webp"
+   },
+   {
+    "ingredientId": "sour_cream",
+    "name": "Sour cream 15%",
+    "amount": 75,
+    "unit": "g",
+    "pantry": false,
+    "image": "/images/ingredients/sour_cream.webp"
+   },
+   {
+    "ingredientId": "onion",
+    "name": "Onions",
+    "amount": 70,
+    "unit": "g",
+    "pantry": false,
+    "image": "/images/ingredients/onion.webp"
+   },
+   {
+    "ingredientId": "sunflower_oil",
+    "name": "Sunflower oil",
+    "amount": 10,
+    "unit": "ml",
+    "pantry": true,
+    "image": "/images/ingredients/sunflower_oil.webp"
+   },
+   {
+    "ingredientId": "salt",
+    "name": "Salt",
+    "amount": 2,
+    "unit": "g",
+    "pantry": true,
+    "image": "/images/ingredients/salt.webp"
+   }
+  ],
+  "kcal": 711.1899999999999,
+  "protein": 53.201,
+  "fat": 26.312,
+  "carb": 65.93,
+  "cost": 2.43,
+  "stats": {
+   "likes": 0,
+   "comments": 0,
+   "favorites": 0,
+   "liked": false,
+   "favorite": false,
+   "rating": 0,
+   "ratings": 0,
+   "myRating": 0
+  }
+ }
+}

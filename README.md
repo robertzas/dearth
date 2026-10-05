@@ -54,6 +54,11 @@ back.
   recipe with a face, kids included. A tap adds a recipe's ingredients, or
   the whole week's, to the shopping list, with staples skipped and amounts
   merged. Cook mode shows one step at a time with tap-to-start timers.
+  Recipe search asks every free source at once through the Hub (TheMealDB,
+  the Wikibooks Cookbook and Racion out of the box; RecipeAPI.io, Tasty and
+  Spoonacular once you add their free keys in Settings → Recipes) and
+  blends the answers into one list, with the same dish from two sources as
+  one card. Monthly allowances are spread over the month.
 - **Kids.** A chore chart a toddler can run: big picture cards, a
   celebration for every "I did it!", and rewards that fit each kid's stage.
   These are a reward jar with a surprise inside, a star bank with a goal,
@@ -357,6 +362,9 @@ and relays them, and conflicts resolve as last-writer-wins per field
 
 The bundled recipes show photos of similar dishes from
 [TheMealDB](https://www.themealdb.com), loaded when the display is online.
+Recipes from the [Wikibooks Cookbook](https://en.wikibooks.org/wiki/Cookbook:Table_of_Contents)
+are shared under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/);
+each one links back to its page.
 
 The Toybox's farm animals are recordings by Joseph Sardin from
 [BigSoundBank.com](https://bigsoundbank.com), released under CC0

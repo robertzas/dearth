@@ -24,11 +24,21 @@ class RecipeService {
   /// Lookup of any recipe returned earlier (for recommendations and "save").
   RecipeData? known(String id) => _seen[id];
 
+  /// The sources that answered the last search, and those left out of it.
+  ({List<String> answered, List<String> skipped}) lastSources = (answered: const [], skipped: const []);
+
+  /// Every enabled source at once, blended into one list: one shape, the
+  /// same dish merged, best fit first, sources taking turns (FR-RCP-13).
   Future<List<RecipeData>> search(RecipeQuery q) => _cached('search|${q.cacheKey}', () async {
-        final providers = await integrations.recipeProviders();
-        final results = await Future.wait(providers.map((p) => _safe(p.id, () => p.search(q))));
-        return _dedupe(results.expand((r) => r)).take(q.limit).toList();
+        final found = await searchEverywhere(await integrations.recipeProviders(), q, onError: (p, e) {
+          if (e is! QuotaExceededException) _log.warning('Recipe provider $p left out: $e');
+        });
+        lastSources = (answered: found.answered, skipped: found.skipped);
+        return found.recipes;
       });
+
+  /// Forgets cached answers (a source was switched on or off, or got a key).
+  void clearCache() => _cache.clear();
 
   /// Discovery feeds (FR-RCP-04).
   Future<List<RecipeData>> discover(String feed, {int limit = 12, String? arg, int? month}) {
@@ -100,7 +110,9 @@ class RecipeService {
     final plan = PlanContext.fromRecipes(planned);
     final candidates = <String, RecipeData>{for (final r in recipeCatalog) r.id: r, ..._seen};
     if (!plan.isEmpty) {
-      final providers = (await integrations.recipeProviders()).where((p) => p is! CatalogRecipes);
+      // Unmetered sources only: three ingredient searches would spend a
+      // tenth of Racion's hour, or a day of RecipeAPI.io and Tasty.
+      final providers = (await integrations.recipeProviders()).where((p) => p is! CatalogRecipes && p is! Racion && p is! RecipeApiIo && p is! TastyApi);
       for (final key in plan.perishablesFirst.take(3)) {
         for (final p in providers) {
           for (final r in await _safe(p.id, () => p.search(RecipeQuery(includeIngredients: [key], limit: 6)))) {

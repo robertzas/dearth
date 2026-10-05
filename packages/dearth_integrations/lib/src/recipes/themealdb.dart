@@ -119,7 +119,7 @@ class TheMealDb implements RecipeProvider {
       tags: [for (final t in ((m['strTags'] as String?) ?? '').split(',')) if (t.trim().isNotEmpty) t.trim()],
       ingredients: ingredients,
       steps: steps,
-      attribution: 'Recipe from TheMealDB',
+      attribution: 'TheMealDB',
     );
   }
 }

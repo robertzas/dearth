@@ -23,7 +23,12 @@ void mountFeatureRoutes(Router r, HubContext ctx) {
       excludeIngredients: csv(q['exclude']),
       limit: (int.tryParse(q['limit'] ?? '') ?? 24).clamp(1, 48),
     ));
-    return jsonOk([for (final x in results) x.toJson()]);
+    // Which sources took part (FR-RCP-13), for the curious and for tests.
+    final sources = ctx.recipes.lastSources;
+    return jsonOk([for (final x in results) x.toJson()]).change(headers: {
+      'x-dearth-recipe-sources': sources.answered.join(','),
+      if (sources.skipped.isNotEmpty) 'x-dearth-recipe-skipped': sources.skipped.join(','),
+    });
   });
 
   r.get('/api/recipes/discover/<feed>', (Request req, String feed) async {

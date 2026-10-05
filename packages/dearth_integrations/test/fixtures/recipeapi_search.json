@@ -1,0 +1,146 @@
+{
+ "data": [
+  {
+   "id": 449,
+   "name": "Beef Tostadas",
+   "description": "Beef tostadas are a popular Mexican dish featuring crispy fried tortillas topped with seasoned ground beef and fresh toppings for a delicious and satisfying meal.",
+   "difficulty": "easy",
+   "meal_type": "main",
+   "cuisine": "american",
+   "dietary_tags": [
+    "nut_free"
+   ],
+   "servings": 6,
+   "prep_time": 15,
+   "cook_time": 15,
+   "calories_per_serving": 450,
+   "protein": 25,
+   "instructions": [
+    "Heat the vegetable oil in a frying pan over medium heat until hot.",
+    "Add the beef and cook, stirring occasionally, until browned and cooked through.",
+    "Add chopped onion and minced garlic to the beef, cook until the onion is translucent.",
+    "Stir in the chili powder and cumin, then spoon onto the tostadas and top with lettuce and cheese."
+   ],
+   "ingredients": [
+    {
+     "id": 12,
+     "name": "Ground beef",
+     "category": "meat",
+     "quantity": 1,
+     "unit": "lb",
+     "optional": false
+    },
+    {
+     "id": 58,
+     "name": "Chili powder",
+     "category": "spice",
+     "quantity": 1,
+     "unit": "tsp",
+     "optional": false
+    },
+    {
+     "id": 37,
+     "name": "Garlic",
+     "category": "vegetable",
+     "quantity": 2,
+     "unit": "clove",
+     "optional": false
+    },
+    {
+     "id": 41,
+     "name": "Onion",
+     "category": "vegetable",
+     "quantity": 1,
+     "unit": "piece",
+     "optional": false
+    },
+    {
+     "id": 90,
+     "name": "Tostada shells",
+     "category": "grain",
+     "quantity": 6,
+     "unit": "piece",
+     "optional": false
+    },
+    {
+     "id": 77,
+     "name": "Sour cream",
+     "category": "dairy",
+     "quantity": 0.5,
+     "unit": "cup",
+     "optional": true
+    }
+   ]
+  },
+  {
+   "id": 1203,
+   "name": "Vegetable Minestrone",
+   "description": "A hearty Italian soup of beans, pasta and garden vegetables.",
+   "difficulty": "easy",
+   "meal_type": "soup",
+   "cuisine": "italian",
+   "dietary_tags": [
+    "vegetarian",
+    "dairy_free"
+   ],
+   "servings": 4,
+   "prep_time": 20,
+   "cook_time": 40,
+   "calories_per_serving": 310,
+   "protein": 12,
+   "instructions": [
+    "Soften the onion, carrot and celery in olive oil.",
+    "Add the tomatoes, stock and beans and simmer for 25 minutes.",
+    "Stir in the pasta and cook until tender."
+   ],
+   "ingredients": [
+    {
+     "id": 41,
+     "name": "Onion",
+     "category": "vegetable",
+     "quantity": 1,
+     "unit": "piece",
+     "optional": false
+    },
+    {
+     "id": 43,
+     "name": "Carrot",
+     "category": "vegetable",
+     "quantity": 2,
+     "unit": "piece",
+     "optional": false
+    },
+    {
+     "id": 60,
+     "name": "Cannellini beans",
+     "category": "legume",
+     "quantity": 400,
+     "unit": "g",
+     "optional": false
+    },
+    {
+     "id": 61,
+     "name": "Small pasta",
+     "category": "grain",
+     "quantity": 100,
+     "unit": "g",
+     "optional": false
+    }
+   ]
+  }
+ ],
+ "links": {
+  "first": "https://recipeapi.io/api/v1/recipes?page=1&per_page=10",
+  "last": "https://recipeapi.io/api/v1/recipes?page=1&per_page=10",
+  "prev": null,
+  "next": null
+ },
+ "meta": {
+  "current_page": 1,
+  "last_page": 1,
+  "path": "https://recipeapi.io/api/v1/recipes",
+  "per_page": 10,
+  "total": 2,
+  "language": "en"
+ }
+}

@@ -853,16 +853,60 @@ already on the list.
     multi-ingredient filters and random sets).
   - **Spoonacular** (optional key; popularity sort, by-ingredients, similar
     recipes, diets; the free tier is ~50 points/day, so cache aggressively).
+  - **Wikibooks Cookbook** (no key): about 3,800 community recipes, read
+    through the MediaWiki API; CC BY-SA, so every card links its page.
+  - **RecipeAPI.io** (optional free key): about 50,000 recipes with
+    structured ingredients, steps, cuisine, meal type and diet tags, but no
+    photos. The free plan is 500 requests a month, for personal
+    non-commercial use.
+  - **Tasty** (optional free RapidAPI key, BASIC plan, 500 requests a
+    month): photo-led recipes with ratings and tags. An unofficial API run
+    by a third party (API Dojo), so it may change or disappear.
+  - **Racion** (no key): English recipes with per-serving amounts, times,
+    calories and a kid-friendly flag, mostly Eastern European home cooking;
+    50 requests an hour and 300 a day per address.
   - **Import from any URL** (schema.org `Recipe` JSON-LD or microdata,
     parsed on the Hub; works with most major recipe sites; also the
     companion's "Share to Dearth").
   - **Family recipe box** (hand-entered or edited).
   - **[M5]** Mealie/Tandoor connectors and AI suggestions.
+
+  Only free sources (owner, 2026-10-05). A source that needs a key starts
+  working once a grown-up adds the key in Settings → Recipes, where any
+  source can also be switched off; keys stay on the Hub.
 - **FR-RCP-02 [M2]** Every result is normalized into one recipe model:
   structured ingredients (quantity, unit, normalized name, preparation,
   confidence), steps, times, servings, image, tags, diets and source
   attribution (§13.6). A recipe is copied into the family box when saved or
   planned, so the plan never breaks if a provider disappears.
+
+- **FR-RCP-13 [M2]** **Aggregated search** (owner request, 2026-10-05):
+  every search asks every enabled source at once and answers with one
+  list.
+  - **Fan-out:** all sources in parallel with a 6-second budget each; a
+    slow or failing source is left out of that search, never blocking the
+    rest, and the answer says which sources took part.
+  - **One shape:** titles tidied (ALL CAPS, emoji, a trailing "Recipe"),
+    total time filled from prep + cook, servings defaulted, ingredients
+    through one parser and the knowledge base (FR-RCP-12), cuisines,
+    courses and diets in one vocabulary, and every card crediting its
+    source (and the others that have the same dish).
+  - **Merged:** the same dish from two sources (titles that reduce to the
+    same words, or nearly the same words with most ingredients in common)
+    becomes one card with the richest fields and an "also on" list. A
+    source's own recipes are never merged with each other.
+  - **Ranked:** the searched words in the title count most, then in the
+    ingredients, tags, cuisine and course; wanted ingredients; completeness
+    (photo, steps, time); several sources agreeing; a little popularity.
+    Then interleaved: never the same source twice running while another
+    source's recipe is nearly as good.
+  - **Budgets:** quotas are counted on the Hub and survive restarts; a
+    monthly quota is spread over the month (by the end of day *d* at most
+    *d* / days-in-month of it may be spent, so quiet days save up), a
+    source's own rate-limit headers correct the count, identical searches
+    come from a 12-hour cache, and a source that's out of budget is skipped
+    until it refills. "Pairs with your plan" (FR-RCP-09) uses only the
+    unmetered sources.
 
 **Discovery**
 - **FR-RCP-03 [M2]** **Search:** text with typo tolerance; filters for
@@ -2125,6 +2169,31 @@ Pre-blurred backgrounds, dominant color and blur-hash are computed once
   `{id}/similar`, random. **Free tier ≈ 50 points/day**: the Hub enforces a
   daily point budget, caches responses for 7 days, and degrades gracefully
   when the budget runs out.
+- **Wikibooks Cookbook** (no key): one request,
+  `en.wikibooks.org/w/api.php?action=query&generator=search&gsrnamespace=102&prop=revisions|pageimages|info&rvprop=content&rvslots=main`,
+  returns the hits with their wikitext, photo and address. A recipe comes
+  from its "Recipe summary" template (servings, time, category), its
+  Ingredients section (subsections become ingredient groups) and its
+  Procedure section; a "Cuisine of …" link gives the cuisine. Pages
+  without both sections are articles, not recipes. CC BY-SA 4.0: every
+  card links its page.
+- **Racion** (no key): `racion.app/api/recipes?q=…&country=US&lang=en`
+  lists summaries; the top four are looked up (`/api/recipes/{id}`) for
+  their per-serving ingredients and steps, and the kid flag is carried
+  over from the summary. 50 requests an hour and 300 a day per address:
+  `X-RateLimit-Remaining-Hour/Day` are read and a search that wouldn't fit
+  isn't started.
+- **RecipeAPI.io** (free key, `Authorization: Bearer sk_live_…`):
+  `/api/v1/recipes?search=…&search_in=both` (plus `ingredients`,
+  `cuisine`, `dietary_tags` when they match its values; `per_page` ≤ 10 on
+  the free plan). No photos. 500 requests a month, spread over the month.
+- **Tasty** (free RapidAPI key, BASIC plan): `tasty.p.rapidapi.com/recipes/list?q=…`
+  with `X-RapidAPI-Key` and `X-RapidAPI-Host`. Compilations are opened
+  into their recipes and videos skipped; `X-RateLimit-Requests-Remaining`
+  corrects the monthly count (500, spread). Unofficial (API Dojo).
+- **Ruled out** (2026-10-05): Edamam (no free plan any more, and recipes
+  may not be stored), API Ninjas (the free plan is for evaluation only and
+  forbids storing), MyPlate Kitchen (no API).
 - **URL import:** the Hub fetches the page (desktop UA, size and time
   limits), extracts **schema.org `Recipe`** from JSON-LD (incl. `@graph`)
   or microdata, sanitizes HTML, downloads the image, and runs the

@@ -96,6 +96,17 @@ void main() {
     });
   });
 
+  test('FR-RCP-13: a recipe credits its source and the others that have the same dish', () {
+    const merged = RecipeData(id: 'themealdb:1', source: 'themealdb', title: 'Chicken Curry', attribution: 'TheMealDB', alsoFrom: ['wikibooks', 'tasty']);
+    expect(recipeCredit(merged), 'From TheMealDB · also on the Wikibooks Cookbook and Tasty');
+    // Rows saved before said "Recipe from …" or "Via …".
+    expect(recipeCredit(const RecipeData(id: 'a', source: 'themealdb', title: 'x', attribution: 'Recipe from TheMealDB')), 'From TheMealDB');
+    expect(recipeCredit(const RecipeData(id: 'b', source: 'spoonacular', title: 'x', attribution: 'Via Spoonacular · Foodista')), 'From Spoonacular · Foodista');
+    expect(recipeCredit(const RecipeData(id: 'c', source: 'web', title: 'x')), 'From the web');
+    expect(RecipeData.fromJson(merged.toJson()).alsoFrom, ['wikibooks', 'tasty']);
+    expect(const RecipeData(id: 'd', source: 'box', title: 'x').toJson().containsKey('alsoFrom'), isFalse);
+  });
+
   group('FR-SHOP-01/02: consolidation', () {
     test('merges confident, convertible lines and keeps sources', () {
       final tacos = recipe('t', 'Tacos', ['1 lb ground beef', '1 bunch cilantro', '2 limes', '1/2 cup sour cream']);

@@ -1,0 +1,247 @@
+{
+ "count": 3,
+ "results": [
+  {
+   "id": 8138,
+   "name": "One-Pot Chicken Curry",
+   "slug": "one-pot-chicken-curry",
+   "description": "A cozy weeknight curry in one pot.",
+   "thumbnail_url": "https://img.buzzfeed.com/thumbnailer-prod-us-east-1/one-pot-curry.jpg",
+   "num_servings": 4,
+   "prep_time_minutes": 10,
+   "cook_time_minutes": 25,
+   "total_time_minutes": 35,
+   "user_ratings": {
+    "count_positive": 1830,
+    "count_negative": 64,
+    "score": 0.966
+   },
+   "sections": [
+    {
+     "name": null,
+     "position": 1,
+     "components": [
+      {
+       "raw_text": "1 lb boneless, skinless chicken breast, cubed",
+       "extra_comment": "",
+       "position": 1,
+       "ingredient": {
+        "name": "boneless, skinless chicken breast",
+        "display_singular": "boneless, skinless chicken breast",
+        "display_plural": "boneless, skinless chicken breasts"
+       },
+       "measurements": [
+        {
+         "quantity": "1",
+         "unit": {
+          "name": "pound",
+          "abbreviation": "pound",
+          "system": "imperial",
+          "display_singular": "pound",
+          "display_plural": "pounds"
+         }
+        }
+       ]
+      },
+      {
+       "raw_text": "1 tablespoon curry powder",
+       "extra_comment": "",
+       "position": 1,
+       "ingredient": {
+        "name": "curry powder",
+        "display_singular": "curry powder",
+        "display_plural": "curry powders"
+       },
+       "measurements": [
+        {
+         "quantity": "1",
+         "unit": {
+          "name": "tablespoon",
+          "abbreviation": "tablespoon",
+          "system": "imperial",
+          "display_singular": "tablespoon",
+          "display_plural": "tablespoons"
+         }
+        }
+       ]
+      },
+      {
+       "raw_text": "1 can coconut milk",
+       "extra_comment": "",
+       "position": 1,
+       "ingredient": {
+        "name": "coconut milk",
+        "display_singular": "coconut milk",
+        "display_plural": "coconut milks"
+       },
+       "measurements": [
+        {
+         "quantity": "1",
+         "unit": {
+          "name": "can",
+          "abbreviation": "can",
+          "system": "imperial",
+          "display_singular": "can",
+          "display_plural": "cans"
+         }
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "For serving",
+     "position": 2,
+     "components": [
+      {
+       "raw_text": "n/a",
+       "extra_comment": "",
+       "position": 1,
+       "ingredient": {
+        "name": "cooked rice",
+        "display_singular": "cooked rice",
+        "display_plural": "cooked rices"
+       },
+       "measurements": [
+        {
+         "quantity": "2",
+         "unit": {
+          "name": "cup",
+          "abbreviation": "cup",
+          "system": "imperial",
+          "display_singular": "cup",
+          "display_plural": "cups"
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "instructions": [
+    {
+     "display_text": "Simmer everything for 20 minutes.",
+     "position": 2
+    },
+    {
+     "display_text": "Brown the chicken in a large pot.",
+     "position": 1
+    }
+   ],
+   "tags": [
+    {
+     "name": "indian",
+     "display_name": "Indian",
+     "type": "cuisine"
+    },
+    {
+     "name": "dinner",
+     "display_name": "Dinner",
+     "type": "meal"
+    },
+    {
+     "name": "gluten_free",
+     "display_name": "Gluten-Free",
+     "type": "dietary"
+    },
+    {
+     "name": "under_30_minutes",
+     "display_name": "Under 30 Minutes",
+     "type": "difficulty"
+    }
+   ]
+  },
+  {
+   "id": 7000,
+   "name": "Breakfast Compilation",
+   "recipes": [
+    {
+     "id": 3021,
+     "name": "Fluffy Pancakes",
+     "slug": "fluffy-pancakes",
+     "thumbnail_url": "https://img.buzzfeed.com/pancakes.jpg",
+     "num_servings": 6,
+     "prep_time_minutes": 0,
+     "cook_time_minutes": 0,
+     "total_time_minutes": 0,
+     "sections": [
+      {
+       "name": null,
+       "components": [
+        {
+         "raw_text": "2 cups flour",
+         "extra_comment": "",
+         "position": 1,
+         "ingredient": {
+          "name": "flour",
+          "display_singular": "flour",
+          "display_plural": "flours"
+         },
+         "measurements": [
+          {
+           "quantity": "2",
+           "unit": {
+            "name": "cup",
+            "abbreviation": "cup",
+            "system": "imperial",
+            "display_singular": "cup",
+            "display_plural": "cups"
+           }
+          }
+         ]
+        },
+        {
+         "raw_text": "2 eggs",
+         "extra_comment": "",
+         "position": 1,
+         "ingredient": {
+          "name": "egg",
+          "display_singular": "egg",
+          "display_plural": "eggs"
+         },
+         "measurements": [
+          {
+           "quantity": "2",
+           "unit": {
+            "name": "",
+            "abbreviation": "",
+            "system": "imperial",
+            "display_singular": "",
+            "display_plural": "s"
+           }
+          }
+         ]
+        }
+       ]
+      }
+     ],
+     "instructions": [
+      {
+       "display_text": "Whisk.",
+       "position": 1
+      },
+      {
+       "display_text": "Cook on a hot griddle.",
+       "position": 2
+      }
+     ],
+     "tags": [
+      {
+       "name": "breakfast",
+       "display_name": "Breakfast",
+       "type": "meal"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 99,
+   "name": "Watch: 5 Tasty Hacks",
+   "slug": "hacks",
+   "sections": [],
+   "instructions": [],
+   "tags": []
+  }
+ ]
+}

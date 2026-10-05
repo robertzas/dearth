@@ -142,7 +142,7 @@ class _RecipeDetailState extends ConsumerState<RecipeDetail> {
         _Ratings(recipe: _r),
         if (_r.attribution != null || _r.url != null) ...[
           SizedBox(height: t.space.md),
-          Text(['From ${_r.attribution ?? 'the web'}', ?_r.url].join(' · '), style: t.text.caption, maxLines: 2, overflow: TextOverflow.ellipsis),
+          Text([recipeCredit(_r), ?_r.url].join(' · '), style: t.text.caption, maxLines: 2, overflow: TextOverflow.ellipsis),
         ],
       ],
     );
