@@ -1170,6 +1170,9 @@ her thinking* from age 2 to 5, adapt to her level, and respect family limits.
 **Purpose.** A parent-curated wall of big album-art tiles that a toddler can
 tap to play, whatever service the song lives on.
 
+**Status: deferred** (owner, 2026-10-05). The requirements below stand,
+but the music box isn't being built now; we'll come back to it later.
+
 - **FR-MUS-01 [M3]** Tiles: cover art, title (optionally hidden for
   toddlers), and per-profile boards ("Ava's songs", "Dinner music",
   "Lullabies"). Parents curate tiles from the companion or web admin by
