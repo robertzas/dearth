@@ -1105,7 +1105,8 @@ fairness, reminders.
 **Purpose.** A safe, ad-free, offline play space with games that *stretch
 her thinking* from age 2 to 5, adapt to her level, and respect family limits.
 
-- **FR-TOY-01 [M3]** **Launcher:** big illustrated tiles, no reading
+- **FR-TOY-01 [M3]** **Launcher:** big illustrated square tiles (six across
+  on a landscape wall, four on a portrait one, two on a phone), no reading
   required, filtered to the child's stage, with a "new!" sparkle on recently
   unlocked games. A grown-up corner leads to settings.
 - **FR-TOY-02 [M3]** **Launch set (M3).** The full catalog with age bands,
@@ -1633,14 +1634,14 @@ mockups for each are an M0 deliverable.
 ```
 ┌───────────────────────────────────────────────────────────────────────────┐
 │  🧸 Ava's Toybox                                    ⏳ 12 min left  ◔      │
-│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐          │
-│  │  🎨     │  │  🖍️     │  │  🫧     │  │  🐮     │  │  🔺🟦   │          │
-│  │ Paint   │  │ Color   │  │ Bubbles │  │ Farm    │  │ Shapes  │          │
-│  └─────────┘  └─────────┘  └─────────┘  └─────────┘  └─────────┘          │
-│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐          │
-│  │  🧩 ✨  │  │  🃏     │  │  👾     │  │  🌻 123 │  │  🎵     │          │
-│  │ Puzzle  │  │ Match   │  │ Monster │  │ Count   │  │ Music   │          │
-│  └─────────┘  └─────────┘  └─────────┘  └─────────┘  └─────────┘          │
+│  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐   │
+│  │  🎨    │  │  🖍️    │  │  🫧    │  │  🐮    │  │  🔺🟦  │  │  🎵    │   │
+│  │ Paint  │  │ Color  │  │ Bubbles│  │ Farm   │  │ Shapes │  │ Music  │   │
+│  └────────┘  └────────┘  └────────┘  └────────┘  └────────┘  └────────┘   │
+│  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐   │
+│  │  🧩 ✨ │  │  🃏    │  │  👾    │  │ 🌻 123 │  │  ⭐    │  │  🔤    │   │
+│  │ Puzzle │  │ Match  │  │ Monster│  │ Count  │  │ Dots   │  │ Letters│   │
+│  └────────┘  └────────┘  └────────┘  └────────┘  └────────┘  └────────┘   │
 └───────────────────────────────────────────────────────────────────────────┘
 ```
 (Labels are for parents; tiles are recognizable without reading.)

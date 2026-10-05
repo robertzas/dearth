@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:dearth_core/dearth_core.dart';
 import 'package:dearth_ui/dearth_ui.dart';
@@ -103,7 +104,9 @@ class _Grid extends ConsumerWidget {
     }
     return LayoutBuilder(builder: (context, box) {
       final gap = t.space.md;
-      final cols = (box.maxWidth / (230 * t.scale)).floor().clamp(2, 5);
+      // Square tiles about 190 dp (scaled) across, six at most: six on a
+      // landscape wall, four on a portrait one, two on a phone.
+      final cols = (box.maxWidth / (190 * t.scale)).floor().clamp(2, 6);
       // A lazy grid (SPEC §12.3): only the visible tiles build and paint, and
       // each gets its own repaint boundary, so scrolling doesn't re-paint the
       // whole launcher on the frame's GPU (a Wrap in a SingleChildScrollView
@@ -170,7 +173,18 @@ class _Tile extends ConsumerWidget {
                 bottom: t.space.sm,
                 child: Column(
                   children: [
-                    Text(game.title, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: t.text.title.copyWith(color: Colors.white, fontWeight: FontWeight.w800)),
+                    // The title keeps its size relative to the tile (26 on a
+                    // 310 tile), and a long one shrinks a little more rather
+                    // than lose its end ("Letter & Name Tracing").
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        game.title,
+                        maxLines: 1,
+                        textAlign: TextAlign.center,
+                        style: t.text.title.copyWith(color: Colors.white, fontWeight: FontWeight.w800, fontSize: math.min(t.text.title.fontSize!, size * 0.084)),
+                      ),
+                    ),
                     SizedBox(height: t.space.xxs),
                     // The level, for grown-ups: small dots, no numbers.
                     Row(
