@@ -4,8 +4,8 @@ import 'dart:io';
 
 import 'package:dearth_core/dearth_core.dart';
 import 'package:dearth_hub/dearth_hub.dart';
-import 'package:drift/drift.dart' show BooleanExpressionOperators, driftRuntimeOptions;
 import 'package:dearth_integrations/dearth_integrations.dart' show Fetcher;
+import 'package:drift/drift.dart' show BooleanExpressionOperators, driftRuntimeOptions;
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:test/test.dart';
