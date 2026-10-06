@@ -32,9 +32,13 @@ Read these first, in order:
 
 ## Golden rules
 
-1. **Never leave the tree red.** `tool/check.sh` must pass at the end of
-   every step. If a session is interrupted, the next one fixes or reverts
-   first (see `PROGRESS.md`).
+1. **Never leave the tree red; CI is the test runner.** Don't run the
+   suites or E2E locally. When a step is ready, commit and push to `main`;
+   the `build.yml` run (gate, E2E, every platform) is the check. If it
+   fails, read the failing job, fix, push again, and repeat until green
+   before starting anything new. If a session is interrupted, the next
+   one checks the latest run and fixes or reverts first (see
+   `PROGRESS.md`).
 2. **All synced writes go through `Mutator`** (devices) or the Hub's op
    pipeline. Never `INSERT`/`UPDATE` a synced table directly: it bypasses
    HLC stamping, replication and the outbox.
@@ -80,6 +84,9 @@ Read these first, in order:
     text (`database.g.dart`, `web/drift_worker.js`) stays in plain git.
 
 ## Testing
+
+CI runs everything below on every push (golden rule 1); these are the
+commands it uses, for reproducing a failure it reports.
 
 - `dearth_core`, `dearth_integrations`, `dearth_hub`: `dart test`. Provider
   adapters are tested against recorded fixtures; no network in tests.

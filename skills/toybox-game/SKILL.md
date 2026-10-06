@@ -241,24 +241,23 @@ phone-size layout tests had been looking at the launcher, not the game.
 1. `python3 skills/toybox-game/scripts/check_game.py <id>`: every
    place the game must appear (catalog, registry, tests, E2E, docs,
    clips).
-2. `tool/check.sh --fast`: analyze plus every unit and widget suite. It
-   must be green; never leave the tree red (AGENTS rule 1).
-3. `CHROME_PATH=/usr/bin/google-chrome-stable tool/e2e.sh toybox`: builds
-   the web app and runs every Toybox journey (each spec whose path
-   contains "toybox") on the four viewports. CI runs the full suite on
-   push.
-4. Commit only this game's paths, named explicitly (never `git add -A`:
+2. Don't run the suites or E2E locally: CI is the test runner (AGENTS
+   rule 1). It runs the gate and every Toybox journey on the four
+   viewports on push.
+3. Commit only this game's paths, named explicitly (never `git add -A`:
    the tree may hold someone's unrelated work, like the owner's
    `SUGGESTIONS.md`). New clips must be LFS-tracked:
    `git check-attr filter -- <clip>` says `lfs`. Message: `feat(toybox):
    <Game>`, a body that says what it does and why, test counts, and the
    attribution line the session asks for.
+4. Push to `main`, then watch the `build.yml` run. If a job fails, read
+   it, fix, push again, and repeat until green.
 5. Deploy: `tool/deploy_frame.sh <frame-ip> --build` (the household's
    address is in PROGRESS.md's command table). It builds the APK for the
    frame's CPU and installs it over the old one.
 6. Stop and report: what the game does, what was verified, new clips to
-   listen to, anything left for the owner (pushes go through the owner;
-   CI publishes a release per push).
+   listen to, anything left for the owner (CI publishes a release per
+   push).
 
 ## Gotchas that cost hours
 

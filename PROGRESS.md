@@ -9,12 +9,11 @@ resumes from here.
 
 1. Read this file top to bottom, then `SPEC.md` sections named by the
    current step.
-2. Restore a compiling tree **before** new feature work:
-   ```bash
-   tool/check.sh            # pub get + codegen + analyze + tests (all packages)
-   ```
-   If it fails, fix or revert the half-finished step listed under
-   **In progress** below. Never stack new work on a red tree.
+2. Restore a green tree **before** new feature work: check the latest
+   GitHub Actions run of `build.yml` on `main` (CI is the test runner; see
+   AGENTS.md golden rule 1). If it failed, fix or revert the half-finished
+   step listed under **In progress** below, push, and wait for green.
+   Never stack new work on a red tree.
 3. Continue with the first unchecked step. Update **In progress** first.
 4. When a step completes: tick it, add a dated line to the **Log**, and note
    anything surprising under **Decisions & findings**.
@@ -23,7 +22,7 @@ Useful commands (details in `README.md`):
 
 | Purpose | Command |
 |---|---|
-| Everything green? | `tool/check.sh` |
+| Everything green? | the latest `build.yml` run on `main` (`tool/check.sh` reproduces the gate) |
 | Regenerate drift code | `tool/codegen.sh` |
 | Run the Hub locally | `tool/dev_hub.sh` |
 | Run the app (web / linux) | `cd apps/dearth_app && flutter run -d chrome` / `-d linux` |

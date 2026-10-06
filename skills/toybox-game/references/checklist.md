@@ -83,7 +83,7 @@ without it.
       PROGRESS (6.2 line, Log entry with test counts, findings, In
       progress cleared).
 - [ ] `python3 skills/toybox-game/scripts/check_game.py <id>` shows only ✓.
-- [ ] `tool/check.sh --fast` is green; the Toybox E2E specs are green.
+- [ ] Pushed, and the `build.yml` run (gate and E2E) is green.
 - [ ] The temporary `apps/dearth_app/test/zz_shots_test.dart` is gone.
 - [ ] The commit names only this game's paths; the message says what and
       why, with test counts.
