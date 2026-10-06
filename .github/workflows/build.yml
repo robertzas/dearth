@@ -98,13 +98,33 @@ jobs:
           retention-days: 7
 
   e2e:
-    name: Web E2E (Playwright)
+    # The suite renders Flutter in software Chrome, so it's split four ways
+    # across runners (each shard is a quarter of every viewport's tests).
+    name: Web E2E (Playwright ${{ matrix.shard }}/4)
     needs: web
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup
+      # The test Hub is pure Dart and the web build is downloaded, so no
+      # Flutter SDK or LFS files: Dart and the Hub's workspace subset, as
+      # in the Hub job.
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: ${{ env.DART_VERSION }}
+      - uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-hub-${{ runner.os }}-${{ hashFiles('packages/dearth_core/pubspec.yaml', 'packages/dearth_integrations/pubspec.yaml', 'hub/dearth_hub/pubspec.yaml') }}
+          restore-keys: pub-hub-${{ runner.os }}-
+      - name: Hub-only workspace
+        run: |
+          printf 'name: dearth_hub_build\npublish_to: none\nenvironment:\n  sdk: ^3.13.0\nworkspace:\n  - packages/dearth_core\n  - packages/dearth_integrations\n  - hub/dearth_hub\n' > pubspec.yaml
+          dart pub get
       - uses: actions/download-artifact@v4
         with:
           name: web
@@ -114,15 +134,18 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: e2e/package-lock.json
-      - name: Install Playwright
+      - name: Install
         working-directory: e2e
-        run: npm ci && npx playwright install --with-deps chromium
-      - name: Run the suite (Wall-L, Wall-P, Tablet, Phone)
-        run: SKIP_BUILD=1 tool/e2e.sh
+        run: npm ci --no-audit --no-fund
+      # The runner image's Chrome: no browser download or system packages.
+      - name: Run shard ${{ matrix.shard }} of 4 (Wall-L, Wall-P, Tablet, Phone)
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+        run: SKIP_BUILD=1 tool/e2e.sh --shard=${{ matrix.shard }}/4
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: |
             e2e/playwright-report
             e2e/test-results
@@ -139,6 +162,12 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+          # Gradle's distribution and Maven dependencies, between runs.
+          cache: gradle
+          cache-dependency-path: |
+            apps/dearth_app/android/*.gradle.kts
+            apps/dearth_app/android/app/*.gradle.kts
+            apps/dearth_app/android/gradle/wrapper/gradle-wrapper.properties
       - uses: ./.github/actions/setup
       - name: Release keystore (optional secret)
         env:

@@ -5,10 +5,11 @@
 #   tool/e2e.sh --project=wall-l      # extra args go to `playwright test`
 #   SKIP_BUILD=1 tool/e2e.sh          # reuse apps/dearth_app/build/web
 #   CHROME_PATH=/usr/bin/google-chrome-stable tool/e2e.sh   # use a system Chrome
+#   tool/e2e.sh --shard=2/4           # one quarter of the suite (CI runs four)
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-"$ROOT/tool/web_assets.sh" >/dev/null
 if [[ "${SKIP_BUILD:-0}" != "1" ]]; then
+  "$ROOT/tool/web_assets.sh" >/dev/null
   (cd "$ROOT/apps/dearth_app" && flutter build web --release --no-wasm-dry-run)
 fi
 cd "$ROOT/e2e"

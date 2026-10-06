@@ -97,7 +97,13 @@ commands it uses, for reproducing a failure it reports.
   the Wall-L, Wall-P, Tablet and Phone projects. `SKIP_BUILD=1` reuses the
   last web build. `CHROME_PATH=/usr/bin/google-chrome-stable` uses a system
   Chrome instead of downloading one. Extra arguments go to
-  `playwright test`, e.g. `tool/e2e.sh tests/calendar.spec.ts`.
+  `playwright test`, e.g. `tool/e2e.sh tests/calendar.spec.ts`. CI splits
+  the suite across four runners (`--shard=N/4`); locally it runs three
+  browsers (more starve each other and journeys time out). Playwright's
+  runner needs Node: under Bun it can't load its TypeScript config, and
+  the time is all in the browser anyway.
+- `tool/check.sh` runs analyze and every suite at once after codegen
+  (`--serial` for one at a time).
 - E2E specs drive the app through `e2e/tests/helpers.ts`:
   - `openDemo(page, route)` starts a seeded local household at a fixed
     clock (`?demo=1&e2e=1&now=…`).
