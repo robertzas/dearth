@@ -34,7 +34,8 @@ Read these first, in order:
 
 1. **Never leave the tree red; CI is the test runner.** Don't run the
    suites or E2E locally. When a step is ready, commit and push to `main`;
-   the `build.yml` run (gate, E2E, every platform) is the check. If it
+   the `build.yml` run (gate, E2E, every platform) is the check; a newer
+   push cancels the run in progress, so batch-related commits. If it
    fails, read the failing job, fix, push again, and repeat until green
    before starting anything new. If a session is interrupted, the next
    one checks the latest run and fixes or reverts first (see
