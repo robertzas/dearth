@@ -37,6 +37,7 @@ export 'src/toybox/expansion.dart';
 export 'src/toybox/games.dart';
 export 'src/toybox/hop.dart';
 export 'src/toybox/rounds.dart';
+export 'src/toybox/spell.dart';
 export 'src/toybox/tracing.dart';
 export 'src/toybox/voice.dart';
 export 'src/toybox/voice_lengths.g.dart';

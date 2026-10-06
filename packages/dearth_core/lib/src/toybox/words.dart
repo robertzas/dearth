@@ -183,6 +183,23 @@ const List<PictureWord> kWords = [
   PictureWord('spider', '🕷️', color: 'black'),
   PictureWord('cheese', '🧀', shape: 'triangle'),
   PictureWord('picture', '🖼️', shape: 'square'),
+  // Word Builder: words spelled the way they sound.
+  PictureWord('rat', '🐀'),
+  PictureWord('map', '🗺️'),
+  PictureWord('cap', '🧢'),
+  PictureWord('bag', '👜'),
+  PictureWord('bed', '🛏️'),
+  PictureWord('leg', '🦵'),
+  PictureWord('pen', '🖊️'),
+  PictureWord('pin', '📌'),
+  PictureWord('cup', '🥤'),
+  PictureWord('crab', '🦀'),
+  PictureWord('flag', '🚩'),
+  PictureWord('hand', '✋'),
+  PictureWord('sled', '🛷'),
+  PictureWord('plug', '🔌'),
+  PictureWord('vest', '🦺'),
+  PictureWord('lips', '👄'),
 ];
 
 /// [kWords] by word.

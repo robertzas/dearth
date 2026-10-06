@@ -159,4 +159,85 @@ void main() {
       expect([for (var s = 0; s <= 2; s++) hopResult(s)], [GameResult.win, GameResult.helped, GameResult.miss]);
     });
   });
+
+  group('Word Builder', () {
+    test('FR-TOY-03: first letter missing → last → all three → four-letter words', () {
+      for (var seed = 0; seed < 200; seed++) {
+        final rng = Random(seed);
+        for (var level = 1; level <= 4; level++) {
+          final r = spellRound(level, rng);
+          final why = 'seed $seed, level $level: ${r.letters} ${r.tiles}';
+          expect(r.letters, hasLength(level >= 4 ? 4 : 3), reason: why);
+          expect(r.missing, switch (level) { 1 => [0], 2 => [2], 3 => [0, 1, 2], _ => [0, 1, 2, 3] }, reason: why);
+          expect(r.tiles, hasLength(r.missing.length + (r.missing.length == 1 ? 2 : 1)), reason: why);
+          // Every missing letter has its tile (twice for "tent").
+          final left = [...r.tiles];
+          for (final i in r.missing) {
+            expect(left.remove(r.letters[i]), isTrue, reason: why);
+          }
+          for (final extra in left) {
+            expect(kSpellLetters, contains(extra), reason: why);
+            expect(r.letters, isNot(contains(extra)), reason: why);
+            if (r.missing.length == 1) expect('aeiou', isNot(contains(extra)), reason: 'a lone vowel would stand out ($why)');
+          }
+        }
+      }
+    });
+
+    test('an extra letter never sounds like one in the word, nor spells another picture', () {
+      const alike = ['bp', 'dt', 'cgk', 'fv', 'mn', 'sz'];
+      for (var seed = 0; seed < 300; seed++) {
+        for (var level = 1; level <= 4; level++) {
+          final r = spellRound(level, Random(seed));
+          final extras = [...r.tiles];
+          for (final i in r.missing) {
+            extras.remove(r.letters[i]);
+          }
+          for (final e in extras) {
+            for (final l in r.letters.split('')) {
+              expect(alike.any((g) => g.contains(e) && g.contains(l)), isFalse, reason: '$e against $l in ${r.letters}');
+            }
+            if (r.missing.length == 1) {
+              final i = r.missing.single;
+              final other = r.letters.replaceRange(i, i + 1, e);
+              expect([...kSpellWords, ...kSpellLongWords], isNot(contains(other)), reason: '${r.letters}: $e would make $other');
+            }
+          }
+        }
+      }
+    });
+
+    test('every word comes up, never twice running, and is a picture with a clip', () {
+      final seen = <String>{};
+      for (var seed = 0; seed < 300; seed++) {
+        final rng = Random(seed);
+        for (var level = 1; level <= 4; level++) {
+          String? last;
+          for (var i = 0; i < 4; i++) {
+            final r = spellRound(level, rng, last: last);
+            expect(r.letters, isNot(last));
+            last = r.letters;
+            seen.add(r.letters);
+          }
+        }
+      }
+      expect(seen, {...kSpellWords, ...kSpellLongWords});
+      for (final w in [...kSpellWords, ...kSpellLongWords]) {
+        expect(kWordsByName, contains(w));
+        expect(kVoiceLines, contains(wordNamed(w).clip));
+        // One letter per sound: every letter has a sound clip of its own.
+        for (final l in w.split('')) {
+          expect(kVoiceLines, contains(soundClip(l)), reason: '$w: $l');
+        }
+      }
+      expect(kSpellWords.toSet(), hasLength(kSpellWords.length));
+      expect(kSpellLongWords.toSet(), hasLength(kSpellLongWords.length));
+    });
+
+    test('slips: one letter is a pick-one round; a four-letter word allows one slip', () {
+      expect([for (var s = 0; s <= 2; s++) spellResult(s, missing: 1)], [GameResult.win, GameResult.helped, GameResult.miss]);
+      expect([for (var s = 0; s <= 2; s++) spellResult(s, missing: 3)], [GameResult.win, GameResult.helped, GameResult.miss]);
+      expect([for (var s = 0; s <= 2; s++) spellResult(s, missing: 4)], [GameResult.win, GameResult.win, GameResult.helped]);
+    });
+  });
 }

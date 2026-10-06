@@ -2,6 +2,7 @@ import 'biglittle.dart';
 import 'creature.dart';
 import 'dots.dart';
 import 'hop.dart';
+import 'spell.dart';
 import 'voice_lengths.g.dart';
 import 'words.dart';
 
@@ -65,6 +66,9 @@ String hopAskClip(HopRound r) => switch (r.mode) {
       HopMode.add => 'hop_add_${r.from}_${r.hops}',
     };
 
+/// A letter's sound alone, as a tile says it: "Buh."
+String soundClip(String letter) => 'sound_${letter.toLowerCase()}';
+
 /// "Three."
 String numberClip(int n) => 'num_$n';
 
@@ -93,6 +97,8 @@ abstract final class VoiceLine {
   static const dotsLetters = 'dots_letters';
   static const bigLittleStart = 'biglittle_start';
   static const bigLittleDone = 'biglittle_done';
+  static const spellMissing = 'spell_missing';
+  static const spellBuild = 'spell_build';
 }
 
 const List<String> _numbers = [
@@ -204,6 +210,11 @@ Map<String, String> _lines() {
   for (final l in [...kLookAlikeLetters, ...kDifferentLetters, ...kMirrorLetters]) {
     lines[bigLittleClip(l)] = 'Big ${l.toUpperCase()}, little $l.';
   }
+  for (final l in kSpellLetters.split('')) {
+    lines[soundClip(l)] = '${_sound(letterSound(l))}.';
+  }
+  lines[VoiceLine.spellMissing] = 'Which sound is missing?';
+  lines[VoiceLine.spellBuild] = "Let's build it, sound by sound!";
   for (var n = 0; n <= 10; n++) {
     lines[hopAskClip(HopRound(HopMode.find, 11, n == 0 ? 1 : 0, n))] = 'Hop to ${_numbers[n]}!';
   }

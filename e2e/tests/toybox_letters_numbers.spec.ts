@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { expectText, idsUnder, openToyboxGame, tap, textOf, tid } from './helpers';
+import { expectCheered, expectText, idsUnder, openToyboxGame, tap, textOf, tid } from './helpers';
 
 // The Toybox's number and letter games (SPEC FR-TOY-03), played from what
 // the screen shows (labels). The voice itself can't be heard here; the
@@ -50,5 +50,25 @@ test.describe('Toybox number and letter games', () => {
     // A lasting label: it stays until the next round.
     await expectText(tid(page, 'hop.ask'), `Landed on ${target}!`);
     await expectText(tid(page, `hop.pad.${target}`), `${target}, frog`);
+  });
+
+  test('FR-TOY-03: Word Builder — she puts the missing sound into the word', async ({ page }) => {
+    await openToyboxGame(page, 'spell', true);
+    await expectText(tid(page, 'spell.ask'), /^Which sound is missing in [a-z]+\?$/);
+    const word = (await textOf(tid(page, 'spell.picture'))).trim();
+    expect(word).toMatch(/^[a-z]{3}$/);
+    await expectText(tid(page, 'spell.slot.0'), 'Slot 1: empty, next');
+    await expectText(tid(page, 'spell.slot.1'), `Slot 2: ${word[1]}`);
+    // The tile with the first letter, read from the tray.
+    let right = '';
+    for (const id of await idsUnder(page, 'spell.tile.')) {
+      if ((await textOf(tid(page, id))).trim() === `Letter ${word[0]}`) right = id;
+    }
+    expect(right).not.toBe('');
+    await tap(tid(page, right));
+    await expectText(tid(page, 'spell.slot.0'), `Slot 1: ${word[0]}`);
+    // A lasting label, then the host's lasting cheer count.
+    await expectText(tid(page, 'spell.ask'), `You built ${word}!`);
+    await expectCheered(page);
   });
 });

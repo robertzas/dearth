@@ -3,6 +3,7 @@ import 'package:dearth_app/features/toybox/games/biglittle.dart';
 import 'package:dearth_app/features/toybox/games/dots.dart';
 import 'package:dearth_app/features/toybox/games/dots_pictures.dart';
 import 'package:dearth_app/features/toybox/games/hop.dart';
+import 'package:dearth_app/features/toybox/games/spell.dart';
 import 'package:dearth_core/dearth_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -16,7 +17,7 @@ import 'support/toybox_harness.dart';
 void main() {
   for (final size in const [Size(390, 844), Size(844, 390), Size(1080, 1920), Size(1920, 1080)]) {
     testWidgets('every number and letter game lays out on a ${size.width.toInt()}×${size.height.toInt()} screen at its busiest level', (tester) async {
-      await expectGamesLayOut(tester, const [('dots', 1), ('dots', 4), ('dots', 6), ('biglittle', 1), ('biglittle', 2), ('biglittle', 3), ('hop', 1), ('hop', 2), ('hop', 4)], size: size);
+      await expectGamesLayOut(tester, const [('dots', 1), ('dots', 4), ('dots', 6), ('biglittle', 1), ('biglittle', 2), ('biglittle', 3), ('hop', 1), ('hop', 2), ('hop', 4), ('spell', 1), ('spell', 3), ('spell', 4)], size: size);
     });
   }
 
@@ -423,6 +424,141 @@ void main() {
       await fly(tester, r);
       await h.settle();
       expect(await toyboxRounds(h), [('hop', 2, 'win')]);
+      await tester.pump(const Duration(seconds: 4));
+      await h.shutdown();
+    });
+  });
+
+  group('Word Builder', () {
+    SpellGameState game(WidgetTester tester) => tester.state<SpellGameState>(find.byType(SpellGame));
+
+    /// Fills every open slot with its tile, left to right.
+    Future<void> build(WidgetTester tester) async {
+      while (game(tester).debugActive != null) {
+        await tester.tap(byId('spell.tile.${game(tester).debugTile()}'));
+        await tester.pump(const Duration(milliseconds: 300));
+      }
+    }
+
+    /// The word read back sound by sound, then the word, then the round.
+    Future<void> blend(WidgetTester tester) async {
+      for (var i = 0; i < 40; i++) {
+        await tester.pump(const Duration(milliseconds: 200));
+      }
+    }
+
+    testWidgets('FR-TOY-03: the first sound is missing; its tile fills the slot, then the word is read back sound by sound', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'spell', sound: sound, level: 1);
+      final r = game(tester).debugRound;
+      final word = r.letters;
+      expect(r.missing, [0]);
+      expectNoFallbackText(byId('screen.game'));
+      // The word, then once it has finished, what to do.
+      await tester.pump(const Duration(seconds: 3));
+      expect(sound.said, [r.word.clip, VoiceLine.spellMissing]);
+      expect(labelOf(tester, 'spell.ask'), 'Which sound is missing in $word?');
+      expect(labelOf(tester, 'spell.picture'), word);
+      expect(labelOf(tester, 'spell.slot.0'), 'Slot 1: empty, next');
+      expect(labelOf(tester, 'spell.slot.1'), 'Slot 2: ${word[1]}');
+      final right = game(tester).debugTile();
+      expect(labelOf(tester, 'spell.tile.$right'), 'Letter ${word[0]}');
+      sound.said.clear();
+      await tester.tap(byId('spell.tile.$right'));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(sound.said, [soundClip(word[0])], reason: 'every tile says its sound');
+      expect(labelOf(tester, 'spell.slot.0'), 'Slot 1: ${word[0]}');
+      expect(labelOf(tester, 'spell.tile.$right'), 'Letter ${word[0]}, placed');
+      expect(labelOf(tester, 'spell.ask'), 'You built $word!');
+      await blend(tester);
+      expect(sound.said.take(word.length + 2), [soundClip(word[0]), for (final l in word.split('')) soundClip(l), r.word.clip]);
+      await h.settle();
+      expect(await toyboxRounds(h), [('spell', 1, 'win')]);
+      await tester.pump(const Duration(seconds: 4));
+      expect(labelOf(tester, 'spell.ask'), isNot('You built $word!'), reason: 'a new round');
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('a wrong tile says its sound and wiggles back; slips make the round "helped", then a miss', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'spell', sound: sound, level: 3);
+      final r = game(tester).debugRound;
+      expect(r.missing, [0, 1, 2]);
+      expect(labelOf(tester, 'spell.ask'), 'Build ${r.letters}');
+      await tester.pump(const Duration(seconds: 3));
+      expect(sound.said.last, VoiceLine.spellBuild);
+      final wrong = game(tester).debugTile(right: false);
+      await tester.tap(byId('spell.tile.$wrong'));
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(sound.said.last, soundClip(r.tiles[wrong]));
+      expect(sound.played.where((p) => p.$1 == Sfx.nope), hasLength(1));
+      expect(labelOf(tester, 'spell.tile.$wrong'), 'Letter ${r.tiles[wrong]}', reason: 'back in the tray');
+      expect(labelOf(tester, 'spell.slot.0'), 'Slot 1: empty, next');
+      await build(tester);
+      expect(labelOf(tester, 'spell.slot.2'), 'Slot 3: ${r.letters[2]}');
+      await blend(tester);
+      await h.settle();
+      expect(await toyboxRounds(h), [('spell', 3, 'helped')]);
+      await tester.pump(const Duration(seconds: 4));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('four-letter words: a slip per word is still a win', (tester) async {
+      final h = await openToyboxGame(tester, 'spell', level: 4);
+      final r = game(tester).debugRound;
+      expect(r.letters, hasLength(4));
+      expect(r.tiles, hasLength(5));
+      await tester.pump(const Duration(milliseconds: 700));
+      await tester.tap(byId('spell.tile.${game(tester).debugTile(right: false)}'));
+      await tester.pump(const Duration(milliseconds: 600));
+      await build(tester);
+      await blend(tester);
+      await h.settle();
+      expect(await toyboxRounds(h), [('spell', 4, 'win')]);
+      await tester.pump(const Duration(seconds: 4));
+      await h.shutdown();
+    });
+
+    testWidgets('a tile dragged onto the open slot goes in; dropped far away, it floats back', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'spell', sound: sound, level: 2);
+      final r = game(tester).debugRound;
+      final last = r.letters.length - 1;
+      expect(r.missing, [last]);
+      final right = game(tester).debugTile();
+      final tile = byId('spell.tile.$right');
+      // Nowhere near a slot: back to the tray.
+      await tester.drag(tile, const Offset(0, 40));
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(labelOf(tester, 'spell.tile.$right'), 'Letter ${r.letters[last]}');
+      expect(sound.said, contains(soundClip(r.letters[last])), reason: 'picking it up says its sound');
+      final to = tester.getCenter(byId('spell.slot.$last'));
+      await tester.dragFrom(tester.getCenter(tile), to - tester.getCenter(tile));
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(labelOf(tester, 'spell.slot.$last'), 'Slot ${last + 1}: ${r.letters[last]}');
+      await blend(tester);
+      await h.settle();
+      expect(await toyboxRounds(h), [('spell', 2, 'win')]);
+      await tester.pump(const Duration(seconds: 4));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('a long pause says the sound she needs, without counting a slip', (tester) async {
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'spell', sound: sound, level: 1);
+      final r = game(tester).debugRound;
+      await tester.pump(const Duration(seconds: 13));
+      expect(sound.said.last, soundClip(r.letters[0]));
+      await build(tester);
+      await blend(tester);
+      await h.settle();
+      expect(await toyboxRounds(h), [('spell', 1, 'win')]);
       await tester.pump(const Duration(seconds: 4));
       await h.shutdown();
     });

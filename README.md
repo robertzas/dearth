@@ -78,8 +78,9 @@ back.
   name), Number Tracing, Breathing Buddy, Build-a-Creature (mix body
   parts and paints; it dances and says its silly name), Dot-to-Dot
   (join numbers or letters in order and the picture comes alive),
-  Big & Little Letters (small letters find their capitals, up to b, d, p and q)
-  and Frog Hop (a frog hops a number line: find a pad, one more or less, adding). The letter, word
+  Big & Little Letters (small letters find their capitals, up to b, d, p and q),
+  Frog Hop (a frog hops a number line: find a pad, one more or less, adding)
+  and Word Builder (sound tiles spell the picture's word, then the voice blends it). The letter, word
   and number games talk: every line is a clip bundled with the app, so they
   work on a display with no text-to-speech. Each kid sees the games that suit their age, and every game
   adapts: three wins in a row go up a level, three misses ease off, and

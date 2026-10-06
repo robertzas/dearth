@@ -54,7 +54,8 @@ void main() {
       expect(gamesFor(24).map((g) => g.id), isNot(contains('memory')));
       expect(gamesFor(30).map((g) => g.id), containsAll(['memory', 'monster']));
       expect(gamesFor(30).map((g) => g.id), isNot(contains('counting')));
-      expect(gamesFor(48).length, kGames.length);
+      expect(gamesFor(48).map((g) => g.id), isNot(contains('spell')), reason: 'Word Builder waits until 4½');
+      expect(gamesFor(60).length, kGames.length);
       expect(gamesFor(48, off: {'paint'}).map((g) => g.id), isNot(contains('paint')));
     });
 

@@ -23,6 +23,7 @@ import 'rhymes.dart';
 import 'shadows.dart';
 import 'shapes.dart';
 import 'sizes.dart';
+import 'spell.dart';
 import 'stories.dart';
 import 'sudoku.dart';
 import 'tracing.dart';
@@ -58,4 +59,5 @@ final Map<String, GameBuilder> kGameBuilders = {
   'dots': DotsGame.new,
   'biglittle': BigLittleGame.new,
   'hop': HopGame.new,
+  'spell': SpellGame.new,
 };
