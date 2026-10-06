@@ -785,8 +785,10 @@ wall.
 
 **Sources** (details in §13.5)
 - **FR-PHO-01 [M1]** **Amazon Photos shared album:** paste a share link. No
-  Amazon credentials are ever requested. New photos added to the album
-  appear within an hour.
+  Amazon credentials are ever requested. Every photo in it arrives (in
+  batches, minutes apart, for a big album); new photos added to the album
+  appear within an hour. A source can be removed; the same album can't be
+  added twice, and a photo in two sources shows once (§13.5.1).
 - **FR-PHO-02 [M1]** **Folder / NAS:** one or more paths mounted into the
   Hub container (SMB/NFS mounts are handled by the host), rescanned
   periodically.
@@ -1362,7 +1364,9 @@ the Hub)
   scale preview), then done.
 - **FR-SET-02 [M1]** Household setup wizard (web admin or companion):
   household name, timezone, location (ZIP or map), units and week start;
-  family profiles (name, color, photo, role, birthday, kid stage, buddy);
+  family profiles (name, color, photo, role, birthday, kid stage, buddy;
+  a birthday picks its year from a grid first, then month and day, and
+  shows the year);
   connect Google and map calendars to people; weather (WU key + station, or
   keyless); photos (Amazon link, folder); done. Dearth then offers sample
   chores, routines and meal ideas.
@@ -2128,8 +2132,17 @@ weather codes and TWC icon codes map to Dearth's icon set.
      - `…/drive/v1/nodes/{id}/contentRedirection?querySuffix=%3FviewBox%3D1920&shareId={shareId}`
      - `POST …/drive/v1/batchLink?shareId=…` (zip of originals; last resort).
 - **Cadence:** refresh the listing every 60 min. Fetch derivatives
-  incrementally into the Hub blob store and keep serving from cache
-  forever if Amazon changes anything.
+  incrementally into the Hub blob store, 150 per source per run; while an
+  album still has photos to fetch, the next run comes 20 s later (status
+  "adding photos · n of m"), so a large album arrives in minutes, not 150
+  an hour. A photo that fails to download is skipped until the hourly run.
+  Keep serving from cache forever if Amazon changes anything.
+- **One album, one source:** the Hub refuses a second source for the same
+  share (however its link was copied: query strings, `groups/share` or
+  `shared`), and folds duplicates added earlier into the copy with the
+  most photos. Settings → Photo frame → a source → **Remove this source**
+  removes it and its photos from every display (the album isn't touched).
+  A photo that two sources share is one image (one blob) and shows once.
 - **Failure posture:** health badge + docs. The screensaver never goes blank
   (FR-SSV-06). Because no credentials are involved, breakage can't lock
   accounts or trigger 2FA prompts.

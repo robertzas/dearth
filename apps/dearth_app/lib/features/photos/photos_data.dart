@@ -11,8 +11,8 @@ final photoSourcesProvider = StreamProvider<List<PhotoSource>>((ref) {
   return (db.select(db.photoSources)..where((s) => s.deleted.equals(false))).watch();
 });
 
-/// Every photo item, newest first (curation grid).
-final photoItemsProvider = StreamProvider<List<PhotoItem>>((ref) {
+/// Every photo item of every source, newest first.
+final _allPhotoItemsProvider = StreamProvider<List<PhotoItem>>((ref) {
   final db = ref.watch(dbProvider);
   return (db.select(db.photoItems)
         ..where((p) => p.deleted.equals(false) & p.blobRef.isNotNull())
@@ -20,15 +20,28 @@ final photoItemsProvider = StreamProvider<List<PhotoItem>>((ref) {
       .watch();
 });
 
+/// Every photo, newest first (curation grid). A photo in two sources (one
+/// album shared twice, or in two albums of a group) is the same image, so
+/// the same blob: it shows once.
+final photoItemsProvider = Provider<AsyncValue<List<PhotoItem>>>((ref) => ref.watch(_allPhotoItemsProvider).whenData(uniquePhotos));
+
+/// [items] without repeats of one image, the first of each kept.
+List<PhotoItem> uniquePhotos(List<PhotoItem> items) {
+  final seen = <String>{};
+  return [for (final p in items) if (seen.add(p.blobRef ?? p.id)) p];
+}
+
 /// Photos eligible for the screensaver: enabled sources, not hidden. Null
 /// until both queries have loaded, so the frame can tell "still loading"
 /// from "no photos" (which falls back to the art pack).
 final screensaverPoolProvider = Provider<List<PhotoItem>?>((ref) {
   final sources = ref.watch(photoSourcesProvider).value;
-  final items = ref.watch(photoItemsProvider).value;
+  final items = ref.watch(_allPhotoItemsProvider).value;
   if (sources == null || items == null) return null;
   final enabled = {for (final s in sources) if (s.enabled) s.id};
-  return [for (final p in items) if (!p.hidden && enabled.contains(p.sourceId)) p];
+  // Hiding a photo hides the image, whichever copy the grid showed.
+  final hidden = {for (final p in items) if (p.hidden) p.blobRef};
+  return uniquePhotos([for (final p in items) if (!hidden.contains(p.blobRef) && enabled.contains(p.sourceId)) p]);
 });
 
 bool isPortrait(PhotoItem p) => (p.height ?? 0) > (p.width ?? 1) * 1.05;

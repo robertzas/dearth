@@ -3,11 +3,13 @@ import 'dart:io';
 
 import 'package:dearth_core/dearth_core.dart';
 import 'package:dearth_integrations/dearth_integrations.dart';
+import 'package:drift/drift.dart' show BooleanExpressionOperators;
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 
 import '../connections.dart';
 import '../integrations.dart';
+import '../jobs/photos_job.dart';
 import '../storage.dart';
 import 'context.dart';
 import 'http_utils.dart';
@@ -258,11 +260,24 @@ void mountAdminRoutes(Router r, HubContext ctx) {
       default:
         throw HttpError(400, 'unknown_kind');
     }
+    final key = photoSourceKey(kind, cfg);
+    if (key != null) {
+      final db = ctx.kernel.db;
+      final others = await (db.select(db.photoSources)..where((t) => t.kind.equals(kind) & t.deleted.equals(false))).get();
+      if (others.any((o) => photoSourceKey(o.kind, decodeJsonMap(o.config)) == key)) throw HttpError(409, 'duplicate_source', 'That album is already one of your photo sources');
+    }
     final id = await ctx.kernel.create('photo_sources', {'kind': kind, 'name': b['name'] ?? _defaultName(kind), 'config': cfg, 'enabled': true});
     if (kind == 'immich') await ctx.vault.putJson('${SecretIds.immichPrefix}$id', {'apiKey': b['apiKey']});
     if (kind == 'google') return jsonOk({'id': id, ...await _newPickerSession(ctx, id)});
     ctx.scheduler.runNow('photos');
     return jsonOk({'id': id});
+  });
+
+  r.delete('/api/admin/photos/sources/<id>', (Request req, String id) async {
+    await requireAdmin(req, ctx.auth);
+    await removePhotoSource(ctx.kernel, id);
+    await ctx.vault.remove('${SecretIds.immichPrefix}$id');
+    return jsonOk({'ok': true});
   });
 
   r.post('/api/admin/photos/sources/<id>/pick', (Request req, String id) async {

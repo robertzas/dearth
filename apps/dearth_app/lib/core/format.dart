@@ -60,6 +60,9 @@ String monthDay(LocalDate d) => DateFormat('MMM d').format(d.utcMidnight);
 String longDate(LocalDate d) => DateFormat('EEEE, MMMM d').format(d.utcMidnight);
 String monthYear(LocalDate d) => DateFormat('MMMM y').format(d.utcMidnight);
 
+/// "March 14, 1985": a date whose year matters (a birthday).
+String dateWithYear(LocalDate d) => DateFormat('MMMM d, y').format(d.utcMidnight);
+
 /// "Sep 28 – Oct 4, 2026" or "Oct 5 – 11, 2026".
 String formatDateSpan(LocalDate start, LocalDate endInclusive) {
   if (start == endInclusive) return DateFormat('EEEE, MMM d, y').format(start.utcMidnight);

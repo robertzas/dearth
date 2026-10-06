@@ -1,4 +1,5 @@
 import 'package:dearth_app/app/display_state.dart';
+import 'package:dearth_app/features/photos/photos_data.dart';
 import 'package:dearth_core/dearth_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart' show Text;
@@ -22,6 +23,13 @@ void main() {
           'location': 'Lake Dillon',
         }),
       ]);
+
+  test('FR-PHO-01: one image in two sources shows once, the first copy kept', () {
+    PhotoItem item(String id, String source, String? blob) =>
+        PhotoItem(id: id, syncClock: '{}', syncHlc: '', syncSeq: 0, deleted: false, sourceId: source, blobRef: blob, hidden: false, favorite: false);
+    final photos = uniquePhotos([item('a1', 'album', 'x'), item('b1', 'copy', 'x'), item('a2', 'album', 'y'), item('n', 'album', null)]);
+    expect(photos.map((p) => p.id), ['a1', 'a2', 'n']);
+  });
 
   testWidgets('FR-SSV-05: overlays and the night clock use themed text, never the fallback style', (tester) async {
     final handle = tester.ensureSemantics();

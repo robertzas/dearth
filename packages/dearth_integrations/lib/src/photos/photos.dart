@@ -212,6 +212,28 @@ class AmazonSharedAlbum {
       _drive(link, 'nodes/$nodeId/contentRedirection', {'querySuffix': '?viewBox=2048'});
 }
 
+/// What makes two photo sources the same source: one Amazon share (however
+/// its link was copied), one folder, one Immich server and album set. Null
+/// for kinds where every source is its own (each Google pick is new). The
+/// Hub refuses a second source with the same key and folds duplicates added
+/// before it did.
+String? photoSourceKey(String kind, Map<String, Object?> config) {
+  switch (kind) {
+    case 'amazon':
+      final link = AmazonShareLink.parse(config['shareUrl'] as String? ?? '');
+      return link == null ? null : 'amazon:${link.tld}:${link.shareId}';
+    case 'folder':
+      final path = (config['path'] as String? ?? '').trim().replaceFirst(RegExp(r'/+$'), '');
+      return path.isEmpty ? null : 'folder:$path';
+    case 'immich':
+      final url = (config['url'] as String? ?? '').trim().toLowerCase().replaceFirst(RegExp(r'/+$'), '');
+      final albums = [for (final a in (config['albumIds'] as List? ?? const [])) '$a']..sort();
+      return url.isEmpty ? null : 'immich:$url:${albums.join(',')}';
+    default:
+      return null;
+  }
+}
+
 // ───────────────────────────────── Immich ──────────────────────────────────
 
 /// Immich official REST API (SPEC §13.5.3).

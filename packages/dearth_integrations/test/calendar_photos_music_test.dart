@@ -223,6 +223,20 @@ void main() {
       expect(AmazonShareLink.parse('https://www.amazon.com/photos/share/AbCd.EfGhIjKlMnOp1234'), isNull, reason: 'share ids have no dot');
     });
 
+    test('one album pasted twice, however the link was copied, is one source', () {
+      String? amazon(String url) => photoSourceKey('amazon', {'shareUrl': url});
+      const link = 'https://www.amazon.com/photos/shared/GrOuPiD1234567890ab.SeCrEtToKeN987';
+      expect(amazon('$link?_encoding=UTF8&ref=share'), amazon(link));
+      expect(amazon(' $link/ '), amazon(link));
+      expect(amazon('https://amazon.com/photos/groups/share/GrOuPiD1234567890ab.SeCrEtToKeN987'), amazon(link));
+      expect(amazon('https://www.amazon.com/photos/share/AbCdEfGhIjKlMnOp1234'), isNot(amazon(link)));
+      expect(amazon('https://www.amazon.co.uk/photos/share/AbCdEfGhIjKlMnOp1234'), isNot(amazon('https://www.amazon.com/photos/share/AbCdEfGhIjKlMnOp1234')));
+      expect(amazon('not a link'), isNull);
+      expect(photoSourceKey('folder', {'path': '/photos/family/'}), photoSourceKey('folder', {'path': '/photos/family'}));
+      expect(photoSourceKey('immich', {'url': 'http://nas:2283/', 'albumIds': ['b', 'a']}), photoSourceKey('immich', {'url': 'http://NAS:2283', 'albumIds': ['a', 'b']}));
+      expect(photoSourceKey('google', const {}), isNull, reason: 'every Google pick is its own');
+    });
+
     test('Amazon shared album listing descends into the album node and pages', () async {
       final f = fakeFetcher({
         pathEnds('/shares/AbCdEfGhIjKlMnOp1234'): (_) => json({'nodeInfo': {'id': 'root', 'name': 'Dearth Frame'}}),

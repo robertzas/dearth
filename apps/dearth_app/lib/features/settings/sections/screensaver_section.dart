@@ -65,10 +65,12 @@ class ScreensaverSection extends ConsumerWidget {
           children: [
             for (final s in sources)
               DListRow(
+                id: 'photos.source.${s.id}',
                 title: s.name,
                 subtitle: '${s.itemCount} photos${s.status == null ? '' : ' · ${s.status}'}',
-                leading: DEmoji(s.kind == 'amazon' ? '📦' : (s.kind == 'folder' ? '🗂️' : '🖼️'), size: 30 * t.scale),
+                leading: DEmoji(_emoji(s.kind), size: 30 * t.scale),
                 trailing: Switch(value: s.enabled, onChanged: (v) => w.upsert('photo_sources', s.id, {'enabled': v})),
+                onTap: api == null || !admin ? null : () => _sourceSheet(context, ref, api, s),
               ),
             DListRow(
               id: 'photos.add.amazon',
@@ -111,6 +113,54 @@ class ScreensaverSection extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  static String _emoji(String kind) => kind == 'amazon' ? '📦' : (kind == 'folder' ? '🗂️' : '🖼️');
+
+  /// A source's details: where its photos come from, a sync now, and
+  /// removing it (with its photos) for good.
+  Future<void> _sourceSheet(BuildContext context, WidgetRef ref, HubApi api, PhotoSource s) async {
+    final cfg = decodeJsonMap(s.config);
+    final where = (cfg['shareUrl'] ?? cfg['path'] ?? cfg['url']) as String?;
+    final action = await showDSheet<String>(
+      context,
+      title: s.name,
+      id: 'photos.source.sheet',
+      builder: (sheet) {
+        final t = DTheme.of(sheet);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('${s.itemCount} photos${s.status == null ? '' : ' · ${s.status}'}', style: t.text.body),
+            if (where != null) ...[SizedBox(height: t.space.xs), Text(where, style: t.text.caption.copyWith(color: t.colors.inkSecondary))],
+            SizedBox(height: t.space.lg),
+            DButton(label: 'Check for new photos now', tone: DButtonTone.tonal, expand: true, id: 'photos.source.refresh', onPressed: () => Navigator.of(sheet).pop('refresh')),
+            SizedBox(height: t.space.sm),
+            DButton(label: 'Remove this source', tone: DButtonTone.danger, expand: true, id: 'photos.source.remove', onPressed: () => Navigator.of(sheet).pop('remove')),
+          ],
+        );
+      },
+    );
+    if (!context.mounted || action == null) return;
+    try {
+      if (action == 'refresh') {
+        await api.post('/api/admin/photos/refresh', const {});
+        ref.read(toastProvider).show('Checking for new photos', emoji: '🖼️');
+        return;
+      }
+      final ok = await confirmDialog(
+        context,
+        title: 'Remove ${s.name}?',
+        message: 'Its ${s.itemCount} photos leave the photo frame on every display. The album itself isn’t touched.',
+        confirmLabel: 'Remove',
+        danger: true,
+      );
+      if (!ok) return;
+      await api.delete('/api/admin/photos/sources/${s.id}');
+      ref.read(toastProvider).show('Removed ${s.name}', emoji: '🗑️');
+    } on HubApiException catch (e) {
+      ref.read(toastProvider).show(e.friendly, emoji: '⚠️', tone: DBannerTone.warning);
+    }
   }
 
   Future<void> _addSource(BuildContext context, WidgetRef ref, HubApi api, String kind) async {

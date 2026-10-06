@@ -247,11 +247,11 @@ class _ProfileEditorState extends ConsumerState<_ProfileEditor> {
           children: [
             DButton(
               id: 'profile.birthday',
-              label: _birthday == null ? 'Add birthday' : longDate(_birthday!),
+              label: _birthday == null ? 'Add birthday' : dateWithYear(_birthday!),
               icon: Icons.cake_rounded,
               tone: DButtonTone.neutral,
               onPressed: () async {
-                final d = await pickDate(context, initial: _birthday ?? ref.read(todayProvider), title: 'Birthday');
+                final d = await pickDate(context, initial: _birthday ?? ref.read(todayProvider), title: 'Birthday', birthday: true, unset: _birthday == null);
                 if (d != null) setState(() => _birthday = d);
               },
             ),

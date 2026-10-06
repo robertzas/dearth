@@ -10,10 +10,21 @@ import 'package:path/path.dart' as p;
 import '../blobs.dart';
 import '../config.dart';
 import '../integrations.dart';
+import '../kernel.dart';
 import '../storage.dart';
 import 'scheduler.dart';
 
 final _log = Logger('photos');
+
+/// Removes photo source [id] and every photo it brought, in one write.
+Future<void> removePhotoSource(HubKernel kernel, String id) async {
+  final db = kernel.db;
+  final items = await (db.select(db.photoItems)..where((t) => t.sourceId.equals(id) & t.deleted.equals(false))).get();
+  await kernel.write([
+    for (final i in items) kernel.mutator.makeOp('photo_items', i.id, const {}, kind: OpKind.delete),
+    kernel.mutator.makeOp('photo_sources', id, const {}, kind: OpKind.delete),
+  ]);
+}
 
 /// Photo sources → normalized blobs + `photo_items` (SPEC §13.5). Sources are
 /// listed, new items downloaded with bounded concurrency into display-ready
@@ -25,27 +36,42 @@ class PhotosJob implements HubJob {
   final JobStore jobs;
   final HubConfig config;
 
+  /// New photos per source per run: bounds one run's downloads and memory,
+  /// and lets every source move along. A bigger album comes in batches
+  /// [_catchUp] apart, not an hour apart.
   static const _maxNewPerRun = 150;
+  static const _catchUp = Duration(seconds: 20);
+
+  /// A source still has photos to fetch.
+  bool _backlog = false;
+
+  /// Photos that failed to download (source/remote id). Catch-up runs skip
+  /// them, so one bad file can't stall an album; the hourly run retries.
+  final Set<String> _failed = {};
 
   @override
   String get id => 'photos';
 
   @override
-  Duration nextDelay() => const Duration(minutes: 60);
+  Duration nextDelay() => _backlog ? _catchUp : const Duration(minutes: 60);
 
   DearthDb get db => integrations.db;
 
   @override
   Future<void> run() async {
+    await _foldDuplicates();
+    if (!_backlog) _failed.clear();
+    _backlog = false;
     final sources = await (db.select(db.photoSources)..where((t) => t.enabled.equals(true) & t.deleted.equals(false))).get();
     for (final s in sources) {
       try {
         final cfg = decodeJsonMap(s.config);
         final (title, listing, prune) = await _list(s, cfg);
-        final added = await _sync(s, listing, prune: prune);
+        final (added, left) = await _sync(s, listing, prune: prune);
+        if (left > 0) _backlog = true;
         final count = await (db.select(db.photoItems)..where((t) => t.sourceId.equals(s.id) & t.deleted.equals(false))).get();
         await integrations.kernel.upsert('photo_sources', s.id, {
-          'status': added == 0 ? 'ok' : 'ok · $added new',
+          'status': left > 0 ? 'adding photos · ${count.length} of ${count.length + left}' : (added == 0 ? 'ok' : 'ok · $added new'),
           'item_count': count.length,
           'last_sync_ms': DateTime.now().millisecondsSinceEpoch,
           if (title != null && s.name == 'Photos') 'name': title,
@@ -53,6 +79,24 @@ class PhotosJob implements HubJob {
       } on Object catch (e) {
         _log.warning('Photo source ${s.name} failed: $e');
         await integrations.kernel.upsert('photo_sources', s.id, {'status': 'error · $e'});
+      }
+    }
+  }
+
+  /// One album pasted twice (before the Hub refused that) is one source: the
+  /// copy with the most photos stays, the others go with their photos.
+  Future<void> _foldDuplicates() async {
+    final sources = await (db.select(db.photoSources)..where((t) => t.deleted.equals(false))).get();
+    final byKey = <String, List<PhotoSource>>{};
+    for (final s in sources) {
+      final key = photoSourceKey(s.kind, decodeJsonMap(s.config));
+      if (key != null) (byKey[key] ??= []).add(s);
+    }
+    for (final same in byKey.values.where((l) => l.length > 1)) {
+      same.sort((a, b) => b.itemCount != a.itemCount ? b.itemCount.compareTo(a.itemCount) : a.id.compareTo(b.id));
+      for (final extra in same.skip(1)) {
+        _log.info('Removing duplicate photo source ${extra.name} (${extra.id})');
+        await removePhotoSource(integrations.kernel, extra.id);
       }
     }
   }
@@ -131,10 +175,12 @@ class PhotosJob implements HubJob {
     return items.map(_Item.remote).toList();
   }
 
-  Future<int> _sync(PhotoSource s, List<_Item> listing, {required bool prune}) async {
+  /// Fetches up to [_maxNewPerRun] new photos: (added, still to fetch).
+  Future<(int, int)> _sync(PhotoSource s, List<_Item> listing, {required bool prune}) async {
     final existing = await (db.select(db.photoItems)..where((t) => t.sourceId.equals(s.id))).get();
     final byRemote = {for (final e in existing) e.remoteId: e};
-    final fresh = listing.where((i) => byRemote[i.remoteId] == null || byRemote[i.remoteId]!.deleted).take(_maxNewPerRun).toList();
+    final missing = listing.where((i) => (byRemote[i.remoteId] == null || byRemote[i.remoteId]!.deleted) && !_failed.contains('${s.id}/${i.remoteId}')).toList();
+    final fresh = missing.take(_maxNewPerRun).toList();
     var added = 0;
     final queue = [...fresh];
     Future<void> worker() async {
@@ -144,7 +190,10 @@ class PhotosJob implements HubJob {
           final blob = item.file != null
               ? await blobs.putImage(await item.file!.readAsBytes())
               : await blobs.fetchRemoteImage(integrations.fetcher, item.remote!.downloadUrl, headers: item.remote!.headers);
-          if (blob == null) continue;
+          if (blob == null) {
+            _failed.add('${s.id}/${item.remoteId}');
+            continue;
+          }
           await integrations.kernel.upsert('photo_items', stableId('photo', [s.id, item.remoteId]), {
             'source_id': s.id,
             'remote_id': item.remoteId,
@@ -160,6 +209,7 @@ class PhotosJob implements HubJob {
           });
           added++;
         } on Object catch (e) {
+          _failed.add('${s.id}/${item.remoteId}');
           _log.fine('Skipping ${item.remoteId}: $e');
         }
       }
@@ -173,7 +223,7 @@ class PhotosJob implements HubJob {
         await integrations.kernel.delete('photo_items', e.id);
       }
     }
-    return added;
+    return (added, missing.length - fresh.length);
   }
 }
 

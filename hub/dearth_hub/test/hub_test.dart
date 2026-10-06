@@ -245,6 +245,36 @@ void main() {
     expect(events.firstWhere((e) => e.title == 'No school').profileIds, '["p-ava"]');
   });
 
+  test('photo sources: the same album twice is refused, old duplicates fold, removing takes its photos', () async {
+    final first = await postJson('/api/admin/photos/sources', {'kind': 'folder', 'config': {'path': '/photos/family'}}, headers: _admin);
+    final again = await http.post(u('/api/admin/photos/sources'), headers: _admin, body: jsonEncode({'kind': 'folder', 'config': {'path': '/photos/family/'}}));
+    expect(again.statusCode, 409, reason: 'one folder, written two ways');
+    // A duplicate added before the Hub refused them, with photos of its own.
+    final kernel = hub.context.kernel;
+    final keep = first['id']! as String;
+    final copy = await kernel.create('photo_sources', {'kind': 'folder', 'name': 'Family', 'config': {'path': '/photos/family'}, 'enabled': true});
+    await kernel.upsert('photo_sources', keep, {'item_count': 2});
+    for (final (source, n) in [(keep, 2), (copy, 1)]) {
+      for (var i = 0; i < n; i++) {
+        await kernel.upsert('photo_items', '$source-$i', {'source_id': source, 'remote_id': '$i.jpg', 'blob_ref': 'sha$i'});
+      }
+    }
+    await hub.context.scheduler.runAndWait('photos');
+    final db = hub.db;
+    final live = await (db.select(db.photoSources)..where((t) => t.deleted.equals(false))).get();
+    expect(live.map((s) => s.id), [keep], reason: 'the copy with more photos stays');
+    final items = await db.select(db.photoItems).get();
+    expect(items.where((i) => i.sourceId == copy).every((i) => i.deleted), isTrue);
+    expect(items.where((i) => i.sourceId == keep).every((i) => !i.deleted), isTrue);
+
+    final removed = await http.delete(u('/api/admin/photos/sources/$keep'), headers: _admin);
+    expect(removed.statusCode, 200);
+    expect((await db.select(db.photoSources).get()).every((s) => s.deleted), isTrue);
+    expect((await db.select(db.photoItems).get()).every((i) => i.deleted), isTrue);
+    // Gone, it can be added again.
+    await postJson('/api/admin/photos/sources', {'kind': 'folder', 'config': {'path': '/photos/family'}}, headers: _admin);
+  });
+
   test('demo seed endpoint builds a full household', () async {
     await postJson('/api/admin/demo-seed', const <String, Object?>{}, headers: _admin);
     final profiles = await hub.db.select(hub.db.profiles).get();

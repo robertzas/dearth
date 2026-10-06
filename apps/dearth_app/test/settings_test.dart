@@ -30,6 +30,31 @@ void main() {
     handle.dispose();
   });
 
+  testWidgets('FR-SET-02: a new person’s birthday starts at the years, so a grown-up’s takes three taps', (tester) async {
+    final h = await AppHarness.demo(tester);
+    h.container.read(routerProvider).go('/settings/people');
+    await h.settle();
+    await tester.tap(byId('people.add'));
+    await h.settle();
+    await tester.ensureVisible(byId('profile.birthday'));
+    await tester.tap(byId('profile.birthday'));
+    await h.settle();
+    final year = h.container.read(todayProvider).year;
+    expect(byId('picker.year.$year'), findsNothing, reason: 'opens around 30 years back');
+    expect(byId('picker.year.${year + 1}'), findsNothing, reason: 'no birthdays in the future');
+    await tester.tap(byId('picker.year.1985'));
+    await h.settle();
+    await tester.tap(byId('picker.month.3'));
+    await h.settle();
+    expect(find.text('March 1985'), findsOneWidget);
+    expect(byId('picker.date.today'), findsNothing, reason: 'no Today button for a birthday');
+    await tester.tap(byId('picker.date.1985-03-14'));
+    await h.settle();
+    expect(find.text('March 14, 1985'), findsOneWidget);
+    expectNoFallbackText();
+    await h.shutdown();
+  });
+
   testWidgets('lists sync with Google Tasks once a Hub runs it; each list switches on its own', (tester) async {
     final handle = tester.ensureSemantics();
     var h = await AppHarness.demo(tester);
