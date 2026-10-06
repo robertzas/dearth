@@ -2,6 +2,7 @@ import 'package:dearth_app/core/sound.dart';
 import 'package:dearth_app/features/toybox/games/biglittle.dart';
 import 'package:dearth_app/features/toybox/games/dots.dart';
 import 'package:dearth_app/features/toybox/games/dots_pictures.dart';
+import 'package:dearth_app/features/toybox/games/hear.dart';
 import 'package:dearth_app/features/toybox/games/hop.dart';
 import 'package:dearth_app/features/toybox/games/spell.dart';
 import 'package:dearth_core/dearth_core.dart';
@@ -17,7 +18,7 @@ import 'support/toybox_harness.dart';
 void main() {
   for (final size in const [Size(390, 844), Size(844, 390), Size(1080, 1920), Size(1920, 1080)]) {
     testWidgets('every number and letter game lays out on a ${size.width.toInt()}×${size.height.toInt()} screen at its busiest level', (tester) async {
-      await expectGamesLayOut(tester, const [('dots', 1), ('dots', 4), ('dots', 6), ('biglittle', 1), ('biglittle', 2), ('biglittle', 3), ('hop', 1), ('hop', 2), ('hop', 4), ('spell', 1), ('spell', 3), ('spell', 4)], size: size);
+      await expectGamesLayOut(tester, const [('dots', 1), ('dots', 4), ('dots', 6), ('biglittle', 1), ('biglittle', 2), ('biglittle', 3), ('hop', 1), ('hop', 2), ('hop', 4), ('spell', 1), ('spell', 3), ('spell', 4), ('hear', 1), ('hear', 3), ('hear', 4)], size: size);
     });
   }
 
@@ -560,6 +561,92 @@ void main() {
       await h.settle();
       expect(await toyboxRounds(h), [('spell', 1, 'win')]);
       await tester.pump(const Duration(seconds: 4));
+      await h.shutdown();
+    });
+  });
+
+  group('Hear the Sound', () {
+    HearGameState game(WidgetTester tester) => tester.state<HearGameState>(find.byType(HearGame));
+
+    testWidgets('FR-TOY-03: the parrot says a sound; the letter that makes it says its name, sound and picture', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'hear', sound: sound, level: 1);
+      final r = game(tester).debugRound;
+      expect(r.choices, hasLength(2));
+      expectNoFallbackText(byId('screen.game'));
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(sound.said, [hearAskClip(r.answer)]);
+      expect(labelOf(tester, 'hear.ask'), 'Which letter says ${r.answer}?');
+      // The parrot says just the sound.
+      await tester.tap(byId('hear.parrot'));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(sound.said.last, soundClip(r.answer));
+      await tester.tap(byId('hear.letter.${r.answer}'));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(sound.said.last, letterClip(r.answer));
+      expect(labelOf(tester, 'hear.ask'), 'You found ${r.answer}!');
+      expect(labelOf(tester, 'hear.letter.${r.answer}'), 'Letter ${r.answer}, found');
+      await h.settle();
+      expect(await toyboxRounds(h), [('hear', 1, 'win')]);
+      await tester.pump(const Duration(seconds: 5));
+      expect(labelOf(tester, 'hear.ask'), isNot('You found ${r.answer}!'), reason: 'a new round');
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('a wrong letter says its own sound and wiggles; two slips light the answer and make a miss', (tester) async {
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'hear', sound: sound, level: 3);
+      final r = game(tester).debugRound;
+      await tester.pump(const Duration(milliseconds: 700));
+      final wrong = r.choices.where((c) => c != r.answer).toList();
+      expect(wrong, hasLength(2));
+      for (final w in wrong) {
+        await tester.tap(byId('hear.letter.$w'));
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(sound.said.last, soundClip(w), reason: 'she hears how it differs');
+      }
+      expect(sound.played.where((p) => p.$1 == Sfx.nope), hasLength(2));
+      await tester.tap(byId('hear.letter.${r.answer}'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await h.settle();
+      expect(await toyboxRounds(h), [('hear', 3, 'miss')]);
+      await tester.pump(const Duration(seconds: 5));
+      await h.shutdown();
+    });
+
+    testWidgets('sh, ch and th: two letters on one tile, and the reward names both', (tester) async {
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'hear', sound: sound, level: 4);
+      final r = game(tester).debugRound;
+      expect(r.digraph, isTrue);
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(sound.said, [hearAskClip(r.answer)]);
+      // The near miss: its first letter alone.
+      await tester.tap(byId('hear.letter.${r.answer[0]}'));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(sound.said.last, soundClip(r.answer[0]));
+      await tester.tap(byId('hear.letter.${r.answer}'));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(sound.said.last, hearYesClip(r.answer));
+      await h.settle();
+      expect(await toyboxRounds(h), [('hear', 4, 'helped')]);
+      await tester.pump(const Duration(seconds: 5));
+      await h.shutdown();
+    });
+
+    testWidgets('a long pause has the parrot ask again, without counting a slip', (tester) async {
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'hear', sound: sound, level: 2);
+      final r = game(tester).debugRound;
+      await tester.pump(const Duration(seconds: 13));
+      expect(sound.said, [hearAskClip(r.answer), hearAskClip(r.answer)]);
+      await tester.tap(byId('hear.letter.${r.answer}'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await h.settle();
+      expect(await toyboxRounds(h), [('hear', 2, 'win')]);
+      await tester.pump(const Duration(seconds: 5));
       await h.shutdown();
     });
   });

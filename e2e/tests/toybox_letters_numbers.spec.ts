@@ -71,4 +71,15 @@ test.describe('Toybox number and letter games', () => {
     await expectText(tid(page, 'spell.ask'), `You built ${word}!`);
     await expectCheered(page);
   });
+
+  test('FR-TOY-03: Hear the Sound — she taps the letter that makes the parrot’s sound', async ({ page }) => {
+    await openToyboxGame(page, 'hear', true);
+    await expectText(tid(page, 'hear.ask'), /^Which letter says [a-z]\?$/);
+    const letter = (await textOf(tid(page, 'hear.ask'))).trim().replace('Which letter says ', '').replace('?', '');
+    await tap(tid(page, 'hear.parrot'));
+    await tap(tid(page, `hear.letter.${letter}`));
+    // Lasting labels: the cheer can be over before a slow run gets there.
+    await expectText(tid(page, 'hear.ask'), `You found ${letter}!`);
+    await expectCheered(page);
+  });
 });

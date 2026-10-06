@@ -240,4 +240,73 @@ void main() {
       expect([for (var s = 0; s <= 2; s++) spellResult(s, missing: 4)], [GameResult.win, GameResult.win, GameResult.helped]);
     });
   });
+
+  group('Hear the Sound', () {
+    test('FR-TOY-03: easy sounds → more sounds → a sound beside its look-alike → sh, ch and th', () {
+      const pairs = [('b', 'p'), ('d', 't'), ('k', 'g'), ('f', 'v'), ('m', 'n')];
+      bool paired(String a, String b) => pairs.any((p) => (p.$1 == a && p.$2 == b) || (p.$1 == b && p.$2 == a));
+      for (var seed = 0; seed < 200; seed++) {
+        final rng = Random(seed);
+        for (var level = 1; level <= 4; level++) {
+          final r = hearRound(level, rng);
+          final why = 'seed $seed, level $level: ${r.answer} ${r.choices}';
+          expect(r.choices, contains(r.answer), reason: why);
+          expect(r.choices.toSet(), hasLength(r.choices.length), reason: why);
+          if (level < 4) expect(r.choices, everyElement(isNot(anyOf('c', 'q', 'x'))), reason: 'c says k, q and x need others ($why)');
+          switch (level) {
+            case 1:
+              expect(r.choices, hasLength(2), reason: why);
+              expect(kEasySounds, containsAll(r.choices), reason: why);
+            case 2:
+              expect(r.choices, hasLength(3), reason: why);
+              expect(kMoreSounds, containsAll(r.choices), reason: why);
+            case 3:
+              expect(r.choices, hasLength(3), reason: why);
+              expect(r.choices.where((c) => paired(c, r.answer)), hasLength(1), reason: 'its look-alike is there ($why)');
+            default:
+              expect(r.digraph, isTrue, reason: why);
+              expect(r.choices, containsAll(['sh', 'ch', 'th']), reason: why);
+              expect(r.choices, contains(r.answer[0]), reason: 'the near miss: its first letter alone ($why)');
+          }
+          if (level <= 2) {
+            // Nothing alike to tell apart yet.
+            for (final a in r.choices) {
+              for (final b in r.choices) {
+                expect(paired(a, b), isFalse, reason: why);
+              }
+            }
+          }
+        }
+      }
+    });
+
+    test('every sound comes up, never twice running, and each has its lines', () {
+      final seen = <String>{};
+      for (var seed = 0; seed < 300; seed++) {
+        final rng = Random(seed);
+        for (var level = 1; level <= 4; level++) {
+          String? last;
+          for (var i = 0; i < 3; i++) {
+            final r = hearRound(level, rng, last: last);
+            expect(r.answer, isNot(last));
+            last = r.answer;
+            seen.add(r.answer);
+          }
+        }
+      }
+      expect(seen, kHearAnswers.toSet());
+      for (final a in kHearAnswers) {
+        for (final clip in [hearAskClip(a), hearYesClip(a), soundClip(a)]) {
+          expect(kVoiceLines, contains(clip));
+        }
+      }
+      for (final d in kDigraphs) {
+        expect(kWordsByName, contains(d.word));
+      }
+    });
+
+    test('slips: right first time is a win, one slip is helped, then a miss', () {
+      expect([for (var s = 0; s <= 2; s++) hearResult(s)], [GameResult.win, GameResult.helped, GameResult.miss]);
+    });
+  });
 }

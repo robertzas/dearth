@@ -237,6 +237,7 @@ void main() {
         for (final (from, more) in kHopSums) hopAskClip(HopRound(HopMode.add, 11, from, from + more)),
         for (final l in kSpellLetters.split('')) soundClip(l),
         VoiceLine.spellMissing, VoiceLine.spellBuild,
+        for (final a in kHearAnswers) ...[hearAskClip(a), hearYesClip(a), soundClip(a)],
       ];
       expect(asked.where((a) => !ids.contains(a)), isEmpty);
       expect(ids.difference(asked.toSet()), isEmpty, reason: 'no line nothing says');
@@ -251,6 +252,9 @@ void main() {
       expect(kVoiceLines[hopAskClip(const HopRound(HopMode.oneLess, 11, 4, 3))], '[[wˈʌn]] less than four!');
       // A tile says its sound alone, the way Letter Sounds says it.
       expect(kVoiceLines[soundClip('m')], '[[mˈʌ]].');
+      expect(kVoiceLines[hearAskClip('m')], 'Which letter says [[mˈʌ]]?');
+      expect(kVoiceLines[hearAskClip('sh')], 'Which letters say [[ʃˈʌ]]?');
+      expect(kVoiceLines[hearYesClip('sh')], 'S, H. [[ʃˈʌ]], [[ʃˈʌ]], shell.');
     });
 
     test('every line has a measured clip, so a game can let it finish', () {

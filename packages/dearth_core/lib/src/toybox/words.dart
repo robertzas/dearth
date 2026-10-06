@@ -200,6 +200,8 @@ const List<PictureWord> kWords = [
   PictureWord('plug', '🔌'),
   PictureWord('vest', '🦺'),
   PictureWord('lips', '👄'),
+  // Hear the Sound: th (shell and chick are above).
+  PictureWord('thumb', '👍'),
 ];
 
 /// [kWords] by word.

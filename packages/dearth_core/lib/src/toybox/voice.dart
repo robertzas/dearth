@@ -1,6 +1,7 @@
 import 'biglittle.dart';
 import 'creature.dart';
 import 'dots.dart';
+import 'hear.dart';
 import 'hop.dart';
 import 'spell.dart';
 import 'voice_lengths.g.dart';
@@ -66,8 +67,16 @@ String hopAskClip(HopRound r) => switch (r.mode) {
       HopMode.add => 'hop_add_${r.from}_${r.hops}',
     };
 
-/// A letter's sound alone, as a tile says it: "Buh."
+/// A letter's sound alone, as a tile says it: "Buh." Two letters that make
+/// one sound (sh) have one too.
 String soundClip(String letter) => 'sound_${letter.toLowerCase()}';
+
+/// "Which letter says mmm?", "Which letters say shh?"
+String hearAskClip(String answer) => 'hear_$answer';
+
+/// The answer's reward: [letterClip] for a letter ("M. Muh, muh, monkey."),
+/// and for two letters "S, H. Shuh, shuh, shell."
+String hearYesClip(String answer) => answer.length == 1 ? letterClip(answer) : 'digraph_$answer';
 
 /// "Three."
 String numberClip(int n) => 'num_$n';
@@ -212,6 +221,15 @@ Map<String, String> _lines() {
   }
   for (final l in kSpellLetters.split('')) {
     lines[soundClip(l)] = '${_sound(letterSound(l))}.';
+  }
+  for (final d in kDigraphs) {
+    final sound = '[[${d.sound}]]';
+    lines[soundClip(d.letters)] = '$sound.';
+    lines[hearYesClip(d.letters)] = '${d.letters.toUpperCase().split('').join(', ')}. $sound, $sound, ${d.word}.';
+  }
+  for (final a in kHearAnswers) {
+    final sound = a.length == 1 ? _sound(letterSound(a)) : '[[${digraphOf(a)!.sound}]]';
+    lines[hearAskClip(a)] = a.length == 1 ? 'Which letter says $sound?' : 'Which letters say $sound?';
   }
   lines[VoiceLine.spellMissing] = 'Which sound is missing?';
   lines[VoiceLine.spellBuild] = "Let's build it, sound by sound!";
