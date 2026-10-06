@@ -222,12 +222,13 @@ void main() {
       await tester.pump(const Duration(milliseconds: 700));
       expect(sound.said, [VoiceLine.traceName]);
       expect(labelOf(tester, 'tracing.ask'), 'Trace your name: Ava');
-      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(afterVoice(VoiceLine.traceName) + const Duration(milliseconds: 100));
       expect(sound.said.last, letterNameClip('A'));
       for (var i = 0; i < 3; i++) {
         expect(state.debugAt, i);
         await traceGlyph(tester);
-        await tester.pump(const Duration(milliseconds: 2300));
+        // The next letter waits for this one's sound to finish.
+        await tester.pump(afterVoice(letterClip(state.debugGlyphs[i]), atLeast: const Duration(milliseconds: 2200)) + const Duration(milliseconds: 100));
       }
       await h.settle();
       expect(sound.said, containsAllInOrder([letterClip('A'), letterNameClip('v'), letterClip('v'), letterNameClip('a'), VoiceLine.traceNameDone]));
