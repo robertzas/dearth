@@ -1,5 +1,3 @@
-- ✅ light and dark mode should be based on sundown and sunup at the zip code provided for weather — the Auto theme already does this once the household location is set (Settings → Household → Location, the same ZIP the weather uses); without one it falls back to 7 am–7 pm
-- ✅ enable volume control on frame, perhaps make that a setting for freekiosk, and make sure the script to deploy freekiosk to android with dearth has this as well — FreeKiosk's "Volume Up 5 times" shortcut is off (it turned quick volume presses into the PIN screen) in `tool/deploy_frame.sh`, and Settings → This display → Sound sets the volume on screen. On this frame the first press of a volume button only shows the volume panel
-- ✅ use real images for the recipes — the bundled recipes show TheMealDB photos of the closest dish when online (provider and imported recipes already had theirs)
-- ✅ optionally sync lists to google keep — Google Keep has no API for personal accounts, so lists sync with Google Tasks instead (your choice): Settings → Lists switches each list on, and "Allow Google Tasks" adds the permission (enable the Tasks API in your Google project)
-- ✅ update weather more often, perhaps a configurable interval, maybe just set it to every 10 minutes — every 10 minutes now (5 with a weather station), and Settings → Household → Weather updates picks 5 min to 1 hour
+- Support sharing amazon groups with links like https://www.amazon.com/photos/groups/share/xxxxxxxxxxxxxxxxxx
+- The number game calls out the number of items too fast, before the items show themselves
+- All of the spoken numbers, letters, and items are too fast and not incredibly clear, the frame has poor speakers

@@ -32,12 +32,15 @@ class RemotePhoto {
 
 // ─────────────────────────── Amazon shared album ───────────────────────────
 
-/// Parsed Amazon Photos share link.
+/// Parsed Amazon Photos share link. Both shared-album links
+/// (`…/photos/share/{id}`) and group links (`…/photos/groups/share/{id}`)
+/// resolve through the same share endpoints; [isGroup] tells them apart.
 @immutable
 class AmazonShareLink {
-  const AmazonShareLink(this.tld, this.shareId);
+  const AmazonShareLink(this.tld, this.shareId, {this.isGroup = false});
   final String tld;
   final String shareId;
+  final bool isGroup;
 
   static AmazonShareLink? parse(String input) {
     final uri = Uri.tryParse(input.trim());
@@ -49,7 +52,7 @@ class AmazonShareLink {
     final idx = segments.indexOf('share');
     if (idx < 0 || idx + 1 >= segments.length) return null;
     final id = segments[idx + 1];
-    return RegExp(r'^[A-Za-z0-9_-]{10,}$').hasMatch(id) ? AmazonShareLink(m[1]!, id) : null;
+    return RegExp(r'^[A-Za-z0-9_-]{10,}$').hasMatch(id) ? AmazonShareLink(m[1]!, id, isGroup: segments.contains('groups')) : null;
   }
 }
 
@@ -63,39 +66,40 @@ class AmazonSharedAlbum {
   Uri _drive(AmazonShareLink link, String path, Map<String, String> q) =>
       Uri.https('www.amazon.${link.tld}', '/drive/v1/$path', {...q, 'shareId': link.shareId, 'resourceVersion': 'V2', 'ContentType': 'JSON'});
 
-  /// Lists every photo in the shared album (descends into a nested album
-  /// node when the share points at a container).
-  Future<(String title, List<RemotePhoto>)> list(AmazonShareLink link, {int maxItems = 5000}) async {
+  /// Lists every photo under the shared node. A plain album share holds its
+  /// photos directly; a group share points at a container of albums (SPEC
+  /// §13.5.1), so the walk descends into every nested FOLDER/ALBUM node.
+  /// [maxContainers] bounds the requests a pathological share can cause, and
+  /// photo ids are deduped because a group can hold one file in two albums.
+  Future<(String title, List<RemotePhoto>)> list(AmazonShareLink link, {int maxItems = 5000, int maxContainers = 100}) async {
     final share = asObject(await fetcher.getJson(provider, _drive(link, 'shares/${link.shareId}', {'asset': 'ALL'})), provider);
     final info = share.obj('nodeInfo');
-    var nodeId = info.str('id');
+    final root = info.str('id');
     final title = info.str('name') ?? share.str('name') ?? 'Amazon Photos';
-    if (nodeId == null) throw ProviderException(provider, 'Share has no node');
-
-    for (var depth = 0; depth < 3; depth++) {
-      final probe = await _page(link, nodeId!, 0, 1);
-      final first = probe.$1.firstOrNull;
-      if (first == null || _isImage(first)) break;
-      if (first.str('kind') == 'FOLDER' || first.str('kind') == 'ALBUM' || first.obj('contentProperties').isEmpty) {
-        nodeId = first.str('id');
-        if (nodeId == null) break;
-      } else {
-        break;
-      }
-    }
+    if (root == null) throw ProviderException(provider, 'Share has no node');
 
     final photos = <RemotePhoto>[];
-    var offset = 0;
-    while (photos.length < maxItems) {
-      final (items, total) = await _page(link, nodeId!, offset, 200);
-      if (items.isEmpty) break;
-      for (final n in items) {
-        if (!_isImage(n)) continue;
-        final p = _photo(link, n);
-        if (p != null) photos.add(p);
+    final seenPhotos = <String>{};
+    final seenNodes = <String>{root};
+    final pending = [root];
+    while (pending.isNotEmpty && photos.length < maxItems && seenNodes.length <= maxContainers) {
+      final nodeId = pending.removeLast();
+      var offset = 0;
+      while (photos.length < maxItems) {
+        final (items, total) = await _page(link, nodeId, offset, 200);
+        if (items.isEmpty) break;
+        for (final n in items) {
+          if (_isImage(n)) {
+            final p = _photo(link, n);
+            if (p != null && seenPhotos.add(p.remoteId)) photos.add(p);
+          } else if (_isContainer(n)) {
+            final id = n.str('id');
+            if (id != null && seenNodes.add(id)) pending.add(id);
+          }
+        }
+        offset += items.length;
+        if (total != null && offset >= total) break;
       }
-      offset += items.length;
-      if (total != null && offset >= total) break;
     }
     return (title, photos);
   }
