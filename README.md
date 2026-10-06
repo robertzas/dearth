@@ -76,8 +76,9 @@ back.
   Mazes, What Happens Next, Picture Sudoku, Spot the Difference, Letter
   Sounds, Rhyme Time, I Spy, Letter & Name Tracing (kids trace their own
   name), Number Tracing, Breathing Buddy, Build-a-Creature (mix body
-  parts and paints; it dances and says its silly name) and Dot-to-Dot
-  (join numbers or letters in order and the picture comes alive). The letter, word
+  parts and paints; it dances and says its silly name), Dot-to-Dot
+  (join numbers or letters in order and the picture comes alive) and
+  Big & Little Letters (small letters find their capitals, up to b, d, p and q). The letter, word
   and number games talk: every line is a clip bundled with the app, so they
   work on a display with no text-to-speech. Each kid sees the games that suit their age, and every game
   adapts: three wins in a row go up a level, three misses ease off, and

@@ -1,3 +1,4 @@
+import 'biglittle.dart';
 import 'creature.dart';
 import 'dots.dart';
 import 'voice_lengths.g.dart';
@@ -51,6 +52,9 @@ Duration afterVoice(String clip, {Duration atLeast = Duration.zero}) {
   return d > atLeast ? d : atLeast;
 }
 
+/// "Big C, little c."
+String bigLittleClip(String letter) => 'biglittle_${letter.toLowerCase()}';
+
 /// "Three."
 String numberClip(int n) => 'num_$n';
 
@@ -77,6 +81,8 @@ abstract final class VoiceLine {
   static const makeCreature = 'make_creature';
   static const dotsNumbers = 'dots_numbers';
   static const dotsLetters = 'dots_letters';
+  static const bigLittleStart = 'biglittle_start';
+  static const bigLittleDone = 'biglittle_done';
 }
 
 const List<String> _numbers = [
@@ -100,7 +106,7 @@ final RegExp _americanWord = RegExp('\\b(${_american.keys.join('|')})\\b', caseS
 String _americanize(String line) => line.splitMapJoin(
       RegExp(r'\[\[.*?\]\]'),
       onMatch: (m) => m[0]!,
-      onNonMatch: (text) => text.replaceAllMapped(_americanWord, (m) => _american[m[0]!] ?? _american[m[0]!.toLowerCase()] ?? m[0]!),
+      onNonMatch: (text) => text.replaceAllMapped(_americanWord, (m) => _american[m[0]!] ?? _american[m[0]!.toLowerCase()] ?? _american[m[0]!.toUpperCase()] ?? m[0]!),
     );
 
 const Map<String, String> _shapeClues = {
@@ -180,6 +186,11 @@ Map<String, String> _lines() {
   lines[VoiceLine.dotsLetters] = 'Join the dots! Start at [[ˈeɪ]].';
   for (final p in kDotPictures) {
     lines[dotsDoneClip(p)] = "It's ${p.phrase}!";
+  }
+  lines[VoiceLine.bigLittleStart] = 'Help the little letters find their big letters!';
+  lines[VoiceLine.bigLittleDone] = 'You found them all!';
+  for (final l in [...kLookAlikeLetters, ...kDifferentLetters, ...kMirrorLetters]) {
+    lines[bigLittleClip(l)] = 'Big ${l.toUpperCase()}, little $l.';
   }
   return lines.map((id, line) => MapEntry(id, _americanize(line)));
 }

@@ -1,4 +1,5 @@
 import '../game_host.dart';
+import 'biglittle.dart';
 import 'breathe.dart';
 import 'bubbles.dart';
 import 'coloring.dart';
@@ -54,4 +55,5 @@ final Map<String, GameBuilder> kGameBuilders = {
   'breathe': BreatheGame.new,
   'creature': CreatureGame.new,
   'dots': DotsGame.new,
+  'biglittle': BigLittleGame.new,
 };

@@ -63,6 +63,7 @@ const List<GameInfo> kExpansionGames = [
   GameInfo('creature', 'Build-a-Creature', '🦕', minMonths: 30, skills: ['Creativity', 'Language'], levels: 3, freePlay: true),
   // Numbers and letters (added 2026-10-04).
   GameInfo('dots', 'Dot-to-Dot', '⭐', minMonths: 36, skills: ['Number order', 'Alphabet'], levels: 6),
+  GameInfo('biglittle', 'Big & Little Letters', '🔠', minMonths: 42, skills: ['Alphabet', 'Capitals and small letters'], levels: 3),
 ];
 
 GameInfo? gameById(String id) => kGames.where((g) => g.id == id).firstOrNull;

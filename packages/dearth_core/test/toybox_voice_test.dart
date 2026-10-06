@@ -227,6 +227,8 @@ void main() {
         for (final p in CreaturePart.values)
           for (var i = 0; i < kCreatureOptions[p]!; i++) creaturePartClip(p, i),
         for (final c in kCreaturePaints) colorClip(c),
+        VoiceLine.bigLittleStart, VoiceLine.bigLittleDone,
+        for (final l in [...kLookAlikeLetters, ...kDifferentLetters, ...kMirrorLetters]) bigLittleClip(l),
       ];
       expect(asked.where((a) => !ids.contains(a)), isEmpty);
       expect(ids.difference(asked.toSet()), isEmpty, reason: 'no line nothing says');
@@ -234,6 +236,8 @@ void main() {
       expect(kVoiceLines[letterClip('B')], 'B. [[bˈʌ]], [[bˈʌ]], ball.');
       expect(kVoiceLines[letterClip('X')], 'X. Fox, box.');
       expect(kVoiceLines[countClip(3)], 'One, two, three.');
+      // Z is "zee", capital or small (espeak's English says "zed").
+      expect(kVoiceLines[bigLittleClip('z')], 'Big [[zˈiː]], little [[zˈiː]].');
     });
 
     test('every line has a measured clip, so a game can let it finish', () {

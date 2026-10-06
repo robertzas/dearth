@@ -62,4 +62,50 @@ void main() {
       expect(dotsResult(0, 26), GameResult.win);
     });
   });
+
+  group('Big & Little Letters', () {
+    test('FR-TOY-03: 3 look-alike pairs → 5 pairs that look different → b, d, p and q', () {
+      expect({...kLookAlikeLetters, ...kDifferentLetters, ...kMirrorLetters}, hasLength(26), reason: 'every letter, once');
+      for (final l in [...kLookAlikeLetters, ...kDifferentLetters, ...kMirrorLetters]) {
+        expect(hasGlyph(l) && hasGlyph(l.toUpperCase()), isTrue, reason: l);
+      }
+      for (var seed = 0; seed < 200; seed++) {
+        final rng = Random(seed);
+        for (final (level, pool, n) in [(1, kLookAlikeLetters, 3), (2, kDifferentLetters, 5), (3, kMirrorLetters, 4)]) {
+          final r = bigLittleRound(level, rng);
+          expect(r.letters, hasLength(n), reason: 'seed $seed, level $level');
+          expect(r.letters.toSet(), hasLength(n), reason: 'no letter twice');
+          expect(pool, containsAll(r.letters));
+          expect(r.tray.toSet(), r.letters.toSet(), reason: 'a small letter for every capital');
+          for (var i = 0; i < n; i++) {
+            expect(r.tray[i], isNot(r.letters[i]), reason: 'seed $seed: ${r.tray[i]} starts under its own capital');
+          }
+        }
+      }
+    });
+
+    test('a new round never deals the same letters again', () {
+      for (var seed = 0; seed < 200; seed++) {
+        final rng = Random(seed);
+        for (var level = 1; level <= 3; level++) {
+          final a = bigLittleRound(level, rng);
+          final b = bigLittleRound(level, rng, last: a.letters);
+          if (level < 3) {
+            expect(b.letters.toSet().containsAll(a.letters), isFalse, reason: 'seed $seed, level $level');
+          } else {
+            expect(b.letters, isNot(a.letters), reason: 'the mirror four come in a new order');
+          }
+        }
+      }
+    });
+
+    test('slips: three pairs want none for a win; four or five allow one', () {
+      expect(bigLittleResult(0, pairs: 3), GameResult.win);
+      expect(bigLittleResult(1, pairs: 3), GameResult.helped);
+      expect(bigLittleResult(1, pairs: 5), GameResult.win);
+      expect(bigLittleResult(1, pairs: 4), GameResult.win);
+      expect(bigLittleResult(3, pairs: 4), GameResult.helped);
+      expect(bigLittleResult(4, pairs: 5), GameResult.miss);
+    });
+  });
 }

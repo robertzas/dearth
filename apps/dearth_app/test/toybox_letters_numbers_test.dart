@@ -1,4 +1,5 @@
 import 'package:dearth_app/core/sound.dart';
+import 'package:dearth_app/features/toybox/games/biglittle.dart';
 import 'package:dearth_app/features/toybox/games/dots.dart';
 import 'package:dearth_app/features/toybox/games/dots_pictures.dart';
 import 'package:dearth_core/dearth_core.dart';
@@ -14,7 +15,7 @@ import 'support/toybox_harness.dart';
 void main() {
   for (final size in const [Size(390, 844), Size(844, 390), Size(1080, 1920), Size(1920, 1080)]) {
     testWidgets('every number and letter game lays out on a ${size.width.toInt()}×${size.height.toInt()} screen at its busiest level', (tester) async {
-      for (final (game, level) in const [('dots', 1), ('dots', 4), ('dots', 6)]) {
+      for (final (game, level) in const [('dots', 1), ('dots', 4), ('dots', 6), ('biglittle', 1), ('biglittle', 2), ('biglittle', 3)]) {
         final h = await openToyboxGame(tester, game, level: level, size: size);
         await tester.pump(const Duration(seconds: 1));
         // An overflow would have been thrown as a layout error.
@@ -234,6 +235,101 @@ void main() {
       expect(game(tester).debugSlips, 0);
       await h.shutdown();
       handle.dispose();
+    });
+  });
+
+  group('Big & Little Letters', () {
+    BigLittleGameState game(WidgetTester tester) => tester.state<BigLittleGameState>(find.byType(BigLittleGame));
+
+    /// Taps small [letter], then the card of [capital].
+    Future<void> pair(WidgetTester tester, String letter, String capital) async {
+      final r = game(tester).debugRound;
+      await tester.tap(byId('biglittle.little.${r.tray.indexOf(letter)}'));
+      await tester.pump();
+      await tester.tap(byId('biglittle.big.${r.letters.indexOf(capital)}'));
+      await tester.pump(const Duration(milliseconds: 500));
+    }
+
+    testWidgets('FR-TOY-03: each small letter finds its capital and the voice names the pair', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'biglittle', sound: sound, level: 1);
+      final r = game(tester).debugRound;
+      expect(r.letters, hasLength(3));
+      expectNoFallbackText(byId('screen.game'));
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(sound.said, [VoiceLine.bigLittleStart]);
+      expect(labelOf(tester, 'biglittle.ask'), 'Little letters find big letters');
+      expect(labelOf(tester, 'biglittle.big.0'), 'Big ${r.letters[0].toUpperCase()}');
+      expect(labelOf(tester, 'biglittle.little.0'), 'Little ${r.tray[0]}');
+      for (final l in r.letters) {
+        await pair(tester, l, l);
+        expect(labelOf(tester, 'biglittle.big.${r.letters.indexOf(l)}'), 'Big ${l.toUpperCase()}, little $l');
+        expect(labelOf(tester, 'biglittle.little.${r.tray.indexOf(l)}'), 'Little $l, home');
+      }
+      expect(labelOf(tester, 'biglittle.ask'), 'All found!');
+      // Tapping a small letter says its name; a pair names both letters.
+      expect(sound.said, [VoiceLine.bigLittleStart, for (final l in r.letters) ...[letterNameClip(l), bigLittleClip(l)]]);
+      // The last pair is said in full before the cheer.
+      await tester.pump(afterVoice(bigLittleClip(r.letters.last)));
+      await h.settle();
+      expect(sound.said.last, VoiceLine.bigLittleDone);
+      expect(await toyboxRounds(h), [('biglittle', 1, 'win')]);
+      await tester.pump(const Duration(seconds: 4));
+      expect(game(tester).debugRound.letters.toSet(), isNot(r.letters.toSet()), reason: 'new letters next round');
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('she can drag a small letter onto its capital; dropped short, it floats back', (tester) async {
+      final h = await openToyboxGame(tester, 'biglittle', level: 1);
+      final r = game(tester).debugRound;
+      final l = r.letters.first;
+      final token = byId('biglittle.little.${r.tray.indexOf(l)}');
+      final from = tester.getCenter(token);
+      final card = tester.getCenter(byId('biglittle.big.0'));
+      await tester.dragFrom(from, (card - from) * 0.3);
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(labelOf(tester, 'biglittle.little.${r.tray.indexOf(l)}'), 'Little $l');
+      expect(tester.getCenter(token), offsetMoreOrLessEquals(from, epsilon: 1));
+      await tester.dragFrom(from, card - from);
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(labelOf(tester, 'biglittle.big.0'), 'Big ${l.toUpperCase()}, little $l');
+      await tester.pump(const Duration(seconds: 1));
+      await h.shutdown();
+    });
+
+    testWidgets('b, d, p and q: a wrong card wiggles and names the letter she holds; two slips are helped', (tester) async {
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'biglittle', sound: sound, level: 3);
+      final r = game(tester).debugRound;
+      expect(r.letters.toSet(), {'b', 'd', 'p', 'q'});
+      await tester.pump(const Duration(milliseconds: 700));
+      final l = r.letters.first, wrong = r.letters[1];
+      await pair(tester, l, wrong);
+      expect(sound.played.map((p) => p.$1), contains(Sfx.nope));
+      expect(sound.said.last, letterNameClip(l));
+      expect(labelOf(tester, 'biglittle.big.1'), 'Big ${wrong.toUpperCase()}', reason: 'nothing paired');
+      await pair(tester, l, wrong);
+      for (final x in r.letters) {
+        await pair(tester, x, x);
+      }
+      await tester.pump(afterVoice(bigLittleClip(r.letters.last)));
+      await h.settle();
+      expect(await toyboxRounds(h), [('biglittle', 3, 'helped')]);
+      await tester.pump(const Duration(seconds: 4));
+      await h.shutdown();
+    });
+
+    testWidgets('a long pause nudges the next small letter and says its name, without a slip', (tester) async {
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'biglittle', sound: sound, level: 2);
+      final r = game(tester).debugRound;
+      await tester.pump(const Duration(seconds: 13));
+      expect(sound.said.last, letterNameClip(r.tray.first));
+      await pair(tester, r.tray.first, r.tray.first);
+      expect(sound.said.last, bigLittleClip(r.tray.first));
+      await h.shutdown();
     });
   });
 }
