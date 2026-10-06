@@ -98,7 +98,8 @@ commands it uses, for reproducing a failure it reports.
   last web build. `CHROME_PATH=/usr/bin/google-chrome-stable` uses a system
   Chrome instead of downloading one. Extra arguments go to
   `playwright test`, e.g. `tool/e2e.sh tests/calendar.spec.ts`. CI splits
-  the suite across four runners (`--shard=N/4`); locally it runs three
+  the suite across twenty runners (`--shard=N/20`, the free plan's
+  concurrent-job limit); locally it runs three
   browsers (more starve each other and journeys time out). Playwright's
   runner needs Node: under Bun it can't load its TypeScript config, and
   the time is all in the browser anyway.

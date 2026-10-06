@@ -13,7 +13,7 @@ export default defineConfig({
   expect: { timeout: 20_000 },
   fullyParallel: true,
   // CI runners render in software on 4 cores: two browsers each, and the
-  // suite is split across four runners (--shard). Locally three: more
+  // suite is split across twenty runners (--shard). Locally three: more
   // browsers drawing wall-size Flutter at once starve each other and
   // journeys start timing out (8 on a 16-core machine did).
   workers: process.env.CI ? 2 : 3,

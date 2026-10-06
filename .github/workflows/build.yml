@@ -98,16 +98,19 @@ jobs:
           retention-days: 7
 
   e2e:
-    # The suite renders Flutter in software Chrome, so it's split four ways
-    # across runners (each shard is a quarter of every viewport's tests).
-    name: Web E2E (Playwright ${{ matrix.shard }}/4)
+    # The suite renders Flutter in software Chrome, so it's split as wide as
+    # the account can run at once: a free plan runs 20 jobs concurrently,
+    # and more shards would only queue behind them. A shard spends ~30 s on
+    # setup, so the split is close to linear. When E2E starts the platform
+    # builds still hold a few runners; the last shards start as they finish.
+    name: Web E2E (Playwright ${{ matrix.shard }}/20)
     needs: web
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
     steps:
       - uses: actions/checkout@v4
       # The test Hub is pure Dart and the web build is downloaded, so no
@@ -139,10 +142,10 @@ jobs:
       - name: Install
         working-directory: e2e
         run: npm ci --no-audit --no-fund && npx playwright install ffmpeg
-      - name: Run shard ${{ matrix.shard }} of 4 (Wall-L, Wall-P, Tablet, Phone)
+      - name: Run shard ${{ matrix.shard }} of 20 (Wall-L, Wall-P, Tablet, Phone)
         env:
           CHROME_PATH: /usr/bin/google-chrome
-        run: SKIP_BUILD=1 tool/e2e.sh --shard=${{ matrix.shard }}/4
+        run: SKIP_BUILD=1 tool/e2e.sh --shard=${{ matrix.shard }}/20
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
