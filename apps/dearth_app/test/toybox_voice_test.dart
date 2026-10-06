@@ -247,10 +247,15 @@ void main() {
       expect(sound.said, [numberClip(n)]);
       expect(labelOf(tester, 'numbers.count'), 'Nothing yet');
       await traceGlyph(tester);
-      expect(sound.said.last, countClip(n));
-      await tester.pump(Duration(milliseconds: 700 * n));
+      // The cheer has the floor first; then each thing arrives with its number.
+      expect(sound.said, [numberClip(n)]);
+      await tester.pump(const Duration(milliseconds: 1250));
+      expect(labelOf(tester, 'numbers.count'), '1 of $n');
+      expect(sound.said.last, numberClip(1));
+      await tester.pump(Duration(milliseconds: 1100 * n));
       await h.settle();
       expect(labelOf(tester, 'numbers.count'), '$n of $n');
+      expect(sound.said, [numberClip(n), for (var i = 1; i <= n; i++) numberClip(i)]);
       expect(await toyboxRounds(h), [('numbers', 1, 'win')]);
       await tester.pump(const Duration(seconds: 6));
       await h.shutdown();

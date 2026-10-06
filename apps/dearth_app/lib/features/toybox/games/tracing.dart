@@ -221,6 +221,18 @@ class NumbersGameState extends State<NumbersGame> {
 
   void _sayNumber() => widget.c.say(numberClip(_n!));
 
+  /// The pause for the cheer before counting starts, and the time each
+  /// counted thing gets: a number clip runs up to ~0.75 s, and a beat of
+  /// quiet after it keeps the words apart.
+  static const _countLead = Duration(milliseconds: 1200);
+  static const _countBeat = Duration(milliseconds: 1100);
+
+  void _countOne() {
+    setState(() => _shown++);
+    widget.c.sound(Sfx.tap, volume: 0.35, rate: 1 + _shown * 0.06);
+    widget.c.say(numberClip(_shown));
+  }
+
   void _onTrace(TraceEvent e, Tracer t) {
     switch (e) {
       case TraceEvent.strayed:
@@ -229,19 +241,22 @@ class NumbersGameState extends State<NumbersGame> {
         widget.c.sound(Sfx.pop, volume: 0.5);
       case TraceEvent.glyphDone:
         widget.c.sound(Sfx.sparkle);
-        widget.c.say(countClip(_n!));
         setState(() => _done = true);
-        // One thing per number word, roughly in time with the voice.
-        _count = Timer.periodic(const Duration(milliseconds: 620), (timer) {
-          if (!mounted || _shown >= _n!) {
-            timer.cancel();
-            return;
-          }
-          setState(() => _shown++);
-          widget.c.sound(Sfx.tap, volume: 0.35, rate: 1 + _shown * 0.06);
-        });
         unawaited(widget.c.finishRound(resultFor(t.slips, allowed: t.glyph.strokes.length), emoji: '🔢'));
-        _next = Timer(Duration(milliseconds: 2600 + _n! * 620), _newRound);
+        // After the cheer, each thing pops up as the voice says its number:
+        // one clip per thing, so the voice can never run ahead of what she
+        // sees (a single "one, two, three" clip did, at a pace too quick to
+        // follow on the frame's small speaker).
+        _count = Timer(_countLead, () {
+          if (!mounted) return;
+          if (_n == 0) return widget.c.say(countClip(0));
+          _countOne();
+          _count = Timer.periodic(_countBeat, (timer) {
+            if (!mounted || _shown >= _n!) return timer.cancel();
+            _countOne();
+          });
+        });
+        _next = Timer(_countLead + _countBeat * math.max(_n!, 1) + const Duration(milliseconds: 2400), _newRound);
       case TraceEvent.none || TraceEvent.started || TraceEvent.moved:
         break;
     }
