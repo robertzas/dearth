@@ -19,8 +19,10 @@ test.describe('Toybox expansion', () => {
     for (const id of await ids(page, 'patterns.choice.')) {
       if ((await label(page, id)) === answer) await tap(tid(page, id));
     }
-    await expectCheered(page);
+    // The slot shows the answer only until the next round (~3 s, less than
+    // a slow runner can take after the cheer), so it's read first.
     await expectText(tid(page, 'patterns.slot'), answer);
+    await expectCheered(page);
   });
 
   test('FR-TOY-03: Odd One Out — tapping around until the different one is found', async ({ page }) => {
@@ -53,8 +55,9 @@ test.describe('Toybox expansion', () => {
         if (filled) break;
       }
     }
-    // Every shadow now shows its picture.
-    for (const s of await ids(page, 'shadows.shadow.')) expect(await label(page, s)).not.toMatch(/^Shadow/);
+    // Every shadow filled: the round is cheered. (Reading the shadows races
+    // the next round, which a slow runner can already show.)
+    await expectCheered(page);
   });
 
   test('FR-TOY-03: Small to Big — smallest first, into the line', async ({ page }) => {
