@@ -238,6 +238,7 @@ void main() {
         for (final l in kSpellLetters.split('')) soundClip(l),
         VoiceLine.spellMissing, VoiceLine.spellBuild,
         for (final a in kHearAnswers) ...[hearAskClip(a), hearYesClip(a), soundClip(a)],
+        for (final w in kSightWords) ...[sightAskClip(w), sightWordClip(w)],
       ];
       expect(asked.where((a) => !ids.contains(a)), isEmpty);
       expect(ids.difference(asked.toSet()), isEmpty, reason: 'no line nothing says');
@@ -255,6 +256,10 @@ void main() {
       expect(kVoiceLines[hearAskClip('m')], 'Which letter says [[mˈʌ]]?');
       expect(kVoiceLines[hearAskClip('sh')], 'Which letters say [[ʃˈʌ]]?');
       expect(kVoiceLines[hearYesClip('sh')], 'S, H. [[ʃˈʌ]], [[ʃˈʌ]], shell.');
+      // A little word read alone is stressed, with its American vowel.
+      expect(kVoiceLines[sightAskClip('was')], 'Find the word: [[wˈʌz]].');
+      expect(kVoiceLines[sightWordClip('the bus')], 'The bus.');
+      expect(kVoiceLines[sightAskClip('the bus')], 'Find the words: the bus.');
     });
 
     test('every line has a measured clip, so a game can let it finish', () {

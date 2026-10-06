@@ -3,6 +3,7 @@ import 'creature.dart';
 import 'dots.dart';
 import 'hear.dart';
 import 'hop.dart';
+import 'sight.dart';
 import 'spell.dart';
 import 'voice_lengths.g.dart';
 import 'words.dart';
@@ -78,6 +79,12 @@ String hearAskClip(String answer) => 'hear_$answer';
 /// and for two letters "S, H. Shuh, shuh, shell."
 String hearYesClip(String answer) => answer.length == 1 ? letterClip(answer) : 'digraph_$answer';
 
+/// "Find the word: go.", "Find the words: the bus."
+String sightAskClip(String word) => 'sight_find_${sightSlug(word)}';
+
+/// The word read out: "Go."
+String sightWordClip(String word) => 'sight_${sightSlug(word)}';
+
 /// "Three."
 String numberClip(int n) => 'num_$n';
 
@@ -125,6 +132,27 @@ const Map<String, String> _american = {
   'tomato': '[[təmˈeɪtəʊ]]',
   // espeak's "one" rhymes with "on"; the American one rhymes with "sun".
   'one': '[[wˈʌn]]',
+};
+
+/// Little words said alone, as a word to read: espeak reads them unstressed
+/// ("the" as a quick "thuh", "is" swallowed) or British ("was" with the
+/// "o" of "hot"). Stressed, with American vowels.
+const Map<String, String> _sightStressed = {
+  'and': '[[ˈand]]',
+  'are': '[[ˈɑːɹ]]',
+  'at': '[[ˈat]]',
+  'for': '[[fˈɔːɹ]]',
+  'from': '[[fɹˈʌm]]',
+  'is': '[[ˈɪz]]',
+  'it': '[[ˈɪt]]',
+  'she': '[[ʃˈiː]]',
+  'the': '[[ðˈʌ]]',
+  'to': '[[tˈuː]]',
+  'was': '[[wˈʌz]]',
+  'we': '[[wˈiː]]',
+  'what': '[[wˈʌt]]',
+  'with': '[[wˈɪð]]',
+  'you': '[[jˈuː]]',
 };
 
 final RegExp _americanWord = RegExp('\\b(${_american.keys.join('|')})\\b', caseSensitive: false);
@@ -230,6 +258,12 @@ Map<String, String> _lines() {
   for (final a in kHearAnswers) {
     final sound = a.length == 1 ? _sound(letterSound(a)) : '[[${digraphOf(a)!.sound}]]';
     lines[hearAskClip(a)] = a.length == 1 ? 'Which letter says $sound?' : 'Which letters say $sound?';
+  }
+  for (final w in kSightWords) {
+    final two = w.contains(' ');
+    final said = _sightStressed[w];
+    lines[sightAskClip(w)] = 'Find the word${two ? 's' : ''}: ${said ?? w}.';
+    lines[sightWordClip(w)] = '${said ?? _cap(w)}.';
   }
   lines[VoiceLine.spellMissing] = 'Which sound is missing?';
   lines[VoiceLine.spellBuild] = "Let's build it, sound by sound!";

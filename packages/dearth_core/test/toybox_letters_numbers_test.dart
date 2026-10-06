@@ -309,4 +309,60 @@ void main() {
       expect([for (var s = 0; s <= 2; s++) hearResult(s)], [GameResult.win, GameResult.helped, GameResult.miss]);
     });
   });
+
+  group('Sight Words', () {
+    test('FR-TOY-03: two letters → three → four → two-word labels, the decoys getting closer', () {
+      for (var seed = 0; seed < 200; seed++) {
+        final rng = Random(seed);
+        for (var level = 1; level <= 4; level++) {
+          final r = sightRound(level, rng);
+          final why = 'seed $seed, level $level: ${r.word} ${r.signs}';
+          expect(r.signs, contains(r.word), reason: why);
+          expect(r.signs.toSet(), hasLength(r.signs.length), reason: why);
+          expect(r.signs, hasLength(level == 1 ? 3 : 4), reason: why);
+          final pool = switch (level) { 1 => kSightTwo, 2 => kSightThree, 3 => kSightFour, _ => kSightLabels };
+          expect(pool, containsAll(r.signs), reason: why);
+          if (level == 1) {
+            expect({for (final w in r.signs) w[0].toLowerCase()}, hasLength(3), reason: 'the first letter tells them apart ($why)');
+          }
+          if (level == 3 && kSightFour.any((w) => w != r.word && w[0] == r.word[0])) {
+            expect(r.signs.where((w) => w != r.word && w[0] == r.word[0]), isNotEmpty, reason: 'a look-alike start ($why)');
+          }
+          if (level == 4) {
+            expect(r.signs.where((w) => w != r.word && w.split(' ').any(r.word.split(' ').contains)), isNotEmpty, reason: 'a label sharing a word ($why)');
+          }
+        }
+      }
+    });
+
+    test('every word comes up, never twice running; every word has its lines and is drawable', () {
+      final seen = <String>{};
+      for (var seed = 0; seed < 300; seed++) {
+        final rng = Random(seed);
+        for (var level = 1; level <= 4; level++) {
+          String? last;
+          for (var i = 0; i < 4; i++) {
+            final r = sightRound(level, rng, last: last);
+            expect(r.word, isNot(last));
+            last = r.word;
+            seen.add(r.word);
+          }
+        }
+      }
+      expect(seen, kSightWords.toSet());
+      for (final w in kSightWords) {
+        expect(kVoiceLines, contains(sightAskClip(w)));
+        expect(kVoiceLines, contains(sightWordClip(w)));
+        // Signs are written in the glyphs she traces.
+        for (final c in w.replaceAll(' ', '').split('')) {
+          expect(() => glyphFor(c), returnsNormally, reason: '$w: $c');
+        }
+      }
+      expect(kSightWords.toSet(), hasLength(kSightWords.length));
+    });
+
+    test('slips: right first time is a win, one slip is helped, then a miss', () {
+      expect([for (var s = 0; s <= 2; s++) sightResult(s)], [GameResult.win, GameResult.helped, GameResult.miss]);
+    });
+  });
 }

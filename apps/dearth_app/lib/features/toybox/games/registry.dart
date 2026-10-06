@@ -23,6 +23,7 @@ import 'patterns.dart';
 import 'rhymes.dart';
 import 'shadows.dart';
 import 'shapes.dart';
+import 'sight.dart';
 import 'sizes.dart';
 import 'spell.dart';
 import 'stories.dart';
@@ -62,4 +63,5 @@ final Map<String, GameBuilder> kGameBuilders = {
   'hop': HopGame.new,
   'spell': SpellGame.new,
   'hear': HearGame.new,
+  'sight': SightGame.new,
 };

@@ -4,6 +4,7 @@ import 'package:dearth_app/features/toybox/games/dots.dart';
 import 'package:dearth_app/features/toybox/games/dots_pictures.dart';
 import 'package:dearth_app/features/toybox/games/hear.dart';
 import 'package:dearth_app/features/toybox/games/hop.dart';
+import 'package:dearth_app/features/toybox/games/sight.dart';
 import 'package:dearth_app/features/toybox/games/spell.dart';
 import 'package:dearth_core/dearth_core.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,7 +19,7 @@ import 'support/toybox_harness.dart';
 void main() {
   for (final size in const [Size(390, 844), Size(844, 390), Size(1080, 1920), Size(1920, 1080)]) {
     testWidgets('every number and letter game lays out on a ${size.width.toInt()}×${size.height.toInt()} screen at its busiest level', (tester) async {
-      await expectGamesLayOut(tester, const [('dots', 1), ('dots', 4), ('dots', 6), ('biglittle', 1), ('biglittle', 2), ('biglittle', 3), ('hop', 1), ('hop', 2), ('hop', 4), ('spell', 1), ('spell', 3), ('spell', 4), ('hear', 1), ('hear', 3), ('hear', 4)], size: size);
+      await expectGamesLayOut(tester, const [('dots', 1), ('dots', 4), ('dots', 6), ('biglittle', 1), ('biglittle', 2), ('biglittle', 3), ('hop', 1), ('hop', 2), ('hop', 4), ('spell', 1), ('spell', 3), ('spell', 4), ('hear', 1), ('hear', 3), ('hear', 4), ('sight', 1), ('sight', 3), ('sight', 4)], size: size);
     });
   }
 
@@ -647,6 +648,95 @@ void main() {
       await h.settle();
       expect(await toyboxRounds(h), [('hear', 2, 'win')]);
       await tester.pump(const Duration(seconds: 5));
+      await h.shutdown();
+    });
+  });
+
+  group('Sight Words', () {
+    SightGameState game(WidgetTester tester) => tester.state<SightGameState>(find.byType(SightGame));
+
+    testWidgets('FR-TOY-03: "Find the word …": the right sign brings the bus, and the word is read', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'sight', sound: sound, level: 1);
+      final r = game(tester).debugRound;
+      final i = r.signs.indexOf(r.word);
+      expectNoFallbackText(byId('screen.game'));
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(sound.said, [sightAskClip(r.word)]);
+      expect(labelOf(tester, 'sight.ask'), 'Find the word ${r.word}');
+      expect(labelOf(tester, 'sight.sign.$i'), 'Sign: ${r.word}');
+      expect(labelOf(tester, 'sight.bus'), 'Bus waiting');
+      await tester.tap(byId('sight.sign.$i'));
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(labelOf(tester, 'sight.ask'), 'You found ${r.word}!');
+      // The bus drives to the sign, then the word is read.
+      await tester.pump(const Duration(milliseconds: 1200));
+      expect(labelOf(tester, 'sight.bus'), 'Bus at ${r.word}');
+      expect(tester.getCenter(byId('sight.bus')).dx, moreOrLessEquals(tester.getCenter(byId('sight.sign.$i')).dx, epsilon: 2));
+      expect(sound.said.last, sightWordClip(r.word));
+      expect(labelOf(tester, 'sight.sign.$i'), 'Sign: ${r.word}, found');
+      await h.settle();
+      expect(await toyboxRounds(h), [('sight', 1, 'win')]);
+      await tester.pump(const Duration(seconds: 4));
+      expect(labelOf(tester, 'sight.ask'), isNot('You found ${r.word}!'), reason: 'a new round');
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('a wrong sign reads itself out and wiggles; the bus stays put; two slips make a miss', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'sight', sound: sound, level: 3);
+      final r = game(tester).debugRound;
+      await tester.pump(const Duration(milliseconds: 700));
+      final wrong = [for (var i = 0; i < r.signs.length; i++) if (r.signs[i] != r.word) i].take(2);
+      for (final w in wrong) {
+        await tester.tap(byId('sight.sign.$w'));
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(sound.said.last, sightWordClip(r.signs[w]), reason: 'a slip is still reading');
+      }
+      expect(sound.played.where((p) => p.$1 == Sfx.nope), hasLength(2));
+      expect(labelOf(tester, 'sight.bus'), 'Bus waiting');
+      await tester.tap(byId('sight.sign.${r.signs.indexOf(r.word)}'));
+      await tester.pump(const Duration(milliseconds: 1300));
+      await h.settle();
+      expect(await toyboxRounds(h), [('sight', 3, 'miss')]);
+      await tester.pump(const Duration(seconds: 4));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('labels: two words on a sign, asked for as words', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'sight', sound: sound, level: 4);
+      final r = game(tester).debugRound;
+      expect(r.word, contains(' '));
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(labelOf(tester, 'sight.ask'), 'Find the words ${r.word}');
+      expect(sound.said, [sightAskClip(r.word)]);
+      await tester.tap(byId('sight.sign.${r.signs.indexOf(r.word)}'));
+      await tester.pump(const Duration(milliseconds: 1300));
+      expect(sound.said.last, sightWordClip(r.word));
+      await h.settle();
+      expect(await toyboxRounds(h), [('sight', 4, 'win')]);
+      await tester.pump(const Duration(seconds: 4));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('a long pause asks again without counting a slip', (tester) async {
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'sight', sound: sound, level: 2);
+      final r = game(tester).debugRound;
+      await tester.pump(const Duration(seconds: 13));
+      expect(sound.said, [sightAskClip(r.word), sightAskClip(r.word)]);
+      await tester.tap(byId('sight.sign.${r.signs.indexOf(r.word)}'));
+      await tester.pump(const Duration(milliseconds: 1300));
+      await h.settle();
+      expect(await toyboxRounds(h), [('sight', 2, 'win')]);
+      await tester.pump(const Duration(seconds: 4));
       await h.shutdown();
     });
   });

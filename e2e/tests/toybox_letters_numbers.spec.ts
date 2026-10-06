@@ -82,4 +82,20 @@ test.describe('Toybox number and letter games', () => {
     await expectText(tid(page, 'hear.ask'), `You found ${letter}!`);
     await expectCheered(page);
   });
+
+  test('FR-TOY-03: Sight Words — she finds the sign that says the word, and the bus stops there', async ({ page }) => {
+    await openToyboxGame(page, 'sight', true);
+    await expectText(tid(page, 'sight.ask'), /^Find the word [a-zA-Z]+$/);
+    const word = (await textOf(tid(page, 'sight.ask'))).trim().replace('Find the word ', '');
+    let sign = '';
+    for (const id of await idsUnder(page, 'sight.sign.')) {
+      if ((await textOf(tid(page, id))).trim() === `Sign: ${word}`) sign = id;
+    }
+    expect(sign).not.toBe('');
+    await tap(tid(page, sign));
+    // Lasting labels: the bus stays at the sign until the next round.
+    await expectText(tid(page, 'sight.ask'), `You found ${word}!`);
+    await expectText(tid(page, 'sight.bus'), `Bus at ${word}`);
+    await expectCheered(page);
+  });
 });
