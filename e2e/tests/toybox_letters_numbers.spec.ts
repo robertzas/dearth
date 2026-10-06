@@ -41,4 +41,14 @@ test.describe('Toybox number and letter games', () => {
     // A lasting label: the cheer can be over before a slow run gets there.
     await expectText(tid(page, 'biglittle.ask'), 'All found!');
   });
+
+  test('FR-TOY-03: Frog Hop — the frog hops to the pad the voice asks for', async ({ page }) => {
+    await openToyboxGame(page, 'hop', true);
+    await expectText(tid(page, 'hop.ask'), /^Hop to \d+$/);
+    const target = (await textOf(tid(page, 'hop.ask'))).trim().replace('Hop to ', '');
+    await tap(tid(page, `hop.pad.${target}`));
+    // A lasting label: it stays until the next round.
+    await expectText(tid(page, 'hop.ask'), `Landed on ${target}!`);
+    await expectText(tid(page, `hop.pad.${target}`), `${target}, frog`);
+  });
 });

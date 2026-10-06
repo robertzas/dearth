@@ -108,4 +108,55 @@ void main() {
       expect(bigLittleResult(4, pairs: 5), GameResult.miss);
     });
   });
+
+  group('Frog Hop', () {
+    test('FR-TOY-03: pads 0–5 → 0–10 → one more or one less → adding 1–3 more', () {
+      for (var seed = 0; seed < 200; seed++) {
+        final rng = Random(seed);
+        for (var level = 1; level <= 4; level++) {
+          final r = hopRound(level, rng);
+          final why = 'seed $seed, level $level';
+          expect(r.pads, level == 1 ? 6 : 11, reason: why);
+          expect(r.from, inInclusiveRange(0, r.pads - 1), reason: why);
+          expect(r.target, inInclusiveRange(0, r.pads - 1), reason: why);
+          expect(r.target, isNot(r.from), reason: 'the frog never starts on the answer ($why)');
+          switch (level) {
+            case 1 || 2:
+              expect(r.mode, HopMode.find, reason: why);
+            case 3:
+              expect(r.mode, isIn([HopMode.oneMore, HopMode.oneLess]), reason: why);
+              expect(r.target - r.from, r.mode == HopMode.oneMore ? 1 : -1, reason: why);
+            default:
+              expect(r.mode, HopMode.add, reason: why);
+              expect(r.hops, inInclusiveRange(1, 3), reason: why);
+              expect(r.from, greaterThan(0), reason: why);
+              expect(r.target, lessThanOrEqualTo(10), reason: why);
+          }
+        }
+      }
+    });
+
+    test('every pad, both neighbours and every sum come up; never the same target twice running', () {
+      final seen = <String>{};
+      for (var seed = 0; seed < 400; seed++) {
+        final rng = Random(seed);
+        int? last;
+        for (var level = 1; level <= 4; level++) {
+          for (var i = 0; i < 3; i++) {
+            final r = hopRound(level, rng, last: last);
+            if (i > 0) expect(r.target, isNot(last), reason: 'seed $seed, level $level');
+            last = r.target;
+            seen.add(hopAskClip(r));
+          }
+          last = null;
+        }
+      }
+      expect(seen, hasLength(11 + 10 + 10 + kHopSums.length));
+      expect(kHopSums, hasLength(9 + 8 + 7));
+    });
+
+    test('slips: right first time is a win, one slip is helped, then a miss', () {
+      expect([for (var s = 0; s <= 2; s++) hopResult(s)], [GameResult.win, GameResult.helped, GameResult.miss]);
+    });
+  });
 }

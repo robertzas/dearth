@@ -2,6 +2,7 @@ import 'package:dearth_app/core/sound.dart';
 import 'package:dearth_app/features/toybox/games/biglittle.dart';
 import 'package:dearth_app/features/toybox/games/dots.dart';
 import 'package:dearth_app/features/toybox/games/dots_pictures.dart';
+import 'package:dearth_app/features/toybox/games/hop.dart';
 import 'package:dearth_core/dearth_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -15,7 +16,7 @@ import 'support/toybox_harness.dart';
 void main() {
   for (final size in const [Size(390, 844), Size(844, 390), Size(1080, 1920), Size(1920, 1080)]) {
     testWidgets('every number and letter game lays out on a ${size.width.toInt()}×${size.height.toInt()} screen at its busiest level', (tester) async {
-      for (final (game, level) in const [('dots', 1), ('dots', 4), ('dots', 6), ('biglittle', 1), ('biglittle', 2), ('biglittle', 3)]) {
+      for (final (game, level) in const [('dots', 1), ('dots', 4), ('dots', 6), ('biglittle', 1), ('biglittle', 2), ('biglittle', 3), ('hop', 1), ('hop', 2), ('hop', 4)]) {
         final h = await openToyboxGame(tester, game, level: level, size: size);
         await tester.pump(const Duration(seconds: 1));
         // An overflow would have been thrown as a layout error.
@@ -329,6 +330,99 @@ void main() {
       expect(sound.said.last, letterNameClip(r.tray.first));
       await pair(tester, r.tray.first, r.tray.first);
       expect(sound.said.last, bigLittleClip(r.tray.first));
+      await h.shutdown();
+    });
+  });
+
+  group('Frog Hop', () {
+    HopGameState game(WidgetTester tester) => tester.state<HopGameState>(find.byType(HopGame));
+
+    /// Long enough for every hop and the landing.
+    Duration flight(HopRound r) => HopGameState.hopTime * r.hops + const Duration(milliseconds: 200);
+
+    testWidgets('FR-TOY-03: "Hop to …": the right pad sends the frog there a pad at a time, and it says where it landed', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'hop', sound: sound, level: 1);
+      final r = game(tester).debugRound;
+      expect(r.mode, HopMode.find);
+      expectNoFallbackText(byId('screen.game'));
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(sound.said, [hopAskClip(r)]);
+      expect(labelOf(tester, 'hop.ask'), 'Hop to ${r.target}');
+      expect(labelOf(tester, 'hop.pad.${r.from}'), '${r.from}, frog');
+      expect(labelOf(tester, 'hop.frog'), 'Frog on ${r.from}');
+      await tester.tap(byId('hop.pad.${r.target}'));
+      await tester.pump(flight(r));
+      // A note for every pad it lands on, rising as the numbers grow.
+      final notes = sound.played.where((p) => p.$1 == Sfx.xylophone).length;
+      expect(notes, r.hops);
+      final rates = sound.rates.skip(sound.rates.length - r.hops).toList();
+      final rising = <double>[...rates]..sort();
+      expect(rates, r.target > r.from ? rising : rising.reversed.toList());
+      expect(sound.said.last, numberClip(r.target));
+      expect(labelOf(tester, 'hop.ask'), 'Landed on ${r.target}!');
+      expect(labelOf(tester, 'hop.pad.${r.target}'), '${r.target}, frog');
+      await h.settle();
+      expect(await toyboxRounds(h), [('hop', 1, 'win')]);
+      await tester.pump(const Duration(seconds: 4));
+      expect(labelOf(tester, 'hop.ask'), isNot('Landed on ${r.target}!'), reason: 'a new round');
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('a wrong pad wiggles and says its number; after two, the right pad glows and the round is a miss', (tester) async {
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'hop', sound: sound, level: 3);
+      final r = game(tester).debugRound;
+      expect(r.mode, isIn([HopMode.oneMore, HopMode.oneLess]));
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(sound.said, [hopAskClip(r)]);
+      final wrong = [for (var n = 0; n < r.pads; n++) n].firstWhere((n) => n != r.target && n != r.from);
+      for (var i = 0; i < 2; i++) {
+        await tester.tap(byId('hop.pad.$wrong'));
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(sound.said.last, numberClip(wrong));
+      }
+      expect(sound.played.where((p) => p.$1 == Sfx.nope), hasLength(2));
+      expect(labelOf(tester, 'hop.frog'), 'Frog on ${r.from}', reason: 'a wrong pad never moves the frog');
+      await tester.tap(byId('hop.pad.${r.target}'));
+      await tester.pump(flight(r));
+      await h.settle();
+      expect(await toyboxRounds(h), [('hop', 3, 'miss')]);
+      await tester.pump(const Duration(seconds: 4));
+      await h.shutdown();
+    });
+
+    testWidgets('adding: "3 and 2 more" hops the frog the extra pads from where it sits', (tester) async {
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'hop', sound: sound, level: 4);
+      final r = game(tester).debugRound;
+      expect(r.mode, HopMode.add);
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(labelOf(tester, 'hop.ask'), '${r.from} and ${r.hops} more');
+      expect(sound.said, [hopAskClip(r)]);
+      await tester.tap(byId('hop.pad.${r.target}'));
+      await tester.pump(flight(r));
+      expect(sound.played.where((p) => p.$1 == Sfx.xylophone), hasLength(r.hops));
+      expect(labelOf(tester, 'hop.frog'), 'Frog on ${r.target}');
+      await h.settle();
+      expect(await toyboxRounds(h), [('hop', 4, 'win')]);
+      await tester.pump(const Duration(seconds: 4));
+      await h.shutdown();
+    });
+
+    testWidgets('a long pause asks again without counting a slip', (tester) async {
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'hop', sound: sound, level: 2);
+      final r = game(tester).debugRound;
+      await tester.pump(const Duration(seconds: 13));
+      expect(sound.said, [hopAskClip(r), hopAskClip(r)]);
+      await tester.tap(byId('hop.pad.${r.target}'));
+      await tester.pump(flight(r));
+      await h.settle();
+      expect(await toyboxRounds(h), [('hop', 2, 'win')]);
+      await tester.pump(const Duration(seconds: 4));
       await h.shutdown();
     });
   });

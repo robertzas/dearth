@@ -8,6 +8,7 @@ import 'creature.dart';
 import 'differences.dart';
 import 'dots.dart';
 import 'farm.dart';
+import 'hop.dart';
 import 'ispy.dart';
 import 'jigsaw.dart';
 import 'letters.dart';
@@ -56,4 +57,5 @@ final Map<String, GameBuilder> kGameBuilders = {
   'creature': CreatureGame.new,
   'dots': DotsGame.new,
   'biglittle': BigLittleGame.new,
+  'hop': HopGame.new,
 };

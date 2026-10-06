@@ -229,6 +229,12 @@ void main() {
         for (final c in kCreaturePaints) colorClip(c),
         VoiceLine.bigLittleStart, VoiceLine.bigLittleDone,
         for (final l in [...kLookAlikeLetters, ...kDifferentLetters, ...kMirrorLetters]) bigLittleClip(l),
+        for (var level = 1; level <= 4; level++)
+          for (var seed = 0; seed < 300; seed++) hopAskClip(hopRound(level, Random(seed))),
+        for (var n = 0; n <= 10; n++) hopAskClip(HopRound(HopMode.find, 11, n == 0 ? 1 : 0, n)),
+        for (var n = 0; n <= 9; n++) hopAskClip(HopRound(HopMode.oneMore, 11, n, n + 1)),
+        for (var n = 1; n <= 10; n++) hopAskClip(HopRound(HopMode.oneLess, 11, n, n - 1)),
+        for (final (from, more) in kHopSums) hopAskClip(HopRound(HopMode.add, 11, from, from + more)),
       ];
       expect(asked.where((a) => !ids.contains(a)), isEmpty);
       expect(ids.difference(asked.toSet()), isEmpty, reason: 'no line nothing says');
@@ -238,6 +244,8 @@ void main() {
       expect(kVoiceLines[countClip(3)], 'One, two, three.');
       // Z is "zee", capital or small (espeak's English says "zed").
       expect(kVoiceLines[bigLittleClip('z')], 'Big [[zˈiː]], little [[zˈiː]].');
+      expect(kVoiceLines[hopAskClip(const HopRound(HopMode.add, 11, 3, 5))], 'Three and two more!');
+      expect(kVoiceLines[hopAskClip(const HopRound(HopMode.oneLess, 11, 4, 3))], 'One less than four!');
     });
 
     test('every line has a measured clip, so a game can let it finish', () {

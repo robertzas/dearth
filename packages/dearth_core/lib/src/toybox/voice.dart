@@ -1,6 +1,7 @@
 import 'biglittle.dart';
 import 'creature.dart';
 import 'dots.dart';
+import 'hop.dart';
 import 'voice_lengths.g.dart';
 import 'words.dart';
 
@@ -55,6 +56,15 @@ Duration afterVoice(String clip, {Duration atLeast = Duration.zero}) {
 /// "Big C, little c."
 String bigLittleClip(String letter) => 'biglittle_${letter.toLowerCase()}';
 
+/// What Frog Hop asks: "Hop to six!", "One more than four!", "One less
+/// than four!", "Three and two more!".
+String hopAskClip(HopRound r) => switch (r.mode) {
+      HopMode.find => 'hop_to_${r.target}',
+      HopMode.oneMore => 'hop_more_${r.from}',
+      HopMode.oneLess => 'hop_less_${r.from}',
+      HopMode.add => 'hop_add_${r.from}_${r.hops}',
+    };
+
 /// "Three."
 String numberClip(int n) => 'num_$n';
 
@@ -98,6 +108,8 @@ const Map<String, String> _american = {
   'zebra': '[[zˈiːbɹə]]',
   'banana': '[[bɐnˈanə]]',
   'tomato': '[[təmˈeɪtəʊ]]',
+  // espeak's "one" rhymes with "on"; the American one rhymes with "sun".
+  'one': '[[wˈʌn]]',
 };
 
 final RegExp _americanWord = RegExp('\\b(${_american.keys.join('|')})\\b', caseSensitive: false);
@@ -191,6 +203,18 @@ Map<String, String> _lines() {
   lines[VoiceLine.bigLittleDone] = 'You found them all!';
   for (final l in [...kLookAlikeLetters, ...kDifferentLetters, ...kMirrorLetters]) {
     lines[bigLittleClip(l)] = 'Big ${l.toUpperCase()}, little $l.';
+  }
+  for (var n = 0; n <= 10; n++) {
+    lines[hopAskClip(HopRound(HopMode.find, 11, n == 0 ? 1 : 0, n))] = 'Hop to ${_numbers[n]}!';
+  }
+  for (var n = 0; n <= 9; n++) {
+    lines[hopAskClip(HopRound(HopMode.oneMore, 11, n, n + 1))] = 'One more than ${_numbers[n]}!';
+  }
+  for (var n = 1; n <= 10; n++) {
+    lines[hopAskClip(HopRound(HopMode.oneLess, 11, n, n - 1))] = 'One less than ${_numbers[n]}!';
+  }
+  for (final (from, more) in kHopSums) {
+    lines[hopAskClip(HopRound(HopMode.add, 11, from, from + more))] = '${_cap(_numbers[from])} and ${_numbers[more]} more!';
   }
   return lines.map((id, line) => MapEntry(id, _americanize(line)));
 }

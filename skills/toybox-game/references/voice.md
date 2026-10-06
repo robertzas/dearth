@@ -68,9 +68,10 @@ say what you mean:
   LJ's American speech. But where British English uses *a different word
   or different sounds*, the voice follows the phonemes: the letter Z comes
   out "zed", a zebra "zebb-ra", a tomato "to-mah-to", a banana
-  "ba-nah-na". Write those in phonemes with American sounds in espeak's
+  "ba-nah-na", and "one" rhymes with "on". Write those in phonemes with American sounds in espeak's
   symbols: Z `[[zˈiː]]`, zebra `[[zˈiːbɹə]]`, tomato `[[təmˈeɪtəʊ]]`,
-  banana `[[bɐnˈanə]]`.
+  banana `[[bɐnˈanə]]`, one `[[wˈʌn]]`. They live in `_american` in
+  `voice.dart`, applied to every line in either case.
 
 Check every new line before making clips:
 
