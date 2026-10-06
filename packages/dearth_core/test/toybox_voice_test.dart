@@ -241,11 +241,12 @@ void main() {
       // Letter sounds are phonemes the voice reads as such.
       expect(kVoiceLines[letterClip('B')], 'B. [[bˈʌ]], [[bˈʌ]], ball.');
       expect(kVoiceLines[letterClip('X')], 'X. Fox, box.');
-      expect(kVoiceLines[countClip(3)], 'One, two, three.');
+      // "One" in American phonemes (espeak's rhymes with "on").
+      expect(kVoiceLines[countClip(3)], '[[wˈʌn]], two, three.');
       // Z is "zee", capital or small (espeak's English says "zed").
       expect(kVoiceLines[bigLittleClip('z')], 'Big [[zˈiː]], little [[zˈiː]].');
       expect(kVoiceLines[hopAskClip(const HopRound(HopMode.add, 11, 3, 5))], 'Three and two more!');
-      expect(kVoiceLines[hopAskClip(const HopRound(HopMode.oneLess, 11, 4, 3))], 'One less than four!');
+      expect(kVoiceLines[hopAskClip(const HopRound(HopMode.oneLess, 11, 4, 3))], '[[wˈʌn]] less than four!');
     });
 
     test('every line has a measured clip, so a game can let it finish', () {
