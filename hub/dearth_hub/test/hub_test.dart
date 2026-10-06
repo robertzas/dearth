@@ -4,8 +4,10 @@ import 'dart:io';
 
 import 'package:dearth_core/dearth_core.dart';
 import 'package:dearth_hub/dearth_hub.dart';
-import 'package:drift/drift.dart' show driftRuntimeOptions;
+import 'package:drift/drift.dart' show BooleanExpressionOperators, driftRuntimeOptions;
+import 'package:dearth_integrations/dearth_integrations.dart' show Fetcher;
 import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:test/test.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -273,6 +275,77 @@ void main() {
     expect((await db.select(db.photoItems).get()).every((i) => i.deleted), isTrue);
     // Gone, it can be added again.
     await postJson('/api/admin/photos/sources', {'kind': 'folder', 'config': {'path': '/photos/family'}}, headers: _admin);
+  });
+
+  test('Amazon albums: a big one comes in batches from one listing; a busy reply pauses the source', () async {
+    // A 1×1 PNG for every thumbnail.
+    final png = base64Decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==');
+    var listings = 0, thumbs = 0;
+    var busy = false;
+    const json = {'content-type': 'application/json'};
+    final amazon = MockClient((req) async {
+      final path = req.url.path;
+      if (path.contains('/photosGroups/shares/')) return http.Response(jsonEncode({'name': 'Family'}), 200, headers: json);
+      if (path.contains('/search/groups/')) {
+        listings++;
+        final first = req.url.queryParameters['offset'] == '0';
+        return http.Response(jsonEncode({
+          'count': 155,
+          'data': [
+            if (first)
+              for (var i = 0; i < 155; i++) {'id': 'p$i', 'ownerId': 'O1', 'kind': 'FILE', 'contentProperties': {'contentType': 'image/png', 'image': {'width': 1, 'height': 1}}},
+          ],
+        }), 200, headers: json);
+      }
+      if (req.url.host.startsWith('thumbnails')) {
+        thumbs++;
+        return busy ? http.Response('', 503) : http.Response.bytes(png, 200, headers: {'content-type': 'image/png'});
+      }
+      return http.Response('', 404);
+    });
+    final dir2 = await Directory.systemTemp.createTemp('dearth-hub-amazon');
+    final hub2 = await DearthHub.start(
+      HubConfig(dataDir: dir2.path, secretKey: 'k' * 32, port: 0, host: '127.0.0.1', adminPassword: 'test-admin', jobsEnabled: false),
+      inMemory: true,
+      fetcher: Fetcher(client: amazon, sleep: (_) async {}),
+    );
+    addTearDown(() async {
+      await hub2.stop();
+      await dir2.delete(recursive: true);
+    });
+    final db = hub2.db;
+    Future<List<PhotoItem>> items(String source) => (db.select(db.photoItems)..where((t) => t.sourceId.equals(source) & t.deleted.equals(false))).get();
+    Future<PhotoSource> source(String id) => (db.select(db.photoSources)..where((t) => t.id.equals(id))).getSingle();
+    final family = await hub2.context.kernel.create('photo_sources', {
+      'kind': 'amazon',
+      'name': 'Photos',
+      'config': {'shareUrl': 'https://www.amazon.com/photos/shared/GrOuPiD1234567890ab.SeCrEtToKeN987'},
+      'enabled': true,
+    });
+    await hub2.context.scheduler.runAndWait('photos');
+    expect(await items(family), hasLength(150), reason: 'a batch at a time');
+    expect((await source(family)).status, 'adding photos · 150 of 155');
+    expect(listings, 1);
+    // The catch-up batch downloads from the same listing: no new listing.
+    await hub2.context.scheduler.runAndWait('photos');
+    expect(await items(family), hasLength(155));
+    expect(listings, 1, reason: 'listing a big album every 20 s is what got the Hub refused');
+    expect((await source(family)).name, 'Family');
+
+    // Another album, while Amazon is refusing thumbnails.
+    busy = true;
+    final party = await hub2.context.kernel.create('photo_sources', {
+      'kind': 'amazon',
+      'config': {'shareUrl': 'https://www.amazon.com/photos/shared/PaRtYiD1234567890ab.SeCrEtToKeN123'},
+      'enabled': true,
+    });
+    await hub2.context.scheduler.runAndWait('photos');
+    expect(await items(party), isEmpty);
+    expect((await source(party)).status, startsWith('paused'));
+    final asked = thumbs;
+    await hub2.context.scheduler.runAndWait('photos');
+    expect(thumbs, asked, reason: 'a paused source is left alone until its wait is over');
+    expect(await items(family), hasLength(155), reason: 'the other album is untouched');
   });
 
   test('demo seed endpoint builds a full household', () async {

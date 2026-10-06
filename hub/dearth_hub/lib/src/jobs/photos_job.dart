@@ -49,25 +49,51 @@ class PhotosJob implements HubJob {
   /// them, so one bad file can't stall an album; the hourly run retries.
   final Set<String> _failed = {};
 
+  /// Each source's last listing. Catch-up runs reuse it and only download:
+  /// listing a large Amazon album every 20 s got the Hub refused (HTTP 503
+  /// after ~440 photos). The hourly run lists afresh.
+  final Map<String, _Listing> _listings = {};
+  static const _listingFresh = Duration(minutes: 55);
+
+  /// Sources a provider asked to slow down (429, 5xx): left alone until the
+  /// time given, each refusal doubling the wait (1 min → 1 h).
+  final Map<String, ({DateTime until, Duration wait})> _cooldown = {};
+
   @override
   String get id => 'photos';
 
   @override
-  Duration nextDelay() => _backlog ? _catchUp : const Duration(minutes: 60);
+  Duration nextDelay() {
+    var next = _backlog ? _catchUp : const Duration(minutes: 60);
+    final now = DateTime.now();
+    for (final c in _cooldown.values) {
+      final d = c.until.difference(now) + const Duration(seconds: 1);
+      if (d < next) next = d < _catchUp ? _catchUp : d;
+    }
+    return next;
+  }
 
   DearthDb get db => integrations.db;
 
   @override
   Future<void> run() async {
     await _foldDuplicates();
-    if (!_backlog) _failed.clear();
+    final catchUp = _backlog;
+    if (!catchUp) _failed.clear();
     _backlog = false;
     final sources = await (db.select(db.photoSources)..where((t) => t.enabled.equals(true) & t.deleted.equals(false))).get();
+    final now = DateTime.now();
     for (final s in sources) {
+      final cool = _cooldown[s.id];
+      if (cool != null && now.isBefore(cool.until)) continue;
       try {
         final cfg = decodeJsonMap(s.config);
-        final (title, listing, prune) = await _list(s, cfg);
-        final (added, left) = await _sync(s, listing, prune: prune);
+        final cached = _listings[s.id];
+        final fresh = cached != null && cached.config == s.config && now.difference(cached.at) < _listingFresh;
+        final listing = catchUp && fresh ? cached : await _relist(s, cfg);
+        final (added, left) = await _sync(s, listing.items, prune: listing.prune && !identical(listing, cached));
+        _cooldown.remove(s.id);
+        final title = listing.title;
         if (left > 0) _backlog = true;
         final count = await (db.select(db.photoItems)..where((t) => t.sourceId.equals(s.id) & t.deleted.equals(false))).get();
         await integrations.kernel.upsert('photo_sources', s.id, {
@@ -77,10 +103,30 @@ class PhotosJob implements HubJob {
           if (title != null && s.name == 'Photos') 'name': title,
         });
       } on Object catch (e) {
-        _log.warning('Photo source ${s.name} failed: $e');
-        await integrations.kernel.upsert('photo_sources', s.id, {'status': 'error · $e'});
+        if (!_isBusy(e)) {
+          _log.warning('Photo source ${s.name} failed: $e');
+          await integrations.kernel.upsert('photo_sources', s.id, {'status': 'error · $e'});
+          continue;
+        }
+        // The provider is busy or asked us to wait: back off, keep what's in.
+        e as ProviderException;
+        final wait = cool == null ? const Duration(minutes: 1) : Duration(minutes: (cool.wait.inMinutes * 2).clamp(1, 60));
+        final until = DateTime.now().add(e.retryAfter != null && e.retryAfter! > wait ? e.retryAfter! : wait);
+        _cooldown[s.id] = (until: until, wait: wait);
+        _log.info('Photo source ${s.name} is busy (${e.status}); trying again in ${wait.inMinutes} min');
+        await integrations.kernel.upsert('photo_sources', s.id, {'status': 'paused · the service is busy, trying again in ${wait.inMinutes} min'});
       }
     }
+    _cooldown.removeWhere((id, _) => !sources.any((s) => s.id == id));
+    _listings.removeWhere((id, _) => !sources.any((s) => s.id == id));
+  }
+
+  /// A provider refusing for now (429, 5xx), not a broken source.
+  static bool _isBusy(Object e) => e is ProviderException && e.status != null && e.isRetryable;
+
+  Future<_Listing> _relist(PhotoSource s, Map<String, Object?> cfg) async {
+    final (title, items, prune) = await _list(s, cfg);
+    return _listings[s.id] = _Listing(s.config, DateTime.now(), title, items, prune);
   }
 
   /// One album pasted twice (before the Hub refused that) is one source: the
@@ -183,8 +229,9 @@ class PhotosJob implements HubJob {
     final fresh = missing.take(_maxNewPerRun).toList();
     var added = 0;
     final queue = [...fresh];
+    ProviderException? busy;
     Future<void> worker() async {
-      while (queue.isNotEmpty) {
+      while (queue.isNotEmpty && busy == null) {
         final item = queue.removeLast();
         try {
           final blob = item.file != null
@@ -209,6 +256,11 @@ class PhotosJob implements HubJob {
           });
           added++;
         } on Object catch (e) {
+          // Busy, not broken: stop the batch rather than hammer it.
+          if (_isBusy(e)) {
+            busy ??= e as ProviderException;
+            continue;
+          }
           _failed.add('${s.id}/${item.remoteId}');
           _log.fine('Skipping ${item.remoteId}: $e');
         }
@@ -216,6 +268,7 @@ class PhotosJob implements HubJob {
     }
 
     await Future.wait(List.generate(3, (_) => worker()));
+    if (busy != null) throw busy!;
     if (prune) {
       final present = {for (final i in listing) i.remoteId};
       final gone = existing.where((e) => !e.deleted && !present.contains(e.remoteId)).toList();
@@ -225,6 +278,17 @@ class PhotosJob implements HubJob {
     }
     return (added, missing.length - fresh.length);
   }
+}
+
+class _Listing {
+  _Listing(this.config, this.at, this.title, this.items, this.prune);
+
+  /// The source's config when listed: a changed link lists again.
+  final String config;
+  final DateTime at;
+  final String? title;
+  final List<_Item> items;
+  final bool prune;
 }
 
 class _Item {

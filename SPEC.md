@@ -2135,8 +2135,13 @@ weather codes and TWC icon codes map to Dearth's icon set.
   incrementally into the Hub blob store, 150 per source per run; while an
   album still has photos to fetch, the next run comes 20 s later (status
   "adding photos · n of m"), so a large album arrives in minutes, not 150
-  an hour. A photo that fails to download is skipped until the hourly run.
-  Keep serving from cache forever if Amazon changes anything.
+  an hour. Those catch-up runs download from the hour's listing; only the
+  hourly run lists again (with a pause between pages): listing a big album
+  every 20 s got the Hub refused with HTTP 503 after ~440 photos. A photo
+  that fails to download is skipped until the hourly run. A busy reply
+  (429, 5xx) pauses that source, 1 min then doubling up to an hour
+  (status "paused · …"), and stops its batch instead of marking photos
+  failed. Keep serving from cache forever if Amazon changes anything.
 - **One album, one source:** the Hub refuses a second source for the same
   share (however its link was copied: query strings, `groups/share` or
   `shared`), and folds duplicates added earlier into the copy with the

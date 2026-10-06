@@ -75,8 +75,12 @@ class AmazonShareLink {
 /// Uses the undocumented endpoints Amazon's own web app calls for a
 /// visitor who isn't signed in (re-checked 2026-10-06 against a real link).
 class AmazonSharedAlbum {
-  AmazonSharedAlbum(this.fetcher);
+  AmazonSharedAlbum(this.fetcher, {this.pageDelay = const Duration(milliseconds: 400)});
   final Fetcher fetcher;
+
+  /// A pause between listing pages: Amazon refuses (503) a visitor who
+  /// pages through a big album too fast.
+  final Duration pageDelay;
   static const provider = 'amazon-share';
 
   Uri _drive(AmazonShareLink link, String path, Map<String, String> q) =>
@@ -116,6 +120,7 @@ class AmazonSharedAlbum {
         }
         offset += items.length;
         if (total != null && offset >= total) break;
+        await Future<void>.delayed(pageDelay);
       }
     }
     return (title, photos);
@@ -155,6 +160,7 @@ class AmazonSharedAlbum {
       offset += items.length;
       final total = j.integer('count');
       if (total != null && offset >= total) break;
+      await Future<void>.delayed(pageDelay);
     }
     return (title, photos);
   }

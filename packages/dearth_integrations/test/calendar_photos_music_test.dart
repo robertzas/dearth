@@ -253,7 +253,7 @@ void main() {
         (r) => r.url.path.endsWith('/nodes/album1/children') && r.url.queryParameters['offset'] == '2': (_) => json({'count': 2, 'data': <Object>[]}),
       });
       final link = AmazonShareLink.parse('https://www.amazon.com/photos/share/AbCdEfGhIjKlMnOp1234')!;
-      final (title, photos) = await AmazonSharedAlbum(f).list(link);
+      final (title, photos) = await AmazonSharedAlbum(f, pageDelay: Duration.zero).list(link);
       expect(title, 'Dearth Frame');
       expect(photos.single.remoteId, 'p1');
       expect(photos.single.downloadUrl.host, 'thumbnails-photos.amazon.com');
@@ -275,7 +275,7 @@ void main() {
         pathEnds('/nodes/sub/children'): (_) => json({'count': 1, 'data': [photo('p2')]}),
       });
       final link = AmazonShareLink.parse('https://www.amazon.com/photos/share/GrOuPsHaRe12345')!;
-      final (title, photos) = await AmazonSharedAlbum(f).list(link);
+      final (title, photos) = await AmazonSharedAlbum(f, pageDelay: Duration.zero).list(link);
       expect(title, 'Family');
       expect(photos.map((p) => p.remoteId), unorderedEquals(['loose', 'p1', 'both', 'p2']));
     });
@@ -292,7 +292,7 @@ void main() {
         },
       }, log: log);
       final link = AmazonShareLink.parse('https://www.amazon.com/photos/shared/GrOuPiD1234567890ab.SeCrEtToKeN987')!;
-      final (title, photos) = await AmazonSharedAlbum(f).list(link);
+      final (title, photos) = await AmazonSharedAlbum(f, pageDelay: Duration.zero).list(link);
       expect(title, 'October 6, 2026');
       // The album node in the group is skipped; its photo is listed itself.
       final p = photos.single;

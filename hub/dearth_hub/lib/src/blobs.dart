@@ -42,8 +42,18 @@ class BlobStore {
       (db.select(db.blobs)..where((t) => t.origin.equals(origin))..limit(1)).getSingleOrNull();
 
   /// Stores bytes (idempotent) and records metadata.
-  Future<BlobEntry> put(List<int> bytes, {required String mime, String? origin}) async {
+  /// Saves in progress, by sha: the same image saved twice at once (one
+  /// photo twice in an album, fetched by two workers) is written once.
+  final Map<String, Future<BlobEntry>> _saving = {};
+
+  Future<BlobEntry> put(List<int> bytes, {required String mime, String? origin}) {
     final sha = crypto.sha256.convert(bytes).toString();
+    return _saving[sha] ??= _put(sha, bytes, mime: mime, origin: origin).whenComplete(() {
+      _saving.remove(sha);
+    });
+  }
+
+  Future<BlobEntry> _put(String sha, List<int> bytes, {required String mime, String? origin}) async {
     final existing = await entry(sha);
     if (existing != null) return existing;
     final f = fileFor(sha);
