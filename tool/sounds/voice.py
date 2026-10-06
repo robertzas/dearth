@@ -7,14 +7,15 @@ printed by packages/dearth_core/tool/voice_lines.dart). Text in [[ ]] is in
 the voice's own phonemes (espeak's IPA): letter sounds that no spelling
 gives, like "buh" or a short "a". Piper (MIT) speaks every line with its
 LJSpeech voice, trained on the LJ Speech dataset, which is in the public
-domain. Each clip is trimmed, brought to the animal sounds' loudness and
+domain. Each clip is trimmed, shaped for a small speaker, levelled and
 written as a short mono MP3 to apps/dearth_app/assets/voice/.
 
 Piper speaks a little differently every run, so only new or changed lines
 are made again: tool/sounds/voice_index.json keeps a hash of each clip's
 phonemes and settings. Clips that no line asks for any more are deleted.
 `--all` remakes everything; naming clips (`voice.py letter_b find_b`)
-remakes just those.
+remakes just those. Every run rewrites the clips' lengths into dearth_core
+(voice_lengths.g.dart), which games use to let a line finish.
 
 Piper and the voice download to ~/.cache/dearth/piper on first use. Needs
 dart, curl, tar, ffmpeg (with libmp3lame) and numpy.
@@ -27,26 +28,36 @@ import re
 import subprocess
 import sys
 import tempfile
-import wave
 
 import numpy as np
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 OUT = ROOT / "apps/dearth_app/assets/voice"
 INDEX = ROOT / "tool/sounds/voice_index.json"
+# How long each clip runs, for games that wait for the voice before the next
+# line (a new clip stops the one before).
+LENGTHS = ROOT / "packages/dearth_core/lib/src/toybox/voice_lengths.g.dart"
 CACHE = pathlib.Path.home() / ".cache/dearth/piper"
 PIPER_URL = "https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_x86_64.tar.gz"
 VOICE_URL = "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/ljspeech/high/en_US-ljspeech-high.onnx"
 VOICE = CACHE / "en_US-ljspeech-high.onnx"
 RATE = 22050
 
-# A little slower than reading pace: these are for three-year-olds. The
-# noise settings are the voice's own.
-LENGTH_SCALE = 1.1
-NOISE_SCALE = 0.667
+# Well under reading pace: these are for three-year-olds, through the
+# frame's small speaker (1.1 was too quick to follow there). A lower noise
+# scale than the voice's own 0.667 gives steadier, crisper consonants.
+LENGTH_SCALE = 1.3
+NOISE_SCALE = 0.5
 NOISE_W = 0.333
+# Shaped for a small speaker: it can't move air below ~150 Hz, so that
+# energy only muddies; consonants live at 2-5 kHz, where it plays best.
+# Light compression lifts the quiet syllables before levelling.
+SHAPE = "highpass=f=150:p=2,equalizer=f=3000:t=q:w=1.2:g=5,acompressor=threshold=-24dB:ratio=3:attack=5:release=90"
+# The loud part's RMS. Speech sits above the effects (-18 dBFS), so the
+# words carry over them.
+LEVEL_DB = -16
 # Bump to remake every clip after changing how they're cut or encoded.
-VERSION = 1
+VERSION = 2
 
 
 def fetch(url: str, path: pathlib.Path) -> None:
@@ -125,7 +136,7 @@ def to_ipa(lines: dict) -> dict:
 
 
 def key(ipa: str) -> str:
-    return hashlib.sha1(f"{VERSION}|{LENGTH_SCALE}|{NOISE_SCALE}|{NOISE_W}|{ipa}".encode()).hexdigest()[:16]
+    return hashlib.sha1(f"{VERSION}|{LENGTH_SCALE}|{NOISE_SCALE}|{NOISE_W}|{SHAPE}|{LEVEL_DB}|{ipa}".encode()).hexdigest()[:16]
 
 
 def synthesize(piper: pathlib.Path, todo: dict, tmp: pathlib.Path) -> None:
@@ -140,8 +151,8 @@ def synthesize(piper: pathlib.Path, todo: dict, tmp: pathlib.Path) -> None:
 
 def finish(wav: pathlib.Path, target: pathlib.Path) -> float:
     """Trims, evens out and encodes one clip; returns its length in seconds."""
-    with wave.open(str(wav)) as w:
-        x = np.frombuffer(w.readframes(w.getnframes()), np.int16).astype(np.float64) / 32768
+    shaped = subprocess.run(["ffmpeg", "-v", "error", "-i", str(wav), "-af", SHAPE, "-f", "f32le", "-ac", "1", "-ar", str(RATE), "-"], check=True, capture_output=True).stdout
+    x = np.frombuffer(shaped, "<f4").astype(np.float64)
     hop = RATE // 100
     frames = x[: len(x) // hop * hop].reshape(-1, hop)
     rms = np.sqrt((frames**2).mean(axis=1))
@@ -149,16 +160,30 @@ def finish(wav: pathlib.Path, target: pathlib.Path) -> float:
     start = max(0, voiced[0] * hop - int(0.04 * RATE))
     end = min(len(x), (voiced[-1] + 1) * hop + int(0.12 * RATE))
     clip = x[start:end]
-    # The loud part at -18 dBFS RMS (as the animal sounds), peaks under -1 dBFS.
+    # The loud part at LEVEL_DB RMS, peaks under -1 dBFS.
     loud = rms[rms > 0.1 * rms.max()]
-    gain = min(10 ** (-18 / 20) / np.sqrt((loud**2).mean()), 10 ** (-1 / 20) / np.abs(clip).max())
+    gain = min(10 ** (LEVEL_DB / 20) / np.sqrt((loud**2).mean()), 10 ** (-1 / 20) / np.abs(clip).max())
     ramp = np.minimum(1, np.minimum(np.arange(len(clip)) / (0.005 * RATE), (len(clip) - np.arange(len(clip))) / (0.02 * RATE)))
     pcm = np.clip(clip * gain * ramp * 32767, -32767, 32767).astype("<i2")
     subprocess.run(
-        ["ffmpeg", "-v", "error", "-y", "-f", "s16le", "-ar", str(RATE), "-ac", "1", "-i", "-", "-codec:a", "libmp3lame", "-b:a", "40k", str(target)],
+        ["ffmpeg", "-v", "error", "-y", "-f", "s16le", "-ar", str(RATE), "-ac", "1", "-i", "-", "-codec:a", "libmp3lame", "-b:a", "48k", str(target)],
         input=pcm.tobytes(), check=True,
     )
     return len(clip) / RATE
+
+
+def length_ms(mp3: pathlib.Path) -> int:
+    out = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(mp3)], check=True, capture_output=True, text=True)
+    return round(float(out.stdout) * 1000)
+
+
+def write_lengths(clips: list) -> None:
+    body = "".join(f"  '{clip}': {length_ms(OUT / f'{clip}.mp3')},\n" for clip in clips)
+    LENGTHS.write_text(
+        "// GENERATED by tool/sounds/voice.py. Do not edit.\n"
+        "// How long each Toybox voice clip runs, in milliseconds.\n\n"
+        f"const Map<String, int> kVoiceMs = {{\n{body}}};\n"
+    )
 
 
 def main(args: list) -> None:
@@ -190,6 +215,7 @@ def main(args: list) -> None:
         f.unlink()
     index = {clip: index[clip] for clip in sorted(lines)}
     INDEX.write_text(json.dumps(index, indent=1) + "\n")
+    write_lengths(sorted(lines))
     total = sum(f.stat().st_size for f in OUT.glob("*.mp3"))
     print(f"{len(todo)} made, {len(lines) - len(todo)} kept, {len(stale)} removed; {len(lines)} clips, {total / 1e6:.1f} MB")
 

@@ -252,7 +252,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 1250));
       expect(labelOf(tester, 'numbers.count'), '1 of $n');
       expect(sound.said.last, numberClip(1));
-      await tester.pump(Duration(milliseconds: 1100 * n));
+      await tester.pump(Duration(milliseconds: 1300 * n));
       await h.settle();
       expect(labelOf(tester, 'numbers.count'), '$n of $n');
       expect(sound.said, [numberClip(n), for (var i = 1; i <= n; i++) numberClip(i)]);
@@ -273,7 +273,9 @@ void main() {
     await tester.tap(byId('breathe.balloon'));
     await tester.pump();
     expect(sound.said, [VoiceLine.breatheStart]);
-    await tester.pump(const Duration(seconds: 4));
+    // The welcome lasts as long as its line.
+    expect(BreatheGameState.intro, greaterThan(kVoiceMs[VoiceLine.breatheStart]! / 1000));
+    await tester.pump(Duration(milliseconds: (BreatheGameState.intro * 1000).round() + 400));
     expect(state.debugStep, BreathStep.breatheIn);
     expect(labelOf(tester, 'breathe.flower'), 'Flower, now');
     await tester.pump(const Duration(seconds: 4));

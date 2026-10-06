@@ -1,5 +1,6 @@
 import 'creature.dart';
 import 'dots.dart';
+import 'voice_lengths.g.dart';
 import 'words.dart';
 
 // What the Toybox says (SPEC FR-TOY-03). The kitchen frame has no
@@ -40,6 +41,15 @@ String rhymeYesClip(PictureWord anchor, PictureWord match) => 'rhymes_${voiceSlu
 
 /// "I spy, with my little eye, something yellow!"
 String spyClip(SpyClue clue, String value) => 'spy_${clue.name}_${voiceSlug(value)}';
+
+/// How long to wait after starting [clip] before the next line, so it
+/// isn't cut off (a new clip stops the one before): its length plus a
+/// breath, and never less than [atLeast]. A line whose clip hasn't been
+/// made yet counts as two seconds.
+Duration afterVoice(String clip, {Duration atLeast = Duration.zero}) {
+  final d = Duration(milliseconds: (kVoiceMs[clip] ?? 2000) + 350);
+  return d > atLeast ? d : atLeast;
+}
 
 /// "Three."
 String numberClip(int n) => 'num_$n';

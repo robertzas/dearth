@@ -33,9 +33,13 @@ on the frame.
   letter names ("B."), "Find the letter B.", letter sounds ("B. Buh, buh,
   ball."), picture words ("Zebra."), colors ("Purple!") already exist.
 - **Counting things on screen: one number clip per thing.** Pop each
-  thing with its own `numberClip(i)`, a beat (~1.1 s) apart. A single
+  thing with its own `numberClip(i)`, a beat (~1.3 s) apart. A single
   "One, two, three." clip runs ahead of the things appearing (Number
   Tracing did, on the frame).
+- **Let a line finish.** A new clip stops the one before, so a timer that
+  starts the next line waits `afterVoice(clip)` (the clip's measured
+  length plus a breath; `atLeast:` for a floor). Never guess a clip's
+  length: they grow when the voice settings change.
 - **Short and warm**: one idea, 1–3 seconds, words a 3-year-old knows.
   "Find the letter B." "It's a star!" "Let's make a silly creature!"
 - **Write full sentences with punctuation.** Piper takes its intonation

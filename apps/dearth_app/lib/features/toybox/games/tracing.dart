@@ -66,7 +66,7 @@ class TracingGameState extends State<TracingGame> {
     _ask = Timer(const Duration(milliseconds: 600), () {
       if (_isName) {
         widget.c.say(VoiceLine.traceName);
-        _ask = Timer(const Duration(milliseconds: 1800), _sayGlyph);
+        _ask = Timer(afterVoice(VoiceLine.traceName), _sayGlyph);
       } else {
         _sayGlyph();
       }
@@ -98,9 +98,12 @@ class TracingGameState extends State<TracingGame> {
     widget.c.sound(Sfx.sparkle);
     final g = _glyphs[_at];
     final last = _at == _glyphs.length - 1;
-    if (!t.glyph.isStroke && !(last && _isName)) widget.c.say(letterClip(g));
+    final said = !t.glyph.isStroke && !(last && _isName);
+    if (said) widget.c.say(letterClip(g));
     if (!last) {
-      _next = Timer(const Duration(milliseconds: 2200), () {
+      // The next letter's name waits for this one's sound to finish.
+      const beat = Duration(milliseconds: 2200);
+      _next = Timer(said ? afterVoice(letterClip(g), atLeast: beat) : beat, () {
         if (!mounted) return;
         setState(() => _at++);
         _sayGlyph();
@@ -222,10 +225,11 @@ class NumbersGameState extends State<NumbersGame> {
   void _sayNumber() => widget.c.say(numberClip(_n!));
 
   /// The pause for the cheer before counting starts, and the time each
-  /// counted thing gets: a number clip runs up to ~0.75 s, and a beat of
-  /// quiet after it keeps the words apart.
+  /// counted thing gets: a number clip runs up to ~1 s, and a beat of quiet
+  /// after it keeps the words apart. A steady beat, not each clip's length:
+  /// counting has a rhythm.
   static const _countLead = Duration(milliseconds: 1200);
-  static const _countBeat = Duration(milliseconds: 1100);
+  static const _countBeat = Duration(milliseconds: 1300);
 
   void _countOne() {
     setState(() => _shown++);

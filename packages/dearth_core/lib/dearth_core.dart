@@ -37,6 +37,7 @@ export 'src/toybox/games.dart';
 export 'src/toybox/rounds.dart';
 export 'src/toybox/tracing.dart';
 export 'src/toybox/voice.dart';
+export 'src/toybox/voice_lengths.g.dart';
 export 'src/toybox/words.dart';
 export 'src/util/ids.dart';
 export 'src/util/json.dart';

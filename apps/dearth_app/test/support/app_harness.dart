@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 /// The whole app on a native in-memory database at a fixed clock, for
 /// widget-level journeys (SPEC §16.1 app logic).
@@ -19,6 +20,12 @@ class AppHarness {
   final ProviderContainer container;
   final DearthDb db;
 
+  /// 8:30 on a Saturday morning in the household's zone. Tests have no
+  /// time-zone plugin, so the household falls back to Denver
+  /// (`deviceTimeZone`); a plain `DateTime(…)` would be 8:30 on the machine
+  /// running the tests, which on CI (UTC) is 2:30 in Denver.
+  static tz.TZDateTime get defaultNow => tz.TZDateTime(locationOrUtc('America/Denver'), 2026, 10, 3, 8, 30);
+
   static Future<AppHarness> boot(WidgetTester tester, {Size size = const Size(1920, 1080), DateTime? now, SoundPlayer sound = const SilentSound(), List<Override> overrides = const []}) async {
     driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
     ensureTimeZones();
@@ -27,7 +34,7 @@ class AppHarness {
     addTearDown(tester.view.reset);
     final db = DearthDb(NativeDatabase.memory());
     final container = ProviderContainer(overrides: [
-      envProvider.overrideWithValue(AppEnv(e2e: true, fakeNow: now ?? DateTime(2026, 10, 3, 8, 30))),
+      envProvider.overrideWithValue(AppEnv(e2e: true, fakeNow: now ?? defaultNow)),
       dbProvider.overrideWithValue(db),
       nodeIdProvider.overrideWithValue('dtest'),
       actorProvider.overrideWith((ref) => ref.watch(grownUpActorProvider)),

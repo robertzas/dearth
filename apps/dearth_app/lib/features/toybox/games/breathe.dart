@@ -31,7 +31,10 @@ enum BreathStep { ready, starting, breatheIn, breatheOut, done }
 
 @visibleForTesting
 class BreatheGameState extends State<BreatheGame> with SingleTickerProviderStateMixin {
-  static const intro = 3.6, breatheIn = 4.0, breatheOut = 5.0;
+  static const breatheIn = 4.0, breatheOut = 5.0;
+
+  /// The welcome runs as long as its line: "breathe in" would cut it off.
+  static final intro = afterVoice(VoiceLine.breatheStart, atLeast: const Duration(milliseconds: 3600)).inMilliseconds / 1000;
 
   late final Ticker _ticker = createTicker(_tick);
 
