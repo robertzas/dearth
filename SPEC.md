@@ -1839,7 +1839,11 @@ numbers refer to the JT215M (T1) in **profile** builds unless noted.
   scene/caching work for the GLES backend, and the announced removal of
   the opt-out (which retires the 56.8 fps fallback). Probe data:
   beta 3.49.0-0.2.pre measured identical to pinned 3.47.2 (14.0 vs 14.4
-  fps) — record every probe's numbers here.
+  fps) — record every probe's numbers here. 2026-10-06, 3.47.2 → 3.47.6
+  (shipped): Toybox grid scroll 38.5 → 40.3 fps (median 17.6 ms both,
+  55–59% → 59–60% of frames at 56 Hz; three runs each, `uiautomator` to
+  reach the Toybox, `dumpsys SurfaceFlinger --latency` on the Flutter
+  surface).
 - Escalation ladder for display perf: 1. tighten tier rules and component
   T1 variants; 2. fix the specific hot path; 3. file upstream issues with
   reproductions; 4. time-boxed Skia opt-out with an exit plan (measured
