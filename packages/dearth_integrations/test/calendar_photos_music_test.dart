@@ -239,6 +239,26 @@ void main() {
       expect(photos.single.takenMs, DateTime.utc(2024, 7, 4, 12).millisecondsSinceEpoch);
     });
 
+    test('Amazon group share walks every album and dedupes shared photos', () async {
+      Map<String, Object?> photo(String id) => {'id': id, 'kind': 'FILE', 'contentProperties': {'contentType': 'image/jpeg', 'image': <String, Object?>{}}};
+      final f = fakeFetcher({
+        pathEnds('/shares/GrOuPsHaRe12345'): (_) => json({'nodeInfo': {'id': 'group', 'name': 'Family'}}),
+        pathEnds('/nodes/group/children'): (_) => json({'count': 3, 'data': [
+              {'id': 'a1', 'kind': 'ALBUM'},
+              {'id': 'a2', 'kind': 'ALBUM'},
+              photo('loose'),
+            ]}),
+        pathEnds('/nodes/a1/children'): (_) => json({'count': 2, 'data': [photo('p1'), photo('both')]}),
+        pathEnds('/nodes/a2/children'): (_) => json({'count': 2, 'data': [photo('both'), {'id': 'sub', 'kind': 'FOLDER'}]}),
+        pathEnds('/nodes/sub/children'): (_) => json({'count': 1, 'data': [photo('p2')]}),
+      });
+      final link = AmazonShareLink.parse('https://www.amazon.com/photos/groups/share/GrOuPsHaRe12345')!;
+      expect(link.isGroup, isTrue);
+      final (title, photos) = await AmazonSharedAlbum(f).list(link);
+      expect(title, 'Family');
+      expect(photos.map((p) => p.remoteId), unorderedEquals(['loose', 'p1', 'both', 'p2']));
+    });
+
     test('Immich random sample with exif', () async {
       final f = fakeFetcher({
         path('/api/search/random'): (r) {

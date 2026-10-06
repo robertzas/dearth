@@ -124,6 +124,13 @@ class AmazonSharedAlbum {
     return cp.obj('image').isNotEmpty || type.startsWith('image/');
   }
 
+  /// A folder or album to descend into. Some share responses omit `kind`, so
+  /// a node without content properties (not a file) counts as one too.
+  bool _isContainer(Map<String, Object?> n) {
+    final kind = n.str('kind');
+    return kind == 'FOLDER' || kind == 'ALBUM' || n.obj('contentProperties').isEmpty;
+  }
+
   RemotePhoto? _photo(AmazonShareLink link, Map<String, Object?> n) {
     final id = n.str('id');
     final owner = n.str('ownerId');
