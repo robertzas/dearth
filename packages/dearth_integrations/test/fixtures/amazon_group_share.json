@@ -1,0 +1,47 @@
+{
+ "contentAggregations": {
+  "albumCount": 1,
+  "eventCount": 0,
+  "photoCount": 1,
+  "reactionCount": 0,
+  "videoCount": 0
+ },
+ "createdDate": "2026-10-06T06:16:04.205Z",
+ "kind": "SHARE_LINK",
+ "memberCount": 1,
+ "modifiedDate": "2026-10-06T06:16:04.431Z",
+ "name": "October 6, 2026",
+ "nameType": "INVITE_GENERATED",
+ "privacyPreferences": {
+  "preferenceSets": [
+   {
+    "id": "GLOBAL",
+    "preferences": [
+     {
+      "availableValues": null,
+      "id": "PRIVACY_LEVEL",
+      "title": "Allow anyone with the link to view content before joining group",
+      "value": "PUBLIC",
+      "valueKind": "ENUM"
+     }
+    ],
+    "title": null
+   }
+  ]
+ },
+ "groupId": "GrOuPiD1234567890ab",
+ "hasMembership": false,
+ "coverPhoto": {
+  "cropBox": {
+   "cropHeight": 3024,
+   "cropWidth": 4032,
+   "offsetX": 0,
+   "offsetY": 0
+  },
+  "height": 3024,
+  "nodeId": "PhOtOnOdE0001",
+  "ownerId": "A1OWNEREXAMPLE",
+  "url": null,
+  "width": 4032
+ }
+}

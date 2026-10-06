@@ -2099,8 +2099,24 @@ weather codes and TWC icon codes map to Dearth's icon set.
 
 - **Setup:** in the Amazon Photos app, create an album (e.g. "Dearth
   Frame"), Share → **Get link**, and paste the link into Dearth. Supports
-  `amazon.com/photos/share/{shareId}` and regional domains (`.ca`, `.co.uk`,
-  `.de`…).
+  both link kinds and regional domains (`.ca`, `.co.uk`, `.de`…):
+  - **Group share links**, what the app makes today:
+    `amazon.com/photos/shared/{token}` (older form
+    `…/photos/groups/share/{token}`). The token is `{groupId}.{secret}`.
+    Read path, verified 2026-10-06 against a real link, no sign-in:
+    1. `GET https://www.amazon.{tld}/cdrs/drive/v2/photosGroups/shares/{token}`
+       returns the share's `name` and `groupId`.
+    2. `GET https://www.amazon.{tld}/drive/v1/search/groups/{groupId}?groupShareToken={token}&searchContext=groups&asset=ALL&limit=200&offset={n}&tempLink=false&resourceVersion=V2`
+       lists every file shared into the group, albums' photos included
+       (album nodes, `VISUAL_COLLECTION`, are skipped). `resourceVersion=V2`
+       is what adds each node's `ownerId`.
+    3. `https://thumbnails-photos.amazon.{tld}/v1/thumbnail/{nodeId}?ownerId={ownerId}&viewBox=2048&groupShareToken={token}`
+       serves a JPEG, HEIC originals included.
+  - **Share links** (older): `amazon.com/photos/share/{shareId}`, read
+    as below.
+  - Collaborative albums (`…/photos/shared/album/…`,
+    `…/photos/shared/collection/…`) need a signed-in viewer and aren't
+    supported.
 - **Read path** (no cookies or credentials; confirmed by public scripts,
   to be **re-validated in M0** against a real link):
   1. `GET https://www.amazon.{tld}/drive/v1/shares/{shareId}?shareId={shareId}&resourceVersion=V2&ContentType=JSON&asset=ALL`

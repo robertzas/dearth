@@ -32,15 +32,28 @@ class RemotePhoto {
 
 // ─────────────────────────── Amazon shared album ───────────────────────────
 
-/// Parsed Amazon Photos share link. Both shared-album links
-/// (`…/photos/share/{id}`) and group links (`…/photos/groups/share/{id}`)
-/// resolve through the same share endpoints; [isGroup] tells them apart.
+/// Parsed Amazon Photos share link. Two kinds:
+///
+/// * a share (`…/photos/share/{shareId}`, older links): read through the
+///   drive's share endpoints with `shareId`;
+/// * a group share link (`…/photos/shared/{token}`, what the Photos app
+///   makes today, or the older `…/photos/groups/share/{token}`): the token
+///   is `{groupId}.{secret}` and is read through the group endpoints with
+///   `groupShareToken` ([isGroup]).
+///
+/// Collaborative albums (`…/photos/shared/album/…`, `…/shared/collection/…`)
+/// need a signed-in viewer, so they don't parse.
 @immutable
 class AmazonShareLink {
   const AmazonShareLink(this.tld, this.shareId, {this.isGroup = false});
   final String tld;
+
+  /// The share id, or a group link's whole token.
   final String shareId;
   final bool isGroup;
+
+  /// A group link's group (the token before its dot).
+  String get groupId => shareId.split('.').first;
 
   static AmazonShareLink? parse(String input) {
     final uri = Uri.tryParse(input.trim());
@@ -49,15 +62,18 @@ class AmazonShareLink {
     final m = RegExp(r'(?:^|\.)amazon\.([a-z.]+)$').firstMatch(host);
     if (m == null) return null;
     final segments = uri.pathSegments;
-    final idx = segments.indexOf('share');
+    final idx = segments.indexWhere((s) => s == 'share' || s == 'shared');
     if (idx < 0 || idx + 1 >= segments.length) return null;
     final id = segments[idx + 1];
-    return RegExp(r'^[A-Za-z0-9_-]{10,}$').hasMatch(id) ? AmazonShareLink(m[1]!, id, isGroup: segments.contains('groups')) : null;
+    final group = segments[idx] == 'shared' || segments.contains('groups');
+    final valid = group ? RegExp(r'^[A-Za-z0-9_-]{10,}(\.[A-Za-z0-9_-]+)?$') : RegExp(r'^[A-Za-z0-9_-]{10,}$');
+    return valid.hasMatch(id) ? AmazonShareLink(m[1]!, id, isGroup: group) : null;
   }
 }
 
-/// Reads a public Amazon Photos shared album without credentials (SPEC
-/// §13.5.1). Uses Amazon's undocumented share endpoints; validated in M0.
+/// Reads a public Amazon Photos share without credentials (SPEC §13.5.1).
+/// Uses the undocumented endpoints Amazon's own web app calls for a
+/// visitor who isn't signed in (re-checked 2026-10-06 against a real link).
 class AmazonSharedAlbum {
   AmazonSharedAlbum(this.fetcher);
   final Fetcher fetcher;
@@ -72,6 +88,7 @@ class AmazonSharedAlbum {
   /// [maxContainers] bounds the requests a pathological share can cause, and
   /// photo ids are deduped because a group can hold one file in two albums.
   Future<(String title, List<RemotePhoto>)> list(AmazonShareLink link, {int maxItems = 5000, int maxContainers = 100}) async {
+    if (link.isGroup) return _listGroup(link, maxItems: maxItems);
     final share = asObject(await fetcher.getJson(provider, _drive(link, 'shares/${link.shareId}', {'asset': 'ALL'})), provider);
     final info = share.obj('nodeInfo');
     final root = info.str('id');
@@ -100,6 +117,44 @@ class AmazonSharedAlbum {
         offset += items.length;
         if (total != null && offset >= total) break;
       }
+    }
+    return (title, photos);
+  }
+
+  /// A group share link: its name from the groups service, then every file
+  /// shared into the group (albums in it come back as nodes of their own,
+  /// skipped here; their photos are listed alongside), a page at a time.
+  Future<(String title, List<RemotePhoto>)> _listGroup(AmazonShareLink link, {required int maxItems}) async {
+    final host = 'www.amazon.${link.tld}';
+    final share = asObject(await fetcher.getJson(provider, Uri.https(host, '/cdrs/drive/v2/photosGroups/shares/${link.shareId}')), provider);
+    final title = share.str('name') ?? 'Amazon Photos';
+    final photos = <RemotePhoto>[];
+    final seen = <String>{};
+    var offset = 0;
+    while (photos.length < maxItems) {
+      final j = asObject(
+        await fetcher.getJson(provider, Uri.https(host, '/drive/v1/search/groups/${link.groupId}', {
+          'groupShareToken': link.shareId,
+          'searchContext': 'groups',
+          'asset': 'ALL',
+          'limit': '200',
+          'offset': '$offset',
+          'tempLink': 'false',
+          // V2 nodes carry their ownerId, which the thumbnail service needs.
+          'resourceVersion': 'V2',
+        })),
+        provider,
+      );
+      final items = [for (final d in j.arr('data')) if (d is Map<String, Object?>) d];
+      if (items.isEmpty) break;
+      for (final n in items) {
+        if (!_isImage(n)) continue;
+        final p = _photo(link, n);
+        if (p != null && seen.add(p.remoteId)) photos.add(p);
+      }
+      offset += items.length;
+      final total = j.integer('count');
+      if (total != null && offset >= total) break;
     }
     return (title, photos);
   }
@@ -142,7 +197,8 @@ class AmazonSharedAlbum {
       downloadUrl: Uri.https('thumbnails-photos.amazon.${link.tld}', '/v1/thumbnail/$id', {
         'ownerId': ?owner,
         'viewBox': '2048',
-        'shareId': link.shareId,
+        // The thumbnail service converts HEIC and friends to JPEG.
+        if (link.isGroup) 'groupShareToken': link.shareId else 'shareId': link.shareId,
       }),
       takenMs: taken == null ? null : DateTime.tryParse(taken)?.millisecondsSinceEpoch,
       width: image.integer('width'),

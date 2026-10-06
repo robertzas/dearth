@@ -1,0 +1,36 @@
+{
+ "count": 2,
+ "data": [
+  {
+   "id": "PhOtOnOdE0001",
+   "ownerId": "A1OWNEREXAMPLE",
+   "kind": "FILE",
+   "name": "2026-10-05_19-40-13_063.heic",
+   "contentProperties": {
+    "contentDate": "2026-10-05T19:40:13.063Z",
+    "contentType": "image/heic",
+    "extension": "heic",
+    "image": {
+     "width": 4032,
+     "height": 3024,
+     "dateTimeOriginal": "2026-10-05T19:40:13.000Z",
+     "make": "Apple",
+     "model": "iPhone 16 Pro Max",
+     "orientation": "3"
+    }
+   },
+   "createdDate": "2026-10-06T01:41:38.616Z",
+   "status": "AVAILABLE"
+  },
+  {
+   "id": "AlBuMnOdE0001",
+   "ownerId": "A1OWNEREXAMPLE",
+   "kind": "VISUAL_COLLECTION",
+   "name": "test",
+   "contentProperties": null,
+   "createdDate": "2026-10-06T06:14:06.102Z",
+   "status": "AVAILABLE"
+  }
+ ],
+ "fallbackPath": "NORMAL"
+}

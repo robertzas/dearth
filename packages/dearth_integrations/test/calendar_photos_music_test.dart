@@ -213,6 +213,14 @@ void main() {
       expect(AmazonShareLink.parse('https://www.amazon.co.uk/photos/share/AbCdEfGhIjKlMnOp1234')!.tld, 'co.uk');
       expect(AmazonShareLink.parse('https://amazon.com/clouddrive/share/AbCdEfGhIjKlMnOp1234'), isNotNull);
       expect(AmazonShareLink.parse('https://evil.test/photos/share/AbCdEfGhIjKlMnOp1234'), isNull);
+      // The links the Photos app makes today: a group share token, dot and all.
+      final shared = AmazonShareLink.parse('https://www.amazon.com/photos/shared/GrOuPiD1234567890ab.SeCrEtToKeN987')!;
+      expect((shared.isGroup, shared.shareId, shared.groupId), (true, 'GrOuPiD1234567890ab.SeCrEtToKeN987', 'GrOuPiD1234567890ab'));
+      expect(AmazonShareLink.parse('https://www.amazon.com/photos/groups/share/GrOuPiD1234567890ab.SeCrEtToKeN987')!.isGroup, isTrue);
+      expect(AmazonShareLink.parse('https://www.amazon.com/photos/share/AbCdEfGhIjKlMnOp1234')!.isGroup, isFalse);
+      // Collaborative albums need a signed-in viewer.
+      expect(AmazonShareLink.parse('https://www.amazon.com/photos/shared/album/AbCdEfGhIjKlMnOp1234'), isNull);
+      expect(AmazonShareLink.parse('https://www.amazon.com/photos/share/AbCd.EfGhIjKlMnOp1234'), isNull, reason: 'share ids have no dot');
     });
 
     test('Amazon shared album listing descends into the album node and pages', () async {
@@ -239,7 +247,7 @@ void main() {
       expect(photos.single.takenMs, DateTime.utc(2024, 7, 4, 12).millisecondsSinceEpoch);
     });
 
-    test('Amazon group share walks every album and dedupes shared photos', () async {
+    test('Amazon share walks every nested album and dedupes shared photos', () async {
       Map<String, Object?> photo(String id) => {'id': id, 'kind': 'FILE', 'contentProperties': {'contentType': 'image/jpeg', 'image': <String, Object?>{}}};
       final f = fakeFetcher({
         pathEnds('/shares/GrOuPsHaRe12345'): (_) => json({'nodeInfo': {'id': 'group', 'name': 'Family'}}),
@@ -252,11 +260,35 @@ void main() {
         pathEnds('/nodes/a2/children'): (_) => json({'count': 2, 'data': [photo('both'), {'id': 'sub', 'kind': 'FOLDER'}]}),
         pathEnds('/nodes/sub/children'): (_) => json({'count': 1, 'data': [photo('p2')]}),
       });
-      final link = AmazonShareLink.parse('https://www.amazon.com/photos/groups/share/GrOuPsHaRe12345')!;
-      expect(link.isGroup, isTrue);
+      final link = AmazonShareLink.parse('https://www.amazon.com/photos/share/GrOuPsHaRe12345')!;
       final (title, photos) = await AmazonSharedAlbum(f).list(link);
       expect(title, 'Family');
       expect(photos.map((p) => p.remoteId), unorderedEquals(['loose', 'p1', 'both', 'p2']));
+    });
+
+    test('Amazon group share link (…/photos/shared/{token}): named by the groups service, photos from the group search', () async {
+      final log = <http.Request>[];
+      final f = fakeFetcher({
+        path('/cdrs/drive/v2/photosGroups/shares/GrOuPiD1234567890ab.SeCrEtToKeN987'): (_) => http.Response(fixture('amazon_group_share.json'), 200),
+        path('/drive/v1/search/groups/GrOuPiD1234567890ab'): (r) {
+          expect(r.url.queryParameters, containsPair('groupShareToken', 'GrOuPiD1234567890ab.SeCrEtToKeN987'));
+          expect(r.url.queryParameters, containsPair('searchContext', 'groups'));
+          expect(r.url.queryParameters, containsPair('resourceVersion', 'V2'), reason: 'V1 nodes have no ownerId');
+          return http.Response(fixture('amazon_group_search.json'), 200);
+        },
+      }, log: log);
+      final link = AmazonShareLink.parse('https://www.amazon.com/photos/shared/GrOuPiD1234567890ab.SeCrEtToKeN987')!;
+      final (title, photos) = await AmazonSharedAlbum(f).list(link);
+      expect(title, 'October 6, 2026');
+      // The album node in the group is skipped; its photo is listed itself.
+      final p = photos.single;
+      expect(p.remoteId, 'PhOtOnOdE0001');
+      expect((p.width, p.height), (4032, 3024));
+      expect(p.takenMs, DateTime.utc(2026, 10, 5, 19, 40, 13).millisecondsSinceEpoch);
+      // A HEIC original comes back from the thumbnail service as a JPEG.
+      expect(p.downloadUrl.host, 'thumbnails-photos.amazon.com');
+      expect(p.downloadUrl.queryParameters, {'ownerId': 'A1OWNEREXAMPLE', 'viewBox': '2048', 'groupShareToken': 'GrOuPiD1234567890ab.SeCrEtToKeN987'});
+      expect(log.where((r) => r.url.path.contains('/nodes/')), isEmpty, reason: 'group links never use the share endpoints');
     });
 
     test('Immich random sample with exif', () async {
