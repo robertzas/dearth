@@ -13,12 +13,6 @@ on:
   pull_request:
   workflow_dispatch:
 
-# A newer push supersedes the running build on the same ref: only the latest
-# commit is worth testing and releasing, so nothing waits in a queue.
-concurrency:
-  group: build-${{ github.ref }}
-  cancel-in-progress: true
-
 permissions:
   contents: read
 
@@ -27,6 +21,30 @@ env:
   DART_VERSION: 3.13.2
 
 jobs:
+  # A push supersedes every build still running or queued for its branch:
+  # only the newest commit is worth testing and releasing. This run cancels
+  # the older ones itself and carries on at once. (A `concurrency` group
+  # would hold this run as "pending" until the old one finished stopping.)
+  supersede:
+    name: Cancel older runs
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          # Older runs only (lower ids): a newer run cancels this one, never
+          # the other way round.
+          gh run list --workflow build.yml --branch "$BRANCH" --limit 50 --json databaseId,status \
+            --jq '.[] | select(.status != "completed" and .databaseId < ${{ github.run_id }}) | .databaseId' |
+            while read -r id; do
+              echo "cancelling run $id"
+              gh run cancel "$id" || true
+            done
+
   version:
     name: Version
     runs-on: ubuntu-latest
