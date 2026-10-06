@@ -421,7 +421,7 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
   "From Recipe from TheMealDB". RecipeAPI.io has no photos, so its cards
   rank below equal ones that do.
 - **2026-10-06** First schema migration (version 2, `recipe_cache`). Migrations stay additive (SPEC §8.4.5): bump `schemaVersion`, add `if (from < N)` steps in `DearthDb.migration`, and test the upgrade from a file at the old version (`packages/dearth_core/test/schema_test.dart`). Hub-only tables are created on devices too, and stay empty there.
-- **2026-10-06** Spoonacular's terms (spoonacular.com/food-api/terms): no storing beyond a recipe's id, title and image, caching an hour at most (with permission), and everything deleted if API use stops. Its recipes are never kept in `recipe_cache`.
+- **2026-10-06** Spoonacular's terms (spoonacular.com/food-api/terms): no storing beyond a recipe's id, title and image, caching an hour at most (with permission), and everything deleted if API use stops. The owner chose to keep its recipes in `recipe_cache` anyway (personal, non-commercial use; the risk is the key being revoked), 2026-10-06.
 
 ## Log
 

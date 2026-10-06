@@ -52,9 +52,9 @@ class RecipeService {
   }
 
   /// Sources never kept: the bundled catalog and the family's box are here
-  /// already, and Spoonacular's terms forbid storing its recipes (only an id,
-  /// title and image may be kept; anything cached goes after an hour).
-  static const _neverKept = {'catalog', 'box', 'spoonacular'};
+  /// already. (Spoonacular's terms forbid storing its recipes; the owner
+  /// keeps them anyway for this personal, non-commercial app, 2026-10-06.)
+  static const _neverKept = {'catalog', 'box'};
 
   /// Keeps [recipes] for good: a new one is added, a known one refreshed.
   /// One batch, however many.
@@ -200,9 +200,7 @@ class RecipeService {
   Future<List<RecipeData>> _cached(String key, Future<List<RecipeData>> Function() load) async {
     final now = DateTime.now().millisecondsSinceEpoch;
     final hit = _cache[key];
-    // Spoonacular allows an hour at most.
-    final ttl = hit != null && hit.$2.any((r) => r.source == 'spoonacular') ? const Duration(hours: 1) : _ttl;
-    if (hit != null && now - hit.$1 < ttl.inMilliseconds) return hit.$2;
+    if (hit != null && now - hit.$1 < _ttl.inMilliseconds) return hit.$2;
     final value = await load();
     await _remember(value);
     if (_cache.length >= _maxCache) _cache.remove(_cache.keys.first);

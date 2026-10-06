@@ -2203,8 +2203,8 @@ Pre-blurred backgrounds, dominant color and blur-hash are computed once
   `{id}/similar`, random. **Free tier ≈ 50 points/day**: the Hub enforces a
   daily point budget and degrades gracefully when the budget runs out. Its
   terms allow caching for an hour at most and storing only a recipe's id,
-  title and image, so answers with its recipes are dropped after an hour
-  and they're never kept in the recipe store below.
+  title and image; the owner keeps its recipes in the store below anyway
+  (personal, non-commercial use, 2026-10-06).
 - **Wikibooks Cookbook** (no key): one request,
   `en.wikibooks.org/w/api.php?action=query&generator=search&gsrnamespace=102&prop=revisions|pageimages|info&rvprop=content&rvslots=main`,
   returns the hits with their wikitext, photo and address. A recipe comes
@@ -2233,10 +2233,10 @@ Pre-blurred backgrounds, dominant color and blur-hash are computed once
   whole recipe as JSON, first and last seen), refreshed when seen again.
   Not synced. When a search's sources come back short of a page (offline,
   a quota spent, a source gone), remembered recipes that fit the query
-  fill it; "pairs with your plan" ranks everything remembered. Spoonacular's
-  recipes are left out (its terms), as are the bundled catalog and the
-  family's box. Search answers themselves are held 12 hours (1 hour with
-  Spoonacular's), so new recipes still turn up.
+  fill it; "pairs with your plan" ranks everything remembered. Every
+  source is kept, Spoonacular included (owner decision); the bundled
+  catalog and the family's box are already on hand. Search answers
+  themselves are held 12 hours, so new recipes still turn up.
 - **Ruled out** (2026-10-05): Edamam (no free plan any more, and recipes
   may not be stored), API Ninjas (the free plan is for evaluation only and
   forbids storing), MyPlate Kitchen (no API).
