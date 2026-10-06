@@ -996,7 +996,7 @@ already on the list.
 - **FR-RCP-10 [M2]** Every recommendation explains itself in one line ("Uses
   your cilantro, limes and black beans · adds 2 items"). Tapping the
   explanation highlights those ingredients.
-- **FR-RCP-11 [M2]** The candidate pool combines cached recipes, the family
+- **FR-RCP-11 [M2]** The candidate pool combines every remembered recipe (§13.6), the family
   box, and provider by-ingredient queries for the plan's top 3 perishables
   (budgeted per day for Spoonacular).
 
@@ -2201,8 +2201,10 @@ Pre-blurred backgrounds, dominant color and blur-hash are computed once
 - **Spoonacular** (optional key): `complexSearch` (sort=popularity, diets,
   intolerances, maxReadyTime), `findByIngredients`, `{id}/information`,
   `{id}/similar`, random. **Free tier ≈ 50 points/day**: the Hub enforces a
-  daily point budget, caches responses for 7 days, and degrades gracefully
-  when the budget runs out.
+  daily point budget and degrades gracefully when the budget runs out. Its
+  terms allow caching for an hour at most and storing only a recipe's id,
+  title and image, so answers with its recipes are dropped after an hour
+  and they're never kept in the recipe store below.
 - **Wikibooks Cookbook** (no key): one request,
   `en.wikibooks.org/w/api.php?action=query&generator=search&gsrnamespace=102&prop=revisions|pageimages|info&rvprop=content&rvslots=main`,
   returns the hits with their wikitext, photo and address. A recipe comes
@@ -2225,6 +2227,16 @@ Pre-blurred backgrounds, dominant color and blur-hash are computed once
   with `X-RapidAPI-Key` and `X-RapidAPI-Host`. Compilations are opened
   into their recipes and videos skipped; `X-RateLimit-Requests-Remaining`
   corrects the monthly count (500, spread). Unofficial (API Dojo).
+- **Recipe store** (owner request, 2026-10-06): every recipe a source
+  returns (searches, feeds, "pairs with your plan" lookups, URL imports) is
+  kept on the Hub indefinitely in `recipe_cache` (id, source, title, the
+  whole recipe as JSON, first and last seen), refreshed when seen again.
+  Not synced. When a search's sources come back short of a page (offline,
+  a quota spent, a source gone), remembered recipes that fit the query
+  fill it; "pairs with your plan" ranks everything remembered. Spoonacular's
+  recipes are left out (its terms), as are the bundled catalog and the
+  family's box. Search answers themselves are held 12 hours (1 hour with
+  Spoonacular's), so new recipes still turn up.
 - **Ruled out** (2026-10-05): Edamam (no free plan any more, and recipes
   may not be stored), API Ninjas (the free plan is for evaluation only and
   forbids storing), MyPlate Kitchen (no API).
@@ -2360,7 +2372,7 @@ generated from the shelf routes and committed.
 | ICS feeds | Per source (default 6 h) |
 | Photos: Amazon share / folders / Immich pool top-up | 60 min / inotify or 15 min / 6 h |
 | Chore & routine materialization | Hourly + at local midnight (household TZ) |
-| Recipe cache cleanup, Spoonacular budget reset | Daily |
+| Spoonacular budget reset (remembered recipes are kept indefinitely, §13.6) | Daily |
 | Backups | Nightly 03:30 local |
 | APK update check (GitHub releases, optional) | Daily |
 | HA connection | Persistent with reconnect backoff |

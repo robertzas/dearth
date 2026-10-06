@@ -27742,6 +27742,425 @@ class JobStatesCompanion extends UpdateCompanion<JobState> {
   }
 }
 
+class $RecipeCacheTable extends RecipeCache
+    with TableInfo<$RecipeCacheTable, CachedRecipe> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RecipeCacheTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dataMeta = const VerificationMeta('data');
+  @override
+  late final GeneratedColumn<String> data = GeneratedColumn<String>(
+    'data',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _firstSeenMsMeta = const VerificationMeta(
+    'firstSeenMs',
+  );
+  @override
+  late final GeneratedColumn<int> firstSeenMs = GeneratedColumn<int>(
+    'first_seen_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lastSeenMsMeta = const VerificationMeta(
+    'lastSeenMs',
+  );
+  @override
+  late final GeneratedColumn<int> lastSeenMs = GeneratedColumn<int>(
+    'last_seen_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    source,
+    title,
+    data,
+    firstSeenMs,
+    lastSeenMs,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'recipe_cache';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CachedRecipe> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('data')) {
+      context.handle(
+        _dataMeta,
+        this.data.isAcceptableOrUnknown(data['data']!, _dataMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dataMeta);
+    }
+    if (data.containsKey('first_seen_ms')) {
+      context.handle(
+        _firstSeenMsMeta,
+        firstSeenMs.isAcceptableOrUnknown(
+          data['first_seen_ms']!,
+          _firstSeenMsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_firstSeenMsMeta);
+    }
+    if (data.containsKey('last_seen_ms')) {
+      context.handle(
+        _lastSeenMsMeta,
+        lastSeenMs.isAcceptableOrUnknown(
+          data['last_seen_ms']!,
+          _lastSeenMsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_lastSeenMsMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CachedRecipe map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CachedRecipe(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      data: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}data'],
+      )!,
+      firstSeenMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}first_seen_ms'],
+      )!,
+      lastSeenMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_seen_ms'],
+      )!,
+    );
+  }
+
+  @override
+  $RecipeCacheTable createAlias(String alias) {
+    return $RecipeCacheTable(attachedDatabase, alias);
+  }
+}
+
+class CachedRecipe extends DataClass implements Insertable<CachedRecipe> {
+  /// The recipe's id ("themealdb:52772").
+  final String id;
+
+  /// The provider that returned it.
+  final String source;
+  final String title;
+
+  /// The whole recipe, as `RecipeData.toJson`.
+  final String data;
+  final int firstSeenMs;
+  final int lastSeenMs;
+  const CachedRecipe({
+    required this.id,
+    required this.source,
+    required this.title,
+    required this.data,
+    required this.firstSeenMs,
+    required this.lastSeenMs,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['source'] = Variable<String>(source);
+    map['title'] = Variable<String>(title);
+    map['data'] = Variable<String>(data);
+    map['first_seen_ms'] = Variable<int>(firstSeenMs);
+    map['last_seen_ms'] = Variable<int>(lastSeenMs);
+    return map;
+  }
+
+  RecipeCacheCompanion toCompanion(bool nullToAbsent) {
+    return RecipeCacheCompanion(
+      id: Value(id),
+      source: Value(source),
+      title: Value(title),
+      data: Value(data),
+      firstSeenMs: Value(firstSeenMs),
+      lastSeenMs: Value(lastSeenMs),
+    );
+  }
+
+  factory CachedRecipe.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CachedRecipe(
+      id: serializer.fromJson<String>(json['id']),
+      source: serializer.fromJson<String>(json['source']),
+      title: serializer.fromJson<String>(json['title']),
+      data: serializer.fromJson<String>(json['data']),
+      firstSeenMs: serializer.fromJson<int>(json['firstSeenMs']),
+      lastSeenMs: serializer.fromJson<int>(json['lastSeenMs']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'source': serializer.toJson<String>(source),
+      'title': serializer.toJson<String>(title),
+      'data': serializer.toJson<String>(data),
+      'firstSeenMs': serializer.toJson<int>(firstSeenMs),
+      'lastSeenMs': serializer.toJson<int>(lastSeenMs),
+    };
+  }
+
+  CachedRecipe copyWith({
+    String? id,
+    String? source,
+    String? title,
+    String? data,
+    int? firstSeenMs,
+    int? lastSeenMs,
+  }) => CachedRecipe(
+    id: id ?? this.id,
+    source: source ?? this.source,
+    title: title ?? this.title,
+    data: data ?? this.data,
+    firstSeenMs: firstSeenMs ?? this.firstSeenMs,
+    lastSeenMs: lastSeenMs ?? this.lastSeenMs,
+  );
+  CachedRecipe copyWithCompanion(RecipeCacheCompanion data) {
+    return CachedRecipe(
+      id: data.id.present ? data.id.value : this.id,
+      source: data.source.present ? data.source.value : this.source,
+      title: data.title.present ? data.title.value : this.title,
+      data: data.data.present ? data.data.value : this.data,
+      firstSeenMs: data.firstSeenMs.present
+          ? data.firstSeenMs.value
+          : this.firstSeenMs,
+      lastSeenMs: data.lastSeenMs.present
+          ? data.lastSeenMs.value
+          : this.lastSeenMs,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedRecipe(')
+          ..write('id: $id, ')
+          ..write('source: $source, ')
+          ..write('title: $title, ')
+          ..write('data: $data, ')
+          ..write('firstSeenMs: $firstSeenMs, ')
+          ..write('lastSeenMs: $lastSeenMs')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, source, title, data, firstSeenMs, lastSeenMs);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CachedRecipe &&
+          other.id == this.id &&
+          other.source == this.source &&
+          other.title == this.title &&
+          other.data == this.data &&
+          other.firstSeenMs == this.firstSeenMs &&
+          other.lastSeenMs == this.lastSeenMs);
+}
+
+class RecipeCacheCompanion extends UpdateCompanion<CachedRecipe> {
+  final Value<String> id;
+  final Value<String> source;
+  final Value<String> title;
+  final Value<String> data;
+  final Value<int> firstSeenMs;
+  final Value<int> lastSeenMs;
+  final Value<int> rowid;
+  const RecipeCacheCompanion({
+    this.id = const Value.absent(),
+    this.source = const Value.absent(),
+    this.title = const Value.absent(),
+    this.data = const Value.absent(),
+    this.firstSeenMs = const Value.absent(),
+    this.lastSeenMs = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  RecipeCacheCompanion.insert({
+    required String id,
+    required String source,
+    required String title,
+    required String data,
+    required int firstSeenMs,
+    required int lastSeenMs,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       source = Value(source),
+       title = Value(title),
+       data = Value(data),
+       firstSeenMs = Value(firstSeenMs),
+       lastSeenMs = Value(lastSeenMs);
+  static Insertable<CachedRecipe> custom({
+    Expression<String>? id,
+    Expression<String>? source,
+    Expression<String>? title,
+    Expression<String>? data,
+    Expression<int>? firstSeenMs,
+    Expression<int>? lastSeenMs,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (source != null) 'source': source,
+      if (title != null) 'title': title,
+      if (data != null) 'data': data,
+      if (firstSeenMs != null) 'first_seen_ms': firstSeenMs,
+      if (lastSeenMs != null) 'last_seen_ms': lastSeenMs,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  RecipeCacheCompanion copyWith({
+    Value<String>? id,
+    Value<String>? source,
+    Value<String>? title,
+    Value<String>? data,
+    Value<int>? firstSeenMs,
+    Value<int>? lastSeenMs,
+    Value<int>? rowid,
+  }) {
+    return RecipeCacheCompanion(
+      id: id ?? this.id,
+      source: source ?? this.source,
+      title: title ?? this.title,
+      data: data ?? this.data,
+      firstSeenMs: firstSeenMs ?? this.firstSeenMs,
+      lastSeenMs: lastSeenMs ?? this.lastSeenMs,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (data.present) {
+      map['data'] = Variable<String>(data.value);
+    }
+    if (firstSeenMs.present) {
+      map['first_seen_ms'] = Variable<int>(firstSeenMs.value);
+    }
+    if (lastSeenMs.present) {
+      map['last_seen_ms'] = Variable<int>(lastSeenMs.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RecipeCacheCompanion(')
+          ..write('id: $id, ')
+          ..write('source: $source, ')
+          ..write('title: $title, ')
+          ..write('data: $data, ')
+          ..write('firstSeenMs: $firstSeenMs, ')
+          ..write('lastSeenMs: $lastSeenMs, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$DearthDb extends GeneratedDatabase {
   _$DearthDb(QueryExecutor e) : super(e);
   $DearthDbManager get managers => $DearthDbManager(this);
@@ -27789,6 +28208,7 @@ abstract class _$DearthDb extends GeneratedDatabase {
   late final $SecretsTable secrets = $SecretsTable(this);
   late final $BlobsTable blobs = $BlobsTable(this);
   late final $JobStatesTable jobStates = $JobStatesTable(this);
+  late final $RecipeCacheTable recipeCache = $RecipeCacheTable(this);
   late final Index eventsStart = Index(
     'events_start',
     'CREATE INDEX events_start ON events (start_ms)',
@@ -27869,6 +28289,7 @@ abstract class _$DearthDb extends GeneratedDatabase {
     secrets,
     blobs,
     jobStates,
+    recipeCache,
     eventsStart,
     eventsSource,
     eventsParent,
@@ -41296,6 +41717,238 @@ typedef $$JobStatesTableProcessedTableManager =
       JobState,
       PrefetchHooks Function()
     >;
+typedef $$RecipeCacheTableCreateCompanionBuilder =
+    RecipeCacheCompanion Function({
+      required String id,
+      required String source,
+      required String title,
+      required String data,
+      required int firstSeenMs,
+      required int lastSeenMs,
+      Value<int> rowid,
+    });
+typedef $$RecipeCacheTableUpdateCompanionBuilder =
+    RecipeCacheCompanion Function({
+      Value<String> id,
+      Value<String> source,
+      Value<String> title,
+      Value<String> data,
+      Value<int> firstSeenMs,
+      Value<int> lastSeenMs,
+      Value<int> rowid,
+    });
+
+class $$RecipeCacheTableFilterComposer
+    extends Composer<_$DearthDb, $RecipeCacheTable> {
+  $$RecipeCacheTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get data => $composableBuilder(
+    column: $table.data,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get firstSeenMs => $composableBuilder(
+    column: $table.firstSeenMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastSeenMs => $composableBuilder(
+    column: $table.lastSeenMs,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RecipeCacheTableOrderingComposer
+    extends Composer<_$DearthDb, $RecipeCacheTable> {
+  $$RecipeCacheTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get data => $composableBuilder(
+    column: $table.data,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get firstSeenMs => $composableBuilder(
+    column: $table.firstSeenMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastSeenMs => $composableBuilder(
+    column: $table.lastSeenMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RecipeCacheTableAnnotationComposer
+    extends Composer<_$DearthDb, $RecipeCacheTable> {
+  $$RecipeCacheTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get data =>
+      $composableBuilder(column: $table.data, builder: (column) => column);
+
+  GeneratedColumn<int> get firstSeenMs => $composableBuilder(
+    column: $table.firstSeenMs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get lastSeenMs => $composableBuilder(
+    column: $table.lastSeenMs,
+    builder: (column) => column,
+  );
+}
+
+class $$RecipeCacheTableTableManager
+    extends
+        RootTableManager<
+          _$DearthDb,
+          $RecipeCacheTable,
+          CachedRecipe,
+          $$RecipeCacheTableFilterComposer,
+          $$RecipeCacheTableOrderingComposer,
+          $$RecipeCacheTableAnnotationComposer,
+          $$RecipeCacheTableCreateCompanionBuilder,
+          $$RecipeCacheTableUpdateCompanionBuilder,
+          (
+            CachedRecipe,
+            BaseReferences<_$DearthDb, $RecipeCacheTable, CachedRecipe>,
+          ),
+          CachedRecipe,
+          PrefetchHooks Function()
+        > {
+  $$RecipeCacheTableTableManager(_$DearthDb db, $RecipeCacheTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RecipeCacheTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RecipeCacheTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RecipeCacheTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> source = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> data = const Value.absent(),
+                Value<int> firstSeenMs = const Value.absent(),
+                Value<int> lastSeenMs = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RecipeCacheCompanion(
+                id: id,
+                source: source,
+                title: title,
+                data: data,
+                firstSeenMs: firstSeenMs,
+                lastSeenMs: lastSeenMs,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String source,
+                required String title,
+                required String data,
+                required int firstSeenMs,
+                required int lastSeenMs,
+                Value<int> rowid = const Value.absent(),
+              }) => RecipeCacheCompanion.insert(
+                id: id,
+                source: source,
+                title: title,
+                data: data,
+                firstSeenMs: firstSeenMs,
+                lastSeenMs: lastSeenMs,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$RecipeCacheTable, CachedRecipe>(table),
+                  BaseReferences<_$DearthDb, $RecipeCacheTable, CachedRecipe>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RecipeCacheTableProcessedTableManager =
+    ProcessedTableManager<
+      _$DearthDb,
+      $RecipeCacheTable,
+      CachedRecipe,
+      $$RecipeCacheTableFilterComposer,
+      $$RecipeCacheTableOrderingComposer,
+      $$RecipeCacheTableAnnotationComposer,
+      $$RecipeCacheTableCreateCompanionBuilder,
+      $$RecipeCacheTableUpdateCompanionBuilder,
+      (
+        CachedRecipe,
+        BaseReferences<_$DearthDb, $RecipeCacheTable, CachedRecipe>,
+      ),
+      CachedRecipe,
+      PrefetchHooks Function()
+    >;
 
 class $DearthDbManager {
   final _$DearthDb _db;
@@ -41378,4 +42031,6 @@ class $DearthDbManager {
       $$BlobsTableTableManager(_db, _db.blobs);
   $$JobStatesTableTableManager get jobStates =>
       $$JobStatesTableTableManager(_db, _db.jobStates);
+  $$RecipeCacheTableTableManager get recipeCache =>
+      $$RecipeCacheTableTableManager(_db, _db.recipeCache);
 }

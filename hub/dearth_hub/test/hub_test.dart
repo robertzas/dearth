@@ -4,7 +4,7 @@ import 'dart:io';
 
 import 'package:dearth_core/dearth_core.dart';
 import 'package:dearth_hub/dearth_hub.dart';
-import 'package:dearth_integrations/dearth_integrations.dart' show Fetcher;
+import 'package:dearth_integrations/dearth_integrations.dart' show Fetcher, RecipeQuery;
 import 'package:drift/drift.dart' show BooleanExpressionOperators, driftRuntimeOptions;
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -200,6 +200,41 @@ void main() {
     final rec = jsonDecode((await http.post(u('/api/recipes/recommend'), headers: {...h, 'content-type': 'application/json'}, body: jsonEncode({'recipes': [tacos], 'limit': 5}))).body) as List;
     expect(rec, isNotEmpty);
     expect((rec.first as Map)['why'], startsWith('Uses your'));
+  });
+
+  test('every recipe an API returns is kept for good: offline, and after a restart, a search still finds it', () async {
+    final fixture = File('../../packages/dearth_integrations/test/fixtures/themealdb_search.json').readAsStringSync();
+    var online = true;
+    final client = MockClient((req) async {
+      if (!online) return http.Response('', 503);
+      if (req.url.host.contains('themealdb') && req.url.path.endsWith('search.php')) return http.Response(fixture, 200, headers: {'content-type': 'application/json'});
+      return http.Response('', 404);
+    });
+    final dir2 = await Directory.systemTemp.createTemp('dearth-hub-recipes');
+    addTearDown(() => dir2.delete(recursive: true));
+    Future<DearthHub> start() => DearthHub.start(
+          HubConfig(dataDir: dir2.path, secretKey: 'k' * 32, port: 0, host: '127.0.0.1', adminPassword: 'test-admin', jobsEnabled: false),
+          fetcher: Fetcher(client: client, sleep: (_) async {}),
+        );
+    var hub2 = await start();
+    const query = RecipeQuery(text: 'breadfruit');
+    final first = await hub2.context.recipes.search(query);
+    expect(first.map((r) => r.title), contains('Breadfruit Tacos'));
+    final kept = await hub2.db.select(hub2.db.recipeCache).get();
+    expect(kept.map((r) => r.source).toSet(), {'themealdb'}, reason: 'API recipes, not the bundled catalog');
+    expect(kept.map((r) => r.title), containsAll(['Breadfruit Tacos', 'Crock Pot Chicken Baked Tacos']));
+    await hub2.stop();
+
+    // The Hub restarts with the internet gone: the recipe is still there.
+    online = false;
+    hub2 = await start();
+    addTearDown(hub2.stop);
+    final again = await hub2.context.recipes.search(query);
+    expect(again.map((r) => r.title), contains('Breadfruit Tacos'));
+    final tacos = again.firstWhere((r) => r.title == 'Breadfruit Tacos');
+    expect(tacos.ingredients, isNotEmpty, reason: 'the whole recipe, not just its name');
+    expect(await hub2.context.recipes.known(tacos.id), isNotNull);
+    expect(await hub2.context.recipes.rememberedCount(), kept.length);
   });
 
   test('integration secrets are write-only; weather job writes the merged report', () async {

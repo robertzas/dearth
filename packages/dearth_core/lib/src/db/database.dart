@@ -50,19 +50,21 @@ part 'database.g.dart';
     Secrets,
     Blobs,
     JobStates,
+    RecipeCache,
   ],
 )
 class DearthDb extends _$DearthDb {
   DearthDb(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) => m.createAll(),
         onUpgrade: (m, from, to) async {
           // Additive migrations go here, keyed by version (SPEC §8.4.5).
+          if (from < 2) await m.createTable(recipeCache);
         },
       );
 

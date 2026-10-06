@@ -600,6 +600,27 @@ class Blobs extends Table {
   Set<Column<Object>> get primaryKey => {sha};
 }
 
+/// Every recipe the Hub has fetched from a recipe API, kept indefinitely
+/// (owner request 2026-10-06; SPEC §13.6): a recipe seen once can be found
+/// again offline, after a quota runs out, or when a source goes away. Never
+/// synced; devices keep the recipes they save in [Recipes].
+@DataClassName('CachedRecipe')
+class RecipeCache extends Table {
+  /// The recipe's id ("themealdb:52772").
+  TextColumn get id => text()();
+
+  /// The provider that returned it.
+  TextColumn get source => text()();
+  TextColumn get title => text()();
+
+  /// The whole recipe, as `RecipeData.toJson`.
+  TextColumn get data => text()();
+  IntColumn get firstSeenMs => integer()();
+  IntColumn get lastSeenMs => integer()();
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 @DataClassName('JobState')
 class JobStates extends Table {
   TextColumn get id => text()();

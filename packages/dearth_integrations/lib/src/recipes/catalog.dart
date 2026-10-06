@@ -229,6 +229,30 @@ List<RecipeData> get recipeCatalog => _built ??= [
     ];
 
 /// Offline provider over [recipeCatalog] (demo, Solo-offline, E2E).
+/// Recipes in [pool] that fit [query], best first: every word of the text in
+/// the title, cuisine, category or ingredients; the filters; a title match
+/// and more wanted ingredients rank higher. Searches recipes kept on hand
+/// (the bundled catalog, the Hub's remembered recipes) without a network.
+List<RecipeData> matchRecipes(Iterable<RecipeData> pool, RecipeQuery query) {
+  final text = query.text?.toLowerCase().trim() ?? '';
+  final words = text.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+  final scored = <(RecipeData, int)>[];
+  for (final r in pool) {
+    final hay = '${r.title} ${r.cuisine} ${r.category} ${r.ingredients.map((i) => i.key).join(' ')}'.toLowerCase();
+    if (words.isNotEmpty && !words.every(hay.contains)) continue;
+    if (query.cuisine != null && r.cuisine?.toLowerCase() != query.cuisine!.toLowerCase()) continue;
+    if (query.category != null && r.category?.toLowerCase() != query.category!.toLowerCase()) continue;
+    if (query.maxMinutes != null && (r.totalMin ?? 0) > query.maxMinutes!) continue;
+    if (query.excludeIngredients.any((ex) => r.ingredients.any((i) => i.key.contains(ex.toLowerCase())))) continue;
+    final hits = query.includeIngredients.where((inc) => r.ingredients.any((i) => i.key.contains(inc.toLowerCase()))).length;
+    if (query.includeIngredients.isNotEmpty && hits == 0) continue;
+    final titleHit = words.isNotEmpty && r.title.toLowerCase().contains(text) ? 10 : 0;
+    scored.add((r, hits * 3 + titleHit));
+  }
+  scored.sort((a, b) => b.$2.compareTo(a.$2));
+  return scored.take(query.limit).map((e) => e.$1).toList();
+}
+
 class CatalogRecipes implements RecipeProvider {
   CatalogRecipes({int seed = 7}) : _random = math.Random(seed);
   final math.Random _random;
@@ -239,25 +263,7 @@ class CatalogRecipes implements RecipeProvider {
   String get displayName => 'Family recipes';
 
   @override
-  Future<List<RecipeData>> search(RecipeQuery query) async {
-    final text = query.text?.toLowerCase().trim() ?? '';
-    final words = text.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
-    final scored = <(RecipeData, int)>[];
-    for (final r in recipeCatalog) {
-      final hay = '${r.title} ${r.cuisine} ${r.category} ${r.ingredients.map((i) => i.key).join(' ')}'.toLowerCase();
-      if (words.isNotEmpty && !words.every(hay.contains)) continue;
-      if (query.cuisine != null && r.cuisine?.toLowerCase() != query.cuisine!.toLowerCase()) continue;
-      if (query.category != null && r.category?.toLowerCase() != query.category!.toLowerCase()) continue;
-      if (query.maxMinutes != null && (r.totalMin ?? 0) > query.maxMinutes!) continue;
-      if (query.excludeIngredients.any((ex) => r.ingredients.any((i) => i.key.contains(ex.toLowerCase())))) continue;
-      final hits = query.includeIngredients.where((inc) => r.ingredients.any((i) => i.key.contains(inc.toLowerCase()))).length;
-      if (query.includeIngredients.isNotEmpty && hits == 0) continue;
-      final titleHit = words.isNotEmpty && r.title.toLowerCase().contains(text) ? 10 : 0;
-      scored.add((r, hits * 3 + titleHit));
-    }
-    scored.sort((a, b) => b.$2.compareTo(a.$2));
-    return scored.take(query.limit).map((e) => e.$1).toList();
-  }
+  Future<List<RecipeData>> search(RecipeQuery query) async => matchRecipes(recipeCatalog, query);
 
   @override
   Future<List<RecipeData>> random(int count, {String? tag}) async {
