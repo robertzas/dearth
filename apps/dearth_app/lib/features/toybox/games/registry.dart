@@ -1,4 +1,5 @@
 import '../game_host.dart';
+import 'balance.dart';
 import 'biglittle.dart';
 import 'breathe.dart';
 import 'bubbles.dart';
@@ -64,4 +65,5 @@ final Map<String, GameBuilder> kGameBuilders = {
   'spell': SpellGame.new,
   'hear': HearGame.new,
   'sight': SightGame.new,
+  'balance': BalanceGame.new,
 };

@@ -1,3 +1,4 @@
+import 'balance.dart';
 import 'biglittle.dart';
 import 'creature.dart';
 import 'dots.dart';
@@ -85,6 +86,9 @@ String sightAskClip(String word) => 'sight_find_${sightSlug(word)}';
 /// The word read out: "Go."
 String sightWordClip(String word) => 'sight_${sightSlug(word)}';
 
+/// "Five is more than three."
+String balanceMoreClip(int more, int fewer) => 'balance_${more}_$fewer';
+
 /// "Three."
 String numberClip(int n) => 'num_$n';
 
@@ -113,6 +117,7 @@ abstract final class VoiceLine {
   static const dotsLetters = 'dots_letters';
   static const bigLittleStart = 'biglittle_start';
   static const bigLittleDone = 'biglittle_done';
+  static const balanceAsk = 'balance_ask';
   static const spellMissing = 'spell_missing';
   static const spellBuild = 'spell_build';
 }
@@ -264,6 +269,10 @@ Map<String, String> _lines() {
     final said = _sightStressed[w];
     lines[sightAskClip(w)] = 'Find the word${two ? 's' : ''}: ${said ?? w}.';
     lines[sightWordClip(w)] = '${said ?? _cap(w)}.';
+  }
+  lines[VoiceLine.balanceAsk] = 'Which side has more?';
+  for (final (more, fewer) in kBalancePairs) {
+    lines[balanceMoreClip(more, fewer)] = '${_cap(_numbers[more])} is more than ${_numbers[fewer]}.';
   }
   lines[VoiceLine.spellMissing] = 'Which sound is missing?';
   lines[VoiceLine.spellBuild] = "Let's build it, sound by sound!";

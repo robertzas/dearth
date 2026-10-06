@@ -1,4 +1,5 @@
 import 'package:dearth_app/core/sound.dart';
+import 'package:dearth_app/features/toybox/games/balance.dart';
 import 'package:dearth_app/features/toybox/games/biglittle.dart';
 import 'package:dearth_app/features/toybox/games/dots.dart';
 import 'package:dearth_app/features/toybox/games/dots_pictures.dart';
@@ -19,7 +20,7 @@ import 'support/toybox_harness.dart';
 void main() {
   for (final size in const [Size(390, 844), Size(844, 390), Size(1080, 1920), Size(1920, 1080)]) {
     testWidgets('every number and letter game lays out on a ${size.width.toInt()}×${size.height.toInt()} screen at its busiest level', (tester) async {
-      await expectGamesLayOut(tester, const [('dots', 1), ('dots', 4), ('dots', 6), ('biglittle', 1), ('biglittle', 2), ('biglittle', 3), ('hop', 1), ('hop', 2), ('hop', 4), ('spell', 1), ('spell', 3), ('spell', 4), ('hear', 1), ('hear', 3), ('hear', 4), ('sight', 1), ('sight', 3), ('sight', 4)], size: size);
+      await expectGamesLayOut(tester, const [('dots', 1), ('dots', 4), ('dots', 6), ('biglittle', 1), ('biglittle', 2), ('biglittle', 3), ('hop', 1), ('hop', 2), ('hop', 4), ('spell', 1), ('spell', 3), ('spell', 4), ('hear', 1), ('hear', 3), ('hear', 4), ('sight', 1), ('sight', 3), ('sight', 4), ('balance', 2), ('balance', 3), ('balance', 4)], size: size);
     });
   }
 
@@ -736,6 +737,86 @@ void main() {
       await tester.pump(const Duration(milliseconds: 1300));
       await h.settle();
       expect(await toyboxRounds(h), [('sight', 2, 'win')]);
+      await tester.pump(const Duration(seconds: 4));
+      await h.shutdown();
+    });
+  });
+
+  group('Banana Balance', () {
+    BalanceGameState game(WidgetTester tester) => tester.state<BalanceGameState>(find.byType(BalanceGame));
+    String sideOf(bool left) => 'balance.side.${left ? 'left' : 'right'}';
+
+    testWidgets('FR-TOY-03: the side with more goes down, the monkey hops, and the voice says why', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'balance', sound: sound, level: 1);
+      final r = game(tester).debugRound;
+      expectNoFallbackText(byId('screen.game'));
+      await tester.pump(const Duration(milliseconds: 800));
+      expect(sound.said, [VoiceLine.balanceAsk]);
+      expect(labelOf(tester, 'balance.ask'), 'Which side has more?');
+      expect(labelOf(tester, 'balance.side.left'), 'Left: ${r.left.count} banana${r.left.count == 1 ? '' : 's'}');
+      expect(game(tester).debugTilt, 0);
+      await tester.tap(byId(sideOf(r.leftMore)));
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(game(tester).debugTilt, r.leftMore ? lessThan(0) : greaterThan(0), reason: 'the heavier side goes down');
+      expect(sound.said.last, balanceMoreClip(r.more, r.fewer));
+      expect(labelOf(tester, 'balance.ask'), '${r.more} is more than ${r.fewer}');
+      expect(labelOf(tester, sideOf(r.leftMore)), endsWith(', more'));
+      await h.settle();
+      expect(await toyboxRounds(h), [('balance', 1, 'win')]);
+      await tester.pump(const Duration(seconds: 4));
+      expect(game(tester).debugTilt, 0, reason: 'level again for the next round');
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('the side with fewer wiggles, says how many it has, and stays up; the round is helped', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'balance', sound: sound, level: 2);
+      final r = game(tester).debugRound;
+      await tester.pump(const Duration(milliseconds: 800));
+      await tester.tap(byId(sideOf(!r.leftMore)));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(sound.said.last, numberClip(r.fewer));
+      expect(sound.played.where((p) => p.$1 == Sfx.nope), hasLength(1));
+      expect(game(tester).debugTilt, 0);
+      await tester.tap(byId(sideOf(r.leftMore)));
+      await tester.pump(const Duration(milliseconds: 600));
+      await h.settle();
+      expect(await toyboxRounds(h), [('balance', 2, 'helped')]);
+      await tester.pump(const Duration(seconds: 4));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('numerals: a card weighs what it says', (tester) async {
+      final handle = tester.ensureSemantics();
+      final h = await openToyboxGame(tester, 'balance', level: 4);
+      final r = game(tester).debugRound;
+      expect(r.left.numeral && r.right.numeral, isTrue);
+      expect(labelOf(tester, 'balance.side.right'), 'Right: card ${r.right.count}');
+      await tester.pump(const Duration(milliseconds: 800));
+      await tester.tap(byId(sideOf(r.leftMore)));
+      await tester.pump(const Duration(milliseconds: 600));
+      await h.settle();
+      expect(await toyboxRounds(h), [('balance', 4, 'win')]);
+      await tester.pump(const Duration(seconds: 4));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('a long pause asks again without counting a slip', (tester) async {
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'balance', sound: sound, level: 3);
+      final r = game(tester).debugRound;
+      await tester.pump(const Duration(seconds: 13));
+      expect(sound.said, [VoiceLine.balanceAsk, VoiceLine.balanceAsk]);
+      await tester.tap(byId(sideOf(r.leftMore)));
+      await tester.pump(const Duration(milliseconds: 600));
+      await h.settle();
+      expect(await toyboxRounds(h), [('balance', 3, 'win')]);
       await tester.pump(const Duration(seconds: 4));
       await h.shutdown();
     });

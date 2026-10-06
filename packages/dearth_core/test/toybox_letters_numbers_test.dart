@@ -365,4 +365,47 @@ void main() {
       expect([for (var s = 0; s <= 2; s++) sightResult(s)], [GameResult.win, GameResult.helped, GameResult.miss]);
     });
   });
+
+  group('Banana Balance', () {
+    test('FR-TOY-03: piles far apart → piles a banana apart → a pile against a numeral → two numerals', () {
+      for (var seed = 0; seed < 200; seed++) {
+        final rng = Random(seed);
+        for (var level = 1; level <= 4; level++) {
+          final r = balanceRound(level, rng);
+          final why = 'seed $seed, level $level: ${r.left.count} ${r.right.count}';
+          expect(r.left.count, isNot(r.right.count), reason: 'never a tie ($why)');
+          expect(r.fewer, greaterThanOrEqualTo(1), reason: why);
+          expect(r.more, lessThanOrEqualTo(level == 1 ? 5 : 10), reason: why);
+          if (level == 1) expect(r.more - r.fewer, greaterThanOrEqualTo(2), reason: 'easy to see ($why)');
+          final cards = [r.left.numeral, r.right.numeral].where((n) => n).length;
+          expect(cards, switch (level) { 1 || 2 => 0, 3 => 1, _ => 2 }, reason: why);
+        }
+      }
+    });
+
+    test('the bigger side is left or right by chance; one-apart pairs come up; never the same pair twice running', () {
+      var left = 0, oneApart = 0;
+      for (var seed = 0; seed < 300; seed++) {
+        final rng = Random(seed);
+        BalanceRound? last;
+        for (var i = 0; i < 4; i++) {
+          final r = balanceRound(2, rng, last: last);
+          if (last != null) expect((r.more, r.fewer), isNot((last.more, last.fewer)));
+          last = r;
+          if (r.leftMore) left++;
+          if (r.more - r.fewer == 1) oneApart++;
+        }
+      }
+      expect(left, inInclusiveRange(480, 720), reason: 'about half of 1200');
+      expect(oneApart, greaterThan(100));
+      expect(kBalancePairs, hasLength(45));
+      for (final (more, fewer) in kBalancePairs) {
+        expect(kVoiceLines, contains(balanceMoreClip(more, fewer)));
+      }
+    });
+
+    test('slips: right first time is a win, a slip is helped, then a miss', () {
+      expect([for (var s = 0; s <= 2; s++) balanceResult(s)], [GameResult.win, GameResult.helped, GameResult.miss]);
+    });
+  });
 }

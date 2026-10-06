@@ -239,6 +239,8 @@ void main() {
         VoiceLine.spellMissing, VoiceLine.spellBuild,
         for (final a in kHearAnswers) ...[hearAskClip(a), hearYesClip(a), soundClip(a)],
         for (final w in kSightWords) ...[sightAskClip(w), sightWordClip(w)],
+        VoiceLine.balanceAsk,
+        for (final (more, fewer) in kBalancePairs) balanceMoreClip(more, fewer),
       ];
       expect(asked.where((a) => !ids.contains(a)), isEmpty);
       expect(ids.difference(asked.toSet()), isEmpty, reason: 'no line nothing says');
@@ -259,6 +261,7 @@ void main() {
       // A little word read alone is stressed, with its American vowel.
       expect(kVoiceLines[sightAskClip('was')], 'Find the word: [[wˈʌz]].');
       expect(kVoiceLines[sightWordClip('the bus')], 'The bus.');
+      expect(kVoiceLines[balanceMoreClip(3, 1)], 'Three is more than [[wˈʌn]].');
       expect(kVoiceLines[sightAskClip('the bus')], 'Find the words: the bus.');
     });
 

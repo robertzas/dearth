@@ -81,8 +81,9 @@ back.
   Big & Little Letters (small letters find their capitals, up to b, d, p and q),
   Frog Hop (a frog hops a number line: find a pad, one more or less, adding),
   Word Builder (sound tiles spell the picture's word, then the voice blends it),
-  Hear the Sound (a parrot says a sound; she finds the letter, up to sh, ch and th)
-  and Sight Words (she finds the word on a street sign and the bus stops there). The letter, word
+  Hear the Sound (a parrot says a sound; she finds the letter, up to sh, ch and th),
+  Sight Words (she finds the word on a street sign and the bus stops there)
+  and Banana Balance (the side of the see-saw with more bananas goes down). The letter, word
   and number games talk: every line is a clip bundled with the app, so they
   work on a display with no text-to-speech. Each kid sees the games that suit their age, and every game
   adapts: three wins in a row go up a level, three misses ease off, and

@@ -98,4 +98,17 @@ test.describe('Toybox number and letter games', () => {
     await expectText(tid(page, 'sight.bus'), `Bus at ${word}`);
     await expectCheered(page);
   });
+
+  test('FR-TOY-03: Banana Balance — she picks the side with more and the see-saw tips that way', async ({ page }) => {
+    await openToyboxGame(page, 'balance', true);
+    await expectText(tid(page, 'balance.ask'), 'Which side has more?');
+    const count = async (side: string) => Number((await textOf(tid(page, `balance.side.${side}`))).match(/(\d+)/)![1]);
+    const left = await count('left');
+    const right = await count('right');
+    expect(left).not.toBe(right);
+    await tap(tid(page, `balance.side.${left > right ? 'left' : 'right'}`));
+    // Lasting labels: they stay until the next round.
+    await expectText(tid(page, 'balance.ask'), `${Math.max(left, right)} is more than ${Math.min(left, right)}`);
+    await expectCheered(page);
+  });
 });
