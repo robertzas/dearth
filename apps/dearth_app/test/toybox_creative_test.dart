@@ -12,13 +12,7 @@ import 'support/toybox_harness.dart';
 void main() {
   for (final size in const [Size(390, 844), Size(844, 390), Size(1080, 1920), Size(1920, 1080)]) {
     testWidgets('every make-and-move game lays out on a ${size.width.toInt()}×${size.height.toInt()} screen at its busiest level', (tester) async {
-      for (final (game, level) in const [('creature', 1), ('creature', 3)]) {
-        final h = await openToyboxGame(tester, game, level: level, size: size);
-        await tester.pump(const Duration(seconds: 1));
-        // An overflow would have been thrown as a layout error.
-        expect(tester.takeException(), isNull, reason: '$game $level');
-        await h.shutdown();
-      }
+      await expectGamesLayOut(tester, const [('creature', 1), ('creature', 3)], size: size);
     });
   }
 

@@ -48,13 +48,7 @@ void main() {
 
   for (final size in const [Size(390, 844), Size(844, 390), Size(1080, 1920), Size(1920, 1080)]) {
     testWidgets('every voice game lays out on a ${size.width.toInt()}×${size.height.toInt()} screen at its busiest level', (tester) async {
-      for (final (game, level) in const [('letters', 1), ('letters', 5), ('rhymes', 3), ('ispy', 5), ('tracing', 5), ('numbers', 3), ('breathe', 3)]) {
-        final h = await openToyboxGame(tester, game, level: level, size: size);
-        await tester.pump(const Duration(seconds: 1));
-        // An overflow would have been thrown as a layout error.
-        expect(tester.takeException(), isNull, reason: '$game $level');
-        await h.shutdown();
-      }
+      await expectGamesLayOut(tester, const [('letters', 1), ('letters', 5), ('rhymes', 3), ('ispy', 5), ('tracing', 5), ('numbers', 3), ('breathe', 3)], size: size);
     });
   }
 

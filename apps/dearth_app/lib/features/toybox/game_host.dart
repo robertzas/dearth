@@ -17,7 +17,7 @@ import 'toybox_data.dart';
 /// Games draw and play; the host records, celebrates and keeps time.
 class GameController {
   GameController._(this._state);
-  final _GameScreenState _state;
+  final GameScreenState _state;
 
   GameInfo get game => _state.widget.game;
   Profile get kid => _state.widget.kid;
@@ -84,15 +84,19 @@ class GameScreen extends ConsumerStatefulWidget {
   final Profile kid;
 
   @override
-  ConsumerState<GameScreen> createState() => _GameScreenState();
+  ConsumerState<GameScreen> createState() => GameScreenState();
 }
 
-class _GameScreenState extends ConsumerState<GameScreen> {
+@visibleForTesting
+class GameScreenState extends ConsumerState<GameScreen> {
   late final GameController _controller = GameController._(this);
   final _random = math.Random();
   /// The kid's rounds of this game, stored and from this visit, oldest first.
   late final List<GameRound> _history = [...ref.read(gameRoundsProvider((widget.kid.id, widget.game.id)))];
   late int _level;
+
+  @visibleForTesting
+  int get debugLevel => _level;
 
   /// Time played this visit that isn't in a recorded round yet.
   int _unrecordedFrom = 0;

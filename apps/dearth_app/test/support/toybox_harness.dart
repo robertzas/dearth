@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:dearth_app/app/router.dart';
 import 'package:dearth_app/core/data/household.dart';
+import 'package:dearth_app/features/toybox/game_host.dart';
 import 'package:dearth_app/features/toybox/toybox_data.dart';
+import 'package:dearth_app/features/toybox/toybox_screen.dart';
 import 'package:dearth_core/dearth_core.dart';
 import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:flutter_test/flutter_test.dart';
@@ -30,6 +34,32 @@ Future<AppHarness> openToyboxGame(WidgetTester tester, String game, {RecordingSo
   await h.settle();
   expect(byId('game.$game'), findsOneWidget, reason: '$game should be open');
   return h;
+}
+
+/// Opens each (game, level) of [games] in turn at [size] and fails on any
+/// layout error (an overflow throws). The app boots once for all of them:
+/// booting and seeding the demo household is most of what opening a game
+/// costs, so a game is pushed over the Toybox and popped again instead.
+Future<void> expectGamesLayOut(WidgetTester tester, List<(String, int)> games, {required Size size}) async {
+  final h = await AppHarness.demo(tester, size: size);
+  h.container.read(routerProvider).go('/toybox');
+  await h.settle();
+  final ava = (await tester.runAsync(() => (h.db.select(h.db.profiles)..where((p) => p.id.equals('p-ava'))).getSingle()))!;
+  for (final (game, level) in games) {
+    final info = gameById(game)!;
+    await h.write((w) => [settingOp(w, SettingKeys.toybox, ToyboxSettings(pins: {'p-ava.$game': level}, early: {'p-ava.$game'}).toJson())]);
+    final navigator = Navigator.of(tester.element(find.byType(ToyboxScreen)), rootNavigator: true);
+    unawaited(navigator.push<void>(PageRouteBuilder<void>(pageBuilder: (_, _, _) => GameScreen(game: info, kid: ava))));
+    await h.settle(5);
+    expect(byId('game.$game'), findsOneWidget, reason: '$game should be open');
+    expect(tester.state<GameScreenState>(find.byType(GameScreen)).debugLevel, level, reason: '$game opened at its pinned level');
+    await tester.pump(const Duration(seconds: 1));
+    // An overflow would have been thrown as a layout error.
+    expect(tester.takeException(), isNull, reason: '$game $level at ${size.width.toInt()}×${size.height.toInt()}');
+    navigator.pop();
+    await h.settle(3);
+  }
+  await h.shutdown();
 }
 
 /// Every recorded round, oldest first, as (game, level, result).
