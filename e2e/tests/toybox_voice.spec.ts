@@ -1,5 +1,5 @@
 import { expect, Page, test } from '@playwright/test';
-import { expectText, idsUnder, openToyboxGame, tap, textOf, tid } from './helpers';
+import { expectCheered, expectText, idsUnder, openToyboxGame, tap, textOf, tid } from './helpers';
 
 // The Toybox's voice games (SPEC FR-TOY-03), played from what the screen
 // shows (labels). The voice itself can't be heard here; the widget tests
@@ -40,7 +40,7 @@ test.describe('Toybox voice games', () => {
       await tap(tid(page, id));
       await expectText(tid(page, id), 'heard');
     }
-    await expect(tid(page, 'celebration')).toBeVisible({ timeout: 10_000 });
+    await expectCheered(page, 10_000);
   });
 
   test('FR-TOY-03: Rhyme Time — she listens to the pictures until she finds the rhyme', async ({ page }) => {
@@ -67,7 +67,7 @@ test.describe('Toybox voice games', () => {
       }
     }
     await expectText(tid(page, 'ispy.ask'), 'You found it');
-    await expect(tid(page, 'celebration')).toBeVisible();
+    await expectCheered(page);
   });
 
   test('FR-TOY-03: Letter & Name Tracing — a scribble draws nothing, a finger along the dots traces the line', async ({ page }) => {

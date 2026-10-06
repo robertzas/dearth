@@ -194,6 +194,8 @@ smooth there (AGENTS rule 8, SPEC §12):
   swallows the id: use `excludeFromSemantics: true`, or a `Listener`.
 - Expose a lasting label for "done" (`'You found it!'`, `'X traced'`). The
   celebration is gone in ~2 s, and headless E2E can be slower than that.
+  For "the round was cheered", E2E uses `expectCheered(page)`: the host's
+  lasting `game.cheers` count, never the `celebration` overlay.
 
 ## Step 5: Look at it before you test it
 

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { Page } from '@playwright/test';
-import { drag, expectText, goTo, hold, openDemo, scrollTo, tap, textOf, tid, tids } from './helpers';
+import { cheered, drag, expectCheered, expectText, goTo, hold, openDemo, scrollTo, tap, textOf, tid, tids } from './helpers';
 
 // The Toybox (SPEC §10.8). Demo: Ava is 2½, so the 3+ games stay hidden.
 // The demo has no PINs, so the grown-up corner opens the settings directly.
@@ -53,7 +53,7 @@ test.describe('Toybox', () => {
     await openGame(page, 'memory');
     await expect(tid(page, 'memory.look')).toHaveCount(0, { timeout: 10_000 });
     await playMemory(page);
-    await expect(tid(page, 'celebration')).toBeVisible();
+    await expectCheered(page);
   });
 
   test('FR-TOY-02: Shape Sorter — each shape dragged into its hole snaps in', async ({ page }) => {
@@ -62,7 +62,7 @@ test.describe('Toybox', () => {
       await drag(page, tid(page, `shapes.piece.${s}`), tid(page, `shapes.hole.${s}`));
       await page.waitForTimeout(500);
     }
-    await expect(tid(page, 'celebration')).toBeVisible();
+    await expectCheered(page);
   });
 
   test('FR-TOY-02/05: a grown-up opens Counting Garden early; she counts the buds and picks how many', async ({ page }) => {
@@ -80,18 +80,18 @@ test.describe('Toybox', () => {
     }
     await expect(tid(page, 'counting.ask')).toBeVisible();
     await tap(tid(page, `counting.choice.${n}`));
-    await expect(tid(page, 'celebration')).toBeVisible();
+    await expectCheered(page);
   });
 
   test('FR-TOY-02: Feed the Monster — it eats what its sign shows and refuses the rest', async ({ page }) => {
     await openGame(page, 'monster');
     await expectText(tid(page, 'monster.sign'), /Only \w+ food/);
     const n = await tids(page, 'monster.food.').count();
-    for (let i = 0; i < n && (await tid(page, 'celebration').count()) === 0; i++) {
+    for (let i = 0; i < n && !(await cheered(page)); i++) {
       await tap(tid(page, `monster.food.${i}`));
       await page.waitForTimeout(1000);
     }
-    await expect(tid(page, 'celebration')).toBeVisible();
+    await expectCheered(page);
   });
 
   test('FR-TOY-02: Magic Coloring — a crayon and a tap fill each part; a finished picture is cheered', async ({ page }) => {
@@ -102,7 +102,7 @@ test.describe('Toybox', () => {
       await tap(tid(page, `coloring.region.${i}`));
       await page.waitForTimeout(450);
     }
-    await expect(tid(page, 'celebration')).toBeVisible();
+    await expectCheered(page);
     await expectText(tid(page, 'coloring.canvas'), `Colored ${n} of ${n}`);
     await tap(tid(page, 'coloring.next'));
     await expectText(tid(page, 'coloring.canvas'), /Colored 0 of/);
@@ -117,7 +117,7 @@ test.describe('Toybox', () => {
       await drag(page, tid(page, id), tid(page, id.replace('piece', 'slot')));
       await page.waitForTimeout(500);
     }
-    await expect(tid(page, 'celebration')).toBeVisible();
+    await expectCheered(page);
   });
 
   test('FR-TOY-02: Paint Studio — a stroke goes on the paper, and undo takes it back', async ({ page }) => {

@@ -1,5 +1,5 @@
 import { expect, Page, test } from '@playwright/test';
-import { drag, expectText, idsUnder, openToyboxGame, tap, textOf, tid } from './helpers';
+import { drag, expectCheered, expectText, idsUnder, openToyboxGame, tap, textOf, tid } from './helpers';
 
 // The Toybox's expansion set (SPEC FR-TOY-03), played the way a child would:
 // from what the screen shows (labels), not from the game's state. Ava is 2½
@@ -19,7 +19,7 @@ test.describe('Toybox expansion', () => {
     for (const id of await ids(page, 'patterns.choice.')) {
       if ((await label(page, id)) === answer) await tap(tid(page, id));
     }
-    await expect(tid(page, 'celebration')).toBeVisible();
+    await expectCheered(page);
     await expectText(tid(page, 'patterns.slot'), answer);
   });
 
@@ -44,8 +44,13 @@ test.describe('Toybox expansion', () => {
         // A filled shadow shows its picture; an empty one says "Shadow".
         if (!(await label(page, s)).startsWith('Shadow')) continue;
         await drag(page, tid(page, p), tid(page, s));
-        await page.waitForTimeout(600);
-        if (!(await label(page, s)).startsWith('Shadow')) break;
+        // It snaps in (the label becomes the picture) or floats back. A busy
+        // machine can take more than a moment, so wait for the snap.
+        const filled = await expect
+          .poll(() => label(page, s), { timeout: 3000 })
+          .not.toMatch(/^Shadow/)
+          .then(() => true, () => false);
+        if (filled) break;
       }
     }
     // Every shadow now shows its picture.
@@ -60,7 +65,7 @@ test.describe('Toybox expansion', () => {
       await tap(tid(page, id));
       await expectText(tid(page, id), 'In the line');
     }
-    await expect(tid(page, 'celebration')).toBeVisible();
+    await expectCheered(page);
   });
 
   test('FR-TOY-03: Picture Sudoku — each empty place gets the fruit its row is missing', async ({ page }) => {
@@ -84,7 +89,7 @@ test.describe('Toybox expansion', () => {
       await tap(tid(page, fruitIds[fruits.indexOf(fruit)]));
       await page.waitForTimeout(300);
     }
-    await expect(tid(page, 'celebration')).toBeVisible();
+    await expectCheered(page);
   });
 
   test('FR-TOY-03: What Happens Next — the story goes into the line card by card', async ({ page }) => {
@@ -107,7 +112,7 @@ test.describe('Toybox expansion', () => {
     const spots = await ids(page, 'differences.spot.');
     for (const s of spots) await tap(tid(page, s));
     await expectText(tid(page, 'differences.count'), `Found ${spots.length} of ${spots.length}`);
-    await expect(tid(page, 'celebration')).toBeVisible();
+    await expectCheered(page);
   });
 
   test('FR-TOY-03: Finger Mazes — the buddy finds the way home', async ({ page }) => {
@@ -137,6 +142,6 @@ test.describe('Toybox expansion', () => {
       await tap(tid(page, `mazes.cell.${c}`));
       await page.waitForTimeout(150);
     }
-    await expect(tid(page, 'celebration')).toBeVisible();
+    await expectCheered(page);
   });
 });

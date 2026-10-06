@@ -176,3 +176,17 @@ export async function idsUnder(page: Page, prefix: string): Promise<string[]> {
   const index = (id: string) => Number(id.split('.').pop());
   return all.sort((a, b) => (isNaN(index(a)) || isNaN(index(b)) ? a.localeCompare(b) : index(a) - index(b)));
 }
+
+/**
+ * A Toybox round was cheered. Reads the game's lasting cheer count rather
+ * than the celebration, which is gone in two seconds: a slow runner can
+ * miss it.
+ */
+export async function expectCheered(page: Page, timeout = 20_000): Promise<void> {
+  await expectText(tid(page, 'game.cheers'), /^[1-9]\d* rounds? cheered$/, timeout);
+}
+
+/** Whether the open Toybox game has cheered a round yet. */
+export async function cheered(page: Page): Promise<boolean> {
+  return /^[1-9]/.test(await textOf(tid(page, 'game.cheers')).catch(() => ''));
+}

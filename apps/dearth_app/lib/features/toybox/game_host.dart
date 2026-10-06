@@ -95,6 +95,10 @@ class GameScreenState extends ConsumerState<GameScreen> {
   late final List<GameRound> _history = [...ref.read(gameRoundsProvider((widget.kid.id, widget.game.id)))];
   late int _level;
 
+  /// Rounds cheered this visit. The celebration is gone in two seconds;
+  /// this count stays, for screen readers and for tests on slow machines.
+  int _cheers = 0;
+
   @visibleForTesting
   int get debugLevel => _level;
 
@@ -151,6 +155,7 @@ class GameScreenState extends ConsumerState<GameScreen> {
     if (result != GameResult.miss && !calm && mounted) {
       celebrate(context, emoji: emoji ?? widget.game.emoji, message: randomPraise(_random));
       _sound(Sfx.cheer);
+      setState(() => _cheers++);
     }
     await _record(result, level: level, finished: true);
     if (mounted) setState(() => _level = startLevel(widget.game, _history, pinned: _pinned));
@@ -199,6 +204,13 @@ class GameScreenState extends ConsumerState<GameScreen> {
           child: Stack(
             fit: StackFit.expand,
             children: [
+              Positioned(
+                left: 0,
+                top: 0,
+                width: 1,
+                height: 1,
+                child: tid('game.cheers', Semantics(label: _cheers == 1 ? '1 round cheered' : '$_cheers rounds cheered', excludeSemantics: true, child: const SizedBox.expand())),
+              ),
               tid('game.${widget.game.id}', builder == null ? Center(child: Text(widget.game.title, style: t.text.kidTitle)) : builder(_controller)),
               Positioned(
                 left: t.space.md,
