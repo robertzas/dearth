@@ -134,10 +134,11 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: e2e/package-lock.json
+      # Playwright's ffmpeg records failing journeys (a few MB, no system
+      # packages); the browser is the runner image's Chrome.
       - name: Install
         working-directory: e2e
-        run: npm ci --no-audit --no-fund
-      # The runner image's Chrome: no browser download or system packages.
+        run: npm ci --no-audit --no-fund && npx playwright install ffmpeg
       - name: Run shard ${{ matrix.shard }} of 4 (Wall-L, Wall-P, Tablet, Phone)
         env:
           CHROME_PATH: /usr/bin/google-chrome
