@@ -3,7 +3,7 @@ description: Pull Git LFS objects (cached to save LFS bandwidth), install Flutte
 inputs:
   flutter-version:
     description: Flutter SDK version (pinned; SPEC §12.2 moves only after the perf gate).
-    default: 3.47.2
+    default: 3.47.6
   pub-get:
     description: Run flutter pub get at the workspace root.
     default: 'true'
@@ -14,7 +14,7 @@ runs:
       shell: bash
       run: git lfs ls-files --long | cut -d ' ' -f1 | sort > .lfs-assets-id
     - name: Restore LFS cache
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: .git/lfs
         key: lfs-v1-${{ hashFiles('.lfs-assets-id') }}
@@ -29,7 +29,7 @@ runs:
         channel: stable
         cache: true
     - name: Pub cache
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ~/.pub-cache
         key: pub-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pubspec.lock') }}
@@ -37,7 +37,7 @@ runs:
     # Native build hooks compile C/C++ (flutter_soloud, sqlite3) per target:
     # minutes per job (Android builds three ABIs), so keep their outputs.
     - name: Build-hook cache
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: .dart_tool/hooks_runner
         key: hooks-v1-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ hashFiles('pubspec.lock', 'pubspec.yaml') }}

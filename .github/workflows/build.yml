@@ -17,8 +17,8 @@ permissions:
   contents: read
 
 env:
-  FLUTTER_VERSION: 3.47.2
-  DART_VERSION: 3.13.2
+  FLUTTER_VERSION: 3.47.6
+  DART_VERSION: 3.13.5
 
 jobs:
   # A push supersedes every build still running or queued for its branch:
@@ -54,7 +54,7 @@ jobs:
       tag: ${{ steps.v.outputs.tag }}
       full: ${{ steps.v.outputs.full }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - id: v
         run: |
           base=$(sed -n 's/^version: *\([0-9.]*\).*/\1/p' apps/dearth_app/pubspec.yaml)
@@ -69,7 +69,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - name: Quality gate (codegen, analyze, all unit tests)
         run: tool/check.sh
@@ -82,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - run: tool/web_assets.sh
       - name: Build
@@ -91,7 +91,7 @@ jobs:
           flutter build web --release --no-wasm-dry-run
           --dart-define=DEARTH_VERSION=${{ needs.version.outputs.full }}
           --build-name=${{ needs.version.outputs.version }} --build-number=${{ needs.version.outputs.build }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: web
           path: apps/dearth_app/build/web
@@ -112,14 +112,14 @@ jobs:
       matrix:
         shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # The test Hub is pure Dart and the web build is downloaded, so no
       # Flutter SDK or LFS files: Dart and the Hub's workspace subset, as
       # in the Hub job.
       - uses: dart-lang/setup-dart@v1
         with:
           sdk: ${{ env.DART_VERSION }}
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.pub-cache
           key: pub-hub-${{ runner.os }}-${{ hashFiles('packages/dearth_core/pubspec.yaml', 'packages/dearth_integrations/pubspec.yaml', 'hub/dearth_hub/pubspec.yaml') }}
@@ -128,13 +128,13 @@ jobs:
         run: |
           printf 'name: dearth_hub_build\npublish_to: none\nenvironment:\n  sdk: ^3.13.0\nworkspace:\n  - packages/dearth_core\n  - packages/dearth_integrations\n  - hub/dearth_hub\n' > pubspec.yaml
           dart pub get
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: web
           path: apps/dearth_app/build/web
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           cache-dependency-path: e2e/package-lock.json
       # Playwright's ffmpeg records failing journeys (a few MB, no system
@@ -146,7 +146,7 @@ jobs:
         env:
           CHROME_PATH: /usr/bin/google-chrome
         run: SKIP_BUILD=1 tool/e2e.sh --shard=${{ matrix.shard }}/20
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report-${{ matrix.shard }}
@@ -161,8 +161,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
@@ -200,7 +200,7 @@ jobs:
           for abi in armeabi-v7a arm64-v8a x86_64; do
             cp "apps/dearth_app/build/app/outputs/flutter-apk/app-$abi-release.apk" "out/dearth-${{ needs.version.outputs.full }}-android-$abi.apk"
           done
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: android
           path: out/*
@@ -211,7 +211,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Toolchain
         run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libsecret-1-dev libstdc++-12-dev
       - uses: ./.github/actions/setup
@@ -225,7 +225,7 @@ jobs:
         run: |
           mkdir -p out
           tar -czf "out/dearth-${{ needs.version.outputs.full }}-linux-x64.tar.gz" -C apps/dearth_app/build/linux/x64/release/bundle .
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: linux
           path: out/*
@@ -239,7 +239,7 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - name: Build
         working-directory: apps/dearth_app
@@ -252,7 +252,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force out | Out-Null
           Compress-Archive -Path apps/dearth_app/build/windows/x64/runner/Release/* -DestinationPath "out/dearth-${{ needs.version.outputs.full }}-windows-x64.zip"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows
           path: out/*
@@ -263,7 +263,7 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - name: Build
         working-directory: apps/dearth_app
@@ -275,7 +275,7 @@ jobs:
         run: |
           mkdir -p out
           ditto -c -k --keepParent apps/dearth_app/build/macos/Build/Products/Release/Dearth.app "out/dearth-${{ needs.version.outputs.full }}-macos.zip"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: macos
           path: out/*
@@ -286,7 +286,7 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - name: Build
         working-directory: apps/dearth_app
@@ -299,7 +299,7 @@ jobs:
           mkdir -p out/Payload
           cp -R apps/dearth_app/build/ios/iphoneos/Runner.app out/Payload/
           (cd out && zip -qr "dearth-${{ needs.version.outputs.full }}-ios-unsigned.ipa" Payload && rm -rf Payload)
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ios
           path: out/*
@@ -321,7 +321,7 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # The Hub is pure Dart: no Flutter SDK (which has no linux-arm64 host
       # build), just Dart and the workspace subset the Hub needs, exactly
       # like the Dockerfile.
@@ -335,7 +335,7 @@ jobs:
       - name: Compile (dart build cli bundles the SQLite native asset)
         working-directory: hub/dearth_hub
         run: dart build cli -o "$RUNNER_TEMP/hub"
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: web
           path: ${{ runner.temp }}/hub/bundle/web
@@ -349,7 +349,7 @@ jobs:
           else
             tar -czf "out/$name.tar.gz" -C "$RUNNER_TEMP/hub/bundle" .
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: hub-${{ matrix.target }}
           path: out/*
@@ -369,13 +369,13 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           name: web
           path: dist/web
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
         if: github.event_name == 'push'
         with:
           registry: ghcr.io
@@ -389,7 +389,7 @@ jobs:
       # publishes both under the release tags.
       - name: Build
         id: build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         env:
           # The build record artifact isn't a release file and breaks
           # download-artifact in the release job.
@@ -407,7 +407,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/digests"
           digest="${{ steps.build.outputs.digest }}"
           touch "$RUNNER_TEMP/digests/${digest#sha256:}"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: github.event_name == 'push'
         with:
           name: digests-${{ matrix.arch }}
@@ -424,13 +424,13 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: ${{ runner.temp }}/digests
           pattern: digests-*
           merge-multiple: true
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -452,31 +452,31 @@ jobs:
     steps:
       # By name: other jobs' artifacts (e.g. buildx build records) aren't
       # release files, and some can't be extracted by download-artifact.
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: web
           path: artifacts/web
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: android
           path: artifacts/android
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: linux
           path: artifacts/linux
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: windows
           path: artifacts/windows
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: macos
           path: artifacts/macos
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: ios
           path: artifacts/ios
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: hub-*
           path: artifacts
@@ -507,7 +507,7 @@ jobs:
 
           Checksums are in \`SHA256SUMS.txt\`.
           EOF
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.version.outputs.tag }}
           target_commitish: ${{ github.sha }}

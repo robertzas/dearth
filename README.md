@@ -279,7 +279,7 @@ box.
 
 ## Development
 
-You need **Flutter 3.47.2** (Dart 3.13), **Git LFS**, and Node.js 20+ with
+You need **Flutter 3.47.6** (Dart 3.13), **Git LFS**, and Node.js 24 LTS with
 Chrome for the end-to-end suite. Docker and the Android SDK are optional.
 
 ```bash
