@@ -170,7 +170,9 @@ void main() {
       expect(rows, hasLength(1));
       expect((rows.single.title, rows.single.saved, rows.single.notes, rows.single.source, rows.single.createdMs), ('Friday tacos', true, 'Extra lime.', 'catalog', copy.createdMs));
       final shown = familyVersion(tacos.copyWith(alsoFrom: ['tasty']), rows.single);
-      expect((shown.title, shown.steps, shown.alsoFrom), ('Friday tacos', ['Do it our way.'], ['tasty']));
+      expect(shown.title, 'Friday tacos');
+      expect(shown.steps, ['Do it our way.']);
+      expect(shown.alsoFrom, ['tasty'], reason: 'what only a search result carries stays');
       expect(recipeCredit(shown), startsWith('From '), reason: 'the source keeps its credit');
     });
   });
