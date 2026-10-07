@@ -73,9 +73,14 @@ test.describe('Toybox', () => {
     await tap(await scrollTo(page, 'toybox.on.counting'));
     await goTo(page, 'toybox');
     await expect(await scrollTo(page, 'toybox.game.paint')).toBeVisible();
-    // Wheels through the whole launcher looking for it: it's gone.
-    await scrollTo(page, 'toybox.game.counting');
-    await expect(tid(page, 'toybox.game.counting')).toHaveCount(0);
+    // Wheel through the whole launcher (it's lazy): it never turns up.
+    const size = page.viewportSize()!;
+    await page.mouse.move(size.width / 2, size.height * 0.6);
+    for (let i = 0; i < 14; i++) {
+      await expect(tid(page, 'toybox.game.counting')).toHaveCount(0);
+      await page.mouse.wheel(0, size.height * 0.6);
+      await page.waitForTimeout(200);
+    }
   });
 
   test('FR-TOY-02: Counting Garden — she counts the buds and picks how many', async ({ page }) => {
