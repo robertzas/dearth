@@ -2,16 +2,15 @@ import { expect, test } from '@playwright/test';
 import { Page } from '@playwright/test';
 import { cheered, drag, expectCheered, expectText, goTo, hold, openDemo, scrollTo, tap, textOf, tid, tids } from './helpers';
 
-// The Toybox (SPEC §10.8). Demo: Ava is 2½, so the 3+ games stay hidden.
+// The Toybox (SPEC §10.8). Demo: Ava is 2½; every game is on, hers first.
 // The demo has no PINs, so the grown-up corner opens the settings directly.
 
 test.describe('Toybox', () => {
-  test('FR-TOY-01: Ava’s Toybox shows her games; one opens full screen and the house goes home', async ({ page }) => {
+  test('FR-TOY-01: Ava’s Toybox shows every game; one opens full screen and the house goes home', async ({ page }) => {
     await openDemo(page);
     await goTo(page, 'toybox');
     await expectText(tid(page, 'toybox.title'), 'Ava’s Toybox');
     await expect(tid(page, 'toybox.game.farm')).toBeVisible();
-    await expect(tid(page, 'toybox.game.counting')).toHaveCount(0);
     await expect(tid(page, 'toybox.new.farm')).toBeVisible();
     await tap(tid(page, 'toybox.game.farm'));
     await expect(tid(page, 'screen.game')).toBeVisible();
@@ -73,7 +72,9 @@ test.describe('Toybox', () => {
     await expect(tids(page, 'screen.settings').first()).toBeVisible();
     await tap(await scrollTo(page, 'toybox.on.counting'));
     await goTo(page, 'toybox');
-    await expect(tid(page, 'toybox.game.paint')).toBeVisible();
+    await expect(await scrollTo(page, 'toybox.game.paint')).toBeVisible();
+    // Wheels through the whole launcher looking for it: it's gone.
+    await scrollTo(page, 'toybox.game.counting');
     await expect(tid(page, 'toybox.game.counting')).toHaveCount(0);
   });
 

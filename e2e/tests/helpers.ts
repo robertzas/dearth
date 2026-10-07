@@ -104,12 +104,16 @@ export async function scrollTo(page: Page, id: string, maxSteps = 12): Promise<L
 /** Focuses the text field inside [id] and types. */
 export async function typeInto(page: Page, id: string, text: string): Promise<void> {
   await tap(tid(page, id).locator('input, textarea'));
+  // Focusing can scroll a sheet to the field; keys typed before the editor
+  // settles are lost (seen on a wall's side sheet).
+  await page.waitForTimeout(300);
   await page.keyboard.type(text);
 }
 
 /** Replaces the text in the field inside [id]. */
 export async function replaceText(page: Page, id: string, text: string): Promise<void> {
   await tap(tid(page, id).locator('input, textarea'));
+  await page.waitForTimeout(300);
   await page.keyboard.press('ControlOrMeta+A');
   await page.keyboard.type(text);
 }
