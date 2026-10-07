@@ -963,4 +963,10 @@ const Map<String, int> kVoiceMs = {
   'word_yarn': 489,
   'word_yo_yo': 858,
   'word_zebra': 798,
+  'zoo_ask_build': 2734,
+  'zoo_ask_family': 1756,
+  'zoo_ask_own': 1337,
+  'zoo_yes_build': 2026,
+  'zoo_yes_family': 898,
+  'zoo_yes_own': 1987,
 };

@@ -9,6 +9,7 @@ import 'sight.dart';
 import 'spell.dart';
 import 'voice_lengths.g.dart';
 import 'words.dart';
+import 'zoo.dart';
 
 // What the Toybox says (SPEC FR-TOY-03). The kitchen frame has no
 // text-to-speech, so every line is a clip bundled with the app
@@ -97,6 +98,18 @@ String compareAskClip(CompareAsk ask) => 'compare_ask_${ask.name}';
 /// Said after the bus's number: "That bus has more kids!", "That bus has
 /// fewer kids!", "All lined up, from fewest to most!"
 String compareYesClip(CompareAsk ask) => 'compare_yes_${ask.name}';
+
+/// "Find your name!", "Find the name I spell.", "Let's spell a name, letter
+/// by letter!" Names are the family's own, so the voice spells them
+/// ([zooSpellClips]) rather than saying them.
+String zooAskClip(ZooMode mode) => 'zoo_ask_${mode.name}';
+
+/// When the animal gets its card: "That's your name! Thank you!", "Thank
+/// you!", "You spelled it! Thank you!"
+String zooYesClip(ZooMode mode) => 'zoo_yes_${mode.name}';
+
+/// [name] spelled out, one letter-name clip a letter.
+List<String> zooSpellClips(String name) => [for (final l in name.split('')) letterNameClip(l)];
 
 /// "Three."
 String numberClip(int n) => 'num_$n';
@@ -289,6 +302,12 @@ Map<String, String> _lines() {
   lines[compareYesClip(CompareAsk.more)] = 'That bus has more kids!';
   lines[compareYesClip(CompareAsk.fewer)] = 'That bus has fewer kids!';
   lines[compareYesClip(CompareAsk.order)] = 'All lined up, from fewest to most!';
+  lines[zooAskClip(ZooMode.own)] = 'Find your name!';
+  lines[zooAskClip(ZooMode.family)] = 'Find the name I spell.';
+  lines[zooAskClip(ZooMode.build)] = "Let's spell a name, letter by letter!";
+  lines[zooYesClip(ZooMode.own)] = "That's your name! Thank you!";
+  lines[zooYesClip(ZooMode.family)] = 'Thank you!';
+  lines[zooYesClip(ZooMode.build)] = 'You spelled it! Thank you!';
   lines[VoiceLine.spellMissing] = 'Which sound is missing?';
   lines[VoiceLine.spellBuild] = "Let's build it, sound by sound!";
   for (var n = 0; n <= 10; n++) {

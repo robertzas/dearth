@@ -21,6 +21,10 @@ class GameController {
 
   GameInfo get game => _state.widget.game;
   Profile get kid => _state.widget.kid;
+
+  /// The household's other names, people's and pets', as the family says
+  /// them (a nickname when there is one): Name Zoo's cards.
+  List<String> get family => [for (final p in _state.ref.read(familyProvider)) if (p.id != kid.id) p.nickname ?? p.name];
   math.Random get random => _state._random;
 
   /// The level this round is at.

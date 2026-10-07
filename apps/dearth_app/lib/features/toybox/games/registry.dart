@@ -31,6 +31,7 @@ import 'spell.dart';
 import 'stories.dart';
 import 'sudoku.dart';
 import 'tracing.dart';
+import 'zoo.dart';
 
 /// Every game's playfield, by game id (SPEC FR-TOY-02/03). The launcher
 /// shows only games that have one.
@@ -68,4 +69,5 @@ final Map<String, GameBuilder> kGameBuilders = {
   'sight': SightGame.new,
   'balance': BalanceGame.new,
   'compare': CompareGame.new,
+  'zoo': ZooGame.new,
 };

@@ -268,6 +268,7 @@ void main() {
         for (final a in kFarmAnimals) a.emoji,
         ...kExpansionPictures,
         for (final p in kDotPictures) p.emoji,
+        ...kZooAnimals,
       ];
       expect([for (final p in pictures) if (!draws(p)) p], isEmpty);
     });

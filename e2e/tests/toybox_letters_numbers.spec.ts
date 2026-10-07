@@ -132,4 +132,20 @@ test.describe('Toybox number and letter games', () => {
     }
     await expectCheered(page);
   });
+
+  test('FR-TOY-03: Name Zoo — the animal at the gate needs her name card, and she finds it', async ({ page }) => {
+    await openToyboxGame(page, 'zoo', true);
+    // Level 1: her own name, spelled by the voice; the label names it for tests.
+    await expectText(tid(page, 'zoo.ask'), 'Find your name: Ava');
+    const cards = await idsUnder(page, 'zoo.card.');
+    expect(cards).toHaveLength(3);
+    let mine = '';
+    for (const id of cards) if ((await textOf(tid(page, id))).trim() === 'Ava') mine = id;
+    expect(mine).not.toBe('');
+    await tap(tid(page, mine));
+    // Lasting labels: they stay until the animal has walked in.
+    await expectText(tid(page, 'zoo.board'), 'Card: Ava');
+    await expectText(tid(page, 'zoo.ask'), 'Ava, thank you!');
+    await expectCheered(page);
+  });
 });

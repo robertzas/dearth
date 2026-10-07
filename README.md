@@ -88,7 +88,8 @@ back.
   Hear the Sound (a parrot says a sound; she finds the letter, up to sh, ch and th),
   Sight Words (she finds the word on a street sign and the bus stops there),
   Banana Balance (the side of the see-saw with more bananas goes down)
-  and Who Has More? (buses with numbers; she picks the one with more kids, or fewer, or lines
+  Name Zoo (the animal at the gate needs a name card; the voice spells her own
+  name, then the family's, and she finds or builds it) and Who Has More? (buses with numbers; she picks the one with more kids, or fewer, or lines
   three up, and the kids fill the windows ten to a deck). The letter, word
   and number games talk: every line is a clip bundled with the app, so they
   work on a display with no text-to-speech. Each kid sees the games that suit their age, and every game

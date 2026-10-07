@@ -47,6 +47,7 @@ export 'src/toybox/tracing.dart';
 export 'src/toybox/voice.dart';
 export 'src/toybox/voice_lengths.g.dart';
 export 'src/toybox/words.dart';
+export 'src/toybox/zoo.dart';
 export 'src/util/ids.dart';
 export 'src/util/json.dart';
 export 'src/util/pin.dart';

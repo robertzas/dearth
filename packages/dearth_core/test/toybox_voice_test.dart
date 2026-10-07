@@ -242,6 +242,7 @@ void main() {
         VoiceLine.balanceAsk,
         for (final (more, fewer) in kBalancePairs) balanceMoreClip(more, fewer),
         for (final a in CompareAsk.values) ...[compareAskClip(a), compareYesClip(a)],
+        for (final m in ZooMode.values) ...[zooAskClip(m), zooYesClip(m)],
       ];
       expect(asked.where((a) => !ids.contains(a)), isEmpty);
       expect(ids.difference(asked.toSet()), isEmpty, reason: 'no line nothing says');

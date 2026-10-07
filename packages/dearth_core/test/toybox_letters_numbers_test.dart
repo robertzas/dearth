@@ -453,4 +453,68 @@ void main() {
       expect([for (var s = 0; s <= 4; s++) compareResult(three, s)], [GameResult.win, GameResult.win, GameResult.helped, GameResult.helped, GameResult.miss]);
     });
   });
+
+  group('Name Zoo', () {
+    const family = ['Mom', 'Dad', 'Biscuit'];
+
+    test('names print as cards: the first word, a capital first, accents plain, two to eight letters', () {
+      expect([for (final n in ['zoë', 'Mary Ann', 'Jo', 'A', 'Bartholomew', ' ava ', 'Ánh']) zooName(n)], ['Zoe', 'Mary', 'Jo', '', '', 'Ava', 'Anh']);
+    });
+
+    test('FR-TOY-03: her own name among three → a family name among four → a short name built from tiles', () {
+      for (var seed = 0; seed < 200; seed++) {
+        final rng = Random(seed);
+        final own = zooRound(1, rng, kid: 'Ava', family: family);
+        expect((own.mode, own.name, own.cards.length), (ZooMode.own, 'Ava', 3), reason: 'seed $seed');
+        expect(own.cards, contains('Ava'));
+        expect(own.cards.where((c) => c != 'Ava').every((c) => c[0] != 'A'), isTrue, reason: 'her name stands out: ${own.cards}');
+        final fam = zooRound(2, rng, kid: 'Ava', family: family);
+        expect(fam.mode, ZooMode.family);
+        expect(family, contains(fam.name), reason: 'the family first');
+        expect((fam.cards.length, fam.cards.toSet().length), (4, 4));
+        expect(fam.cards, contains(fam.name));
+        final build = zooRound(3, rng, kid: 'Ava', family: family);
+        expect(build.mode, ZooMode.build);
+        expect(build.name.length, inInclusiveRange(2, 5));
+        expect(build.tiles.length, build.letters.length + 2);
+        final left = [...build.tiles];
+        for (final l in build.letters) {
+          expect(left.remove(l), isTrue, reason: 'every letter has a tile: ${build.tiles} for ${build.name}');
+        }
+        expect(left.every((x) => !build.name.toLowerCase().contains(x)), isTrue, reason: 'extras are other letters');
+        for (final r in [own, fam, build]) {
+          expect(kZooAnimals, contains(r.animal));
+        }
+      }
+    });
+
+    test('a kid whose name won\'t print starts with family names; a small family borrows buddies; no repeats', () {
+      expect(zooRound(1, Random(1), kid: 'X', family: family).mode, ZooMode.family);
+      final alone = zooRound(2, Random(2), kid: 'Ava');
+      expect(kZooBuddies, contains(alone.name));
+      expect(alone.cards, hasLength(4));
+      final big = ['Mom', 'Dad', 'Biscuit', 'Leo', 'Grandma'];
+      for (var seed = 0; seed < 100; seed++) {
+        final rng = Random(seed);
+        ZooRound? last;
+        for (var i = 0; i < 5; i++) {
+          final r = zooRound(i.isEven ? 2 : 3, rng, kid: 'Ava', family: big, last: last);
+          if (last != null) {
+            expect(r.name, isNot(last.name));
+            expect(r.animal, isNot(last.animal));
+          }
+          last = r;
+        }
+      }
+    });
+
+    test('slips: none among three cards, one among four, one over a built name', () {
+      const three = ZooRound(ZooMode.own, 'Ava', '🦒', cards: ['Ava', 'Mom', 'Dad']);
+      const four = ZooRound(ZooMode.family, 'Mom', '🦒', cards: ['Ava', 'Mom', 'Dad', 'Leo']);
+      const build = ZooRound(ZooMode.build, 'Mom', '🦒', tiles: ['M', 'o', 'm', 'a', 't']);
+      expect([for (var s = 0; s <= 2; s++) zooResult(three, s)], [GameResult.win, GameResult.helped, GameResult.miss]);
+      expect([for (var s = 0; s <= 2; s++) zooResult(four, s)], [GameResult.win, GameResult.win, GameResult.helped]);
+      expect([for (var s = 0; s <= 4; s++) zooResult(build, s)], [GameResult.win, GameResult.win, GameResult.helped, GameResult.helped, GameResult.miss]);
+    });
+  });
 }

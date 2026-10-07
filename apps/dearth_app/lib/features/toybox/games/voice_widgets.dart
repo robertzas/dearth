@@ -101,6 +101,27 @@ class LetterPair extends StatelessWidget {
   }
 }
 
+/// A word in the Toybox's print: every letter on one shared band, so a
+/// name's capital and small letters sit on one line, as Sight Words' signs
+/// print them.
+class PrintedWord extends StatelessWidget {
+  const PrintedWord(this.word, {super.key, required this.height, this.color = const Color(0xFF2B2440)});
+  final String word;
+
+  /// The band's height: a capital's.
+  final double height;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final ch in word.split(''))
+            Padding(padding: EdgeInsets.symmetric(horizontal: height * 0.025), child: GlyphView(ch, height: height, color: color, frameTop: 0, frameBottom: 14)),
+        ],
+      );
+}
+
 /// What a voice game asks, as a picture pill (she can't read; the label is
 /// for grown-ups' screen readers and tests), with a speaker beside it that
 /// says it again.

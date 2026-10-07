@@ -8,6 +8,7 @@ import 'package:dearth_app/features/toybox/games/hear.dart';
 import 'package:dearth_app/features/toybox/games/hop.dart';
 import 'package:dearth_app/features/toybox/games/sight.dart';
 import 'package:dearth_app/features/toybox/games/spell.dart';
+import 'package:dearth_app/features/toybox/games/zoo.dart';
 import 'package:dearth_core/dearth_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -21,7 +22,7 @@ import 'support/toybox_harness.dart';
 void main() {
   for (final size in const [Size(390, 844), Size(844, 390), Size(1080, 1920), Size(1920, 1080)]) {
     testWidgets('every number and letter game lays out on a ${size.width.toInt()}×${size.height.toInt()} screen at its busiest level', (tester) async {
-      await expectGamesLayOut(tester, const [('dots', 1), ('dots', 4), ('dots', 6), ('biglittle', 1), ('biglittle', 2), ('biglittle', 3), ('hop', 1), ('hop', 2), ('hop', 4), ('spell', 1), ('spell', 3), ('spell', 4), ('hear', 1), ('hear', 3), ('hear', 4), ('sight', 1), ('sight', 3), ('sight', 4), ('balance', 2), ('balance', 3), ('balance', 4), ('compare', 1), ('compare', 3), ('compare', 4)], size: size);
+      await expectGamesLayOut(tester, const [('dots', 1), ('dots', 4), ('dots', 6), ('biglittle', 1), ('biglittle', 2), ('biglittle', 3), ('hop', 1), ('hop', 2), ('hop', 4), ('spell', 1), ('spell', 3), ('spell', 4), ('hear', 1), ('hear', 3), ('hear', 4), ('sight', 1), ('sight', 3), ('sight', 4), ('balance', 2), ('balance', 3), ('balance', 4), ('compare', 1), ('compare', 3), ('compare', 4), ('zoo', 1), ('zoo', 2), ('zoo', 3)], size: size);
     });
   }
 
@@ -940,6 +941,110 @@ void main() {
       await h.settle();
       expect(await toyboxRounds(h), [('compare', 2, 'win')]);
       await tester.pump(const Duration(seconds: 8));
+      await h.shutdown();
+    });
+  });
+
+  group('Name Zoo', () {
+    ZooGameState game(WidgetTester tester) => tester.state<ZooGameState>(find.byType(ZooGame));
+
+    testWidgets('FR-TOY-03: "Find your name!", spelled; her card fills the animal\'s bubble and it says thank you', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'zoo', sound: sound, level: 1);
+      final r = game(tester).debugRound;
+      expect((r.mode, r.name), (ZooMode.own, 'Ava'), reason: 'the demo kid');
+      expect(r.cards, hasLength(3));
+      expectNoFallbackText(byId('screen.game'));
+      expect(labelOf(tester, 'zoo.ask'), 'Find your name: Ava');
+      expect(labelOf(tester, 'zoo.board'), 'An empty card');
+      await tester.pump(const Duration(seconds: 6));
+      expect(sound.said, [zooAskClip(ZooMode.own), ...zooSpellClips('Ava')], reason: 'asked, then spelled a letter at a time');
+      expect(zooSpellClips('Ava'), ['name_a', 'name_v', 'name_a']);
+      await tester.tap(byId('zoo.card.${r.cards.indexOf('Ava')}'));
+      await tester.pump();
+      expect(sound.said.last, zooYesClip(ZooMode.own));
+      expect(labelOf(tester, 'zoo.ask'), 'Ava, thank you!');
+      expect(labelOf(tester, 'zoo.board'), 'Card: Ava');
+      await h.settle();
+      expect(await toyboxRounds(h), [('zoo', 1, 'win')]);
+      await tester.pump(const Duration(seconds: 5));
+      expect(game(tester).debugRound, isNot(same(r)), reason: 'the animal walked in; the next one steps up');
+      await tester.pump(const Duration(seconds: 8));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('family names: a wrong card fades and the bubble shows the first letter; two slips light the card; helped', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'zoo', sound: sound, level: 2);
+      final r = game(tester).debugRound;
+      expect(r.mode, ZooMode.family);
+      expect(['Mom', 'Dad', 'Biscuit'], contains(r.name), reason: 'the demo family');
+      await tester.pump(const Duration(seconds: 1));
+      final wrong = [for (var i = 0; i < r.cards.length; i++) if (r.cards[i] != r.name) i];
+      await tester.tap(byId('zoo.card.${wrong[0]}'));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(sound.played.where((p) => p.$1 == Sfx.nope), hasLength(1));
+      expect(labelOf(tester, 'zoo.card.${wrong[0]}'), '${r.cards[wrong[0]]}, tried');
+      expect(labelOf(tester, 'zoo.board'), 'Card starting with ${r.name[0]}');
+      await tester.pump(const Duration(seconds: 9)); // Biscuit takes a while to spell
+      expect(sound.said.reversed.take(r.name.length).toList().reversed, zooSpellClips(r.name), reason: 'spelled again');
+      await tester.tap(byId('zoo.card.${wrong[1]}'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(byId('zoo.card.${r.cards.indexOf(r.name)}'));
+      await tester.pump();
+      expect(sound.said.last, zooYesClip(ZooMode.family));
+      await h.settle();
+      expect(await toyboxRounds(h), [('zoo', 2, 'helped')]);
+      await tester.pump(const Duration(seconds: 13));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('building: tiles go into the slots in order, each saying its letter; a wrong one says the letter it needs', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'zoo', sound: sound, level: 3);
+      final r = game(tester).debugRound;
+      expect(r.mode, ZooMode.build);
+      expect(labelOf(tester, 'zoo.board'), 'Spelling ${r.name}: 0 of ${r.letters.length}');
+      await tester.pump(const Duration(seconds: 1));
+      final wrong = r.tiles.indexWhere((l) => l != r.letters.first);
+      await tester.tap(byId('zoo.tile.$wrong'));
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(sound.said.last, letterNameClip(r.letters.first));
+      expect(game(tester).debugPlaced, 0);
+      for (var k = 0; k < r.letters.length; k++) {
+        final i = [for (var j = 0; j < r.tiles.length; j++) j].firstWhere((j) => r.tiles[j] == r.letters[k] && !game(tester).debugUsed.contains(j));
+        await tester.tap(byId('zoo.tile.$i'));
+        await tester.pump(const Duration(milliseconds: 200));
+        expect(sound.said.last, letterNameClip(r.letters[k]));
+        expect(labelOf(tester, 'zoo.tile.$i'), endsWith(', used'));
+      }
+      expect(labelOf(tester, 'zoo.board'), '${r.name} spelled');
+      await tester.pump(const Duration(seconds: 1));
+      expect(sound.said.last, zooYesClip(ZooMode.build));
+      await h.settle();
+      expect(await toyboxRounds(h), [('zoo', 3, 'win')]);
+      await tester.pump(const Duration(seconds: 13));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('a long pause asks and spells again without counting a slip', (tester) async {
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'zoo', sound: sound, level: 1);
+      final r = game(tester).debugRound;
+      await tester.pump(const Duration(seconds: 13));
+      expect(sound.said.where((c) => c == zooAskClip(ZooMode.own)), hasLength(2));
+      await tester.pump(const Duration(seconds: 4));
+      await tester.tap(byId('zoo.card.${r.cards.indexOf(r.name)}'));
+      await tester.pump();
+      await h.settle();
+      expect(await toyboxRounds(h), [('zoo', 1, 'win')]);
+      await tester.pump(const Duration(seconds: 13));
       await h.shutdown();
     });
   });
