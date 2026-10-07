@@ -217,9 +217,10 @@ void main() {
         for (final f in kRhymes) ...[rhymeAskClip(f.anchor), for (final m in f.words.skip(1)) rhymeYesClip(f.anchor, wordNamed(m))],
         for (final c in kSpyColors) spyClip(SpyClue.color, c),
         for (final s in kSpyShapes) spyClip(SpyClue.shape, s),
-        for (var n = 0; n <= 20; n++) numberClip(n),
+        for (var n = 0; n <= 100; n++) numberClip(n),
         for (var n = 0; n <= 10; n++) countClip(n),
-        for (var n = 1; n <= 20; n++) findNumberClip(n),
+        for (var n = 1; n <= 100; n++) findNumberClip(n),
+        VoiceLine.hundredHiding,
         VoiceLine.traceName, VoiceLine.traceNameDone, VoiceLine.breatheStart, VoiceLine.breatheIn, VoiceLine.breatheOut, VoiceLine.breatheDone,
         VoiceLine.makeCreature, VoiceLine.dotsNumbers, VoiceLine.dotsLetters,
         for (final p in kDotPictures) dotsDoneClip(p),
@@ -243,6 +244,8 @@ void main() {
         for (final (more, fewer) in kBalancePairs) balanceMoreClip(more, fewer),
         for (final a in CompareAsk.values) ...[compareAskClip(a), compareYesClip(a)],
         for (final m in ZooMode.values) ...[zooAskClip(m), zooYesClip(m)],
+        VoiceLine.tallyStart, VoiceLine.tallyFive, VoiceLine.tallyTap, VoiceLine.tallyAsk,
+        for (var n = 1; n <= kTallyMax; n++) tallyBunniesClip(n),
       ];
       expect(asked.where((a) => !ids.contains(a)), isEmpty);
       expect(ids.difference(asked.toSet()), isEmpty, reason: 'no line nothing says');

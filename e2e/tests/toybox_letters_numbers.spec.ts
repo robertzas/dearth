@@ -147,4 +147,30 @@ test.describe('Toybox number and letter games', () => {
     await expectText(tid(page, 'zoo.ask'), 'Ava, thank you!');
     await expectCheered(page);
   });
+
+  test('FR-TOY-03: Tallies — one mark for each bunny that hops up, then the count', async ({ page }) => {
+    await openToyboxGame(page, 'tally');
+    await expectText(tid(page, 'tally.ask'), 'Make a mark for each bunny');
+    // The first bunny says how many are coming.
+    await expectText(tid(page, 'tally.bunny'), /^Bunny 1 of \d+, waiting$/);
+    const n = Number((await textOf(tid(page, 'tally.bunny'))).match(/of (\d+)/)![1]);
+    for (let k = 1; k <= n; k++) {
+      await expectText(tid(page, 'tally.bunny'), `Bunny ${k} of ${n}, waiting`);
+      await tap(tid(page, 'tally.board'));
+      await expectText(tid(page, 'tally.board'), `Tally: ${k} mark`);
+    }
+    // Lasting labels: they stay until the next round.
+    await expectText(tid(page, 'tally.ask'), `${n} bunn${n === 1 ? 'y' : 'ies'}`);
+    await expectCheered(page);
+  });
+
+  test('FR-TOY-03: Hundred Square — the voice asks for a number and she finds it', async ({ page }) => {
+    await openToyboxGame(page, 'hundred');
+    await expectText(tid(page, 'hundred.ask'), /^Find \d+$/);
+    const n = (await textOf(tid(page, 'hundred.ask'))).trim().split(' ').pop()!;
+    await tap(tid(page, `hundred.cell.${n}`));
+    // Lasting labels: they stay until the next round.
+    await expectText(tid(page, 'hundred.ask'), `${n} found`);
+    await expectCheered(page);
+  });
 });

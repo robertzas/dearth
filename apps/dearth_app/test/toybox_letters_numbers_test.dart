@@ -6,8 +6,10 @@ import 'package:dearth_app/features/toybox/games/dots.dart';
 import 'package:dearth_app/features/toybox/games/dots_pictures.dart';
 import 'package:dearth_app/features/toybox/games/hear.dart';
 import 'package:dearth_app/features/toybox/games/hop.dart';
+import 'package:dearth_app/features/toybox/games/hundred.dart';
 import 'package:dearth_app/features/toybox/games/sight.dart';
 import 'package:dearth_app/features/toybox/games/spell.dart';
+import 'package:dearth_app/features/toybox/games/tally.dart';
 import 'package:dearth_app/features/toybox/games/zoo.dart';
 import 'package:dearth_core/dearth_core.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -22,7 +24,7 @@ import 'support/toybox_harness.dart';
 void main() {
   for (final size in const [Size(390, 844), Size(844, 390), Size(1080, 1920), Size(1920, 1080)]) {
     testWidgets('every number and letter game lays out on a ${size.width.toInt()}×${size.height.toInt()} screen at its busiest level', (tester) async {
-      await expectGamesLayOut(tester, const [('dots', 1), ('dots', 4), ('dots', 6), ('biglittle', 1), ('biglittle', 2), ('biglittle', 3), ('hop', 1), ('hop', 2), ('hop', 4), ('spell', 1), ('spell', 3), ('spell', 4), ('hear', 1), ('hear', 3), ('hear', 4), ('sight', 1), ('sight', 3), ('sight', 4), ('balance', 2), ('balance', 3), ('balance', 4), ('compare', 1), ('compare', 3), ('compare', 4), ('zoo', 1), ('zoo', 2), ('zoo', 3)], size: size);
+      await expectGamesLayOut(tester, const [('dots', 1), ('dots', 4), ('dots', 6), ('biglittle', 1), ('biglittle', 2), ('biglittle', 3), ('hop', 1), ('hop', 2), ('hop', 4), ('spell', 1), ('spell', 3), ('spell', 4), ('hear', 1), ('hear', 3), ('hear', 4), ('sight', 1), ('sight', 3), ('sight', 4), ('balance', 2), ('balance', 3), ('balance', 4), ('compare', 1), ('compare', 3), ('compare', 4), ('zoo', 1), ('zoo', 2), ('zoo', 3), ('tally', 1), ('tally', 2), ('tally', 3), ('hundred', 1), ('hundred', 3), ('hundred', 4)], size: size);
     });
   }
 
@@ -1046,6 +1048,179 @@ void main() {
       expect(await toyboxRounds(h), [('zoo', 1, 'win')]);
       await tester.pump(const Duration(seconds: 13));
       await h.shutdown();
+    });
+  });
+
+  group('Tallies', () {
+    TallyGameState game(WidgetTester tester) => tester.state<TallyGameState>(find.byType(TallyGame));
+
+    /// Waits for the next bunny to stop at the board.
+    Future<void> untilWaiting(WidgetTester tester) async {
+      for (var i = 0; i < 80 && !game(tester).debugWaiting; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(game(tester).debugWaiting, isTrue);
+      await tester.pump(const Duration(milliseconds: 1000)); // it has hopped all the way in
+    }
+
+    testWidgets('FR-TOY-03: one tap, one bunny, one mark; the count is said; then counted back and "n bunnies!"', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'tally', sound: sound, level: 1);
+      final r = game(tester).debugRound;
+      expect(r.mode, TallyMode.mark);
+      expectNoFallbackText(byId('screen.game'));
+      expect(labelOf(tester, 'tally.ask'), 'Make a mark for each bunny');
+      await untilWaiting(tester);
+      expect(sound.said.first, VoiceLine.tallyStart);
+      expect(labelOf(tester, 'tally.bunny'), 'Bunny 1 of ${r.bunnies}, waiting');
+      for (var k = 1; k <= r.bunnies; k++) {
+        if (k > 1) await untilWaiting(tester);
+        await tester.tap(byId('tally.board'));
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(sound.said.last, numberClip(k));
+        expect(labelOf(tester, 'tally.board'), 'Tally: $k mark${k == 1 ? '' : 's'}');
+      }
+      for (var i = 0; i < 30 && sound.said.last != tallyBunniesClip(r.bunnies); i++) {
+        await tester.pump(const Duration(milliseconds: 500));
+      }
+      expect(sound.said.last, tallyBunniesClip(r.bunnies));
+      expect(sound.said.reversed.skip(1).take(r.bunnies).toList().reversed, [for (var k = 1; k <= r.bunnies; k++) numberClip(k)], reason: 'counted back one by one');
+      expect(labelOf(tester, 'tally.ask'), '${r.bunnies} bunn${r.bunnies == 1 ? 'y' : 'ies'}');
+      await h.settle();
+      expect(await toyboxRounds(h), [('tally', 1, 'win')]);
+      await tester.pump(const Duration(seconds: 5));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('a tap with no bunny makes no mark: the board shakes, it counts as a slip, and a quick double tap doesn\'t', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'tally', sound: sound, level: 2);
+      final r = game(tester).debugRound;
+      expect((r.mode, r.start), (TallyMode.countOn, 5));
+      expect(labelOf(tester, 'tally.board'), 'Tally: 5 marks', reason: 'five already');
+      await tester.tap(byId('tally.board'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(game(tester).debugMarks, 5);
+      expect(sound.played.where((p) => p.$1 == Sfx.nope), hasLength(1));
+      await untilWaiting(tester);
+      expect(sound.said.where((c) => c == VoiceLine.tallyFive), hasLength(1));
+      await tester.tap(byId('tally.bunny'));
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(byId('tally.board'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(game(tester).debugMarks, 6, reason: 'the second tap came too quickly to count');
+      expect(sound.said.last, numberClip(6), reason: 'counting on from five');
+      for (var k = 7; k <= r.total; k++) {
+        await untilWaiting(tester);
+        await tester.tap(byId('tally.board'));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      for (var i = 0; i < 40 && sound.said.last != tallyBunniesClip(r.total); i++) {
+        await tester.pump(const Duration(milliseconds: 500));
+      }
+      expect(sound.said.contains(numberClip(5)), isTrue, reason: 'counted back by the bundle');
+      await h.settle();
+      expect(await toyboxRounds(h), [('tally', 2, 'win')], reason: 'one slip is fine');
+      await tester.pump(const Duration(seconds: 5));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('reading a tally: a wrong numeral fades and the marks are counted together; the right one is said', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'tally', sound: sound, level: 3);
+      final r = game(tester).debugRound;
+      expect(r.mode, TallyMode.read);
+      expect(labelOf(tester, 'tally.board'), 'Tally: ${r.total} marks');
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(sound.said, [VoiceLine.tallyAsk]);
+      final wrong = r.choices.firstWhere((c) => c != r.total);
+      await tester.tap(byId('tally.card.$wrong'));
+      await tester.pump(const Duration(seconds: 6));
+      expect(labelOf(tester, 'tally.card.$wrong'), '$wrong, tried');
+      expect(sound.said.last, numberClip(r.total), reason: 'counted up to it together');
+      await tester.tap(byId('tally.card.${r.total}'));
+      await tester.pump();
+      expect(labelOf(tester, 'tally.ask'), '${r.total} marks');
+      await h.settle();
+      expect(await toyboxRounds(h), [('tally', 3, 'helped')]);
+      await tester.pump(const Duration(seconds: 4));
+      await h.shutdown();
+      handle.dispose();
+    });
+  });
+
+  group('Hundred Square', () {
+    HundredGameState game(WidgetTester tester) => tester.state<HundredGameState>(find.byType(HundredGame));
+
+    testWidgets('FR-TOY-03: "Find the number…", the right square brings the ladybug and lights its row', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'hundred', sound: sound, level: 3);
+      final r = game(tester).debugRound;
+      expectNoFallbackText(byId('screen.game'));
+      expect(labelOf(tester, 'hundred.ask'), 'Find ${r.target}');
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(sound.said, [findNumberClip(r.target)]);
+      await tester.tap(byId('hundred.cell.${r.target}'));
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(sound.said.last, numberClip(r.target));
+      expect(labelOf(tester, 'hundred.ask'), '${r.target} found');
+      expect(labelOf(tester, 'hundred.cell.${r.target}'), '${r.target}, found');
+      await h.settle();
+      expect(await toyboxRounds(h), [('hundred', 3, 'win')]);
+      await tester.pump(const Duration(seconds: 4));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('a wrong square says its own number; slips light the row, then the square', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'hundred', sound: sound, level: 1);
+      final r = game(tester).debugRound;
+      await tester.pump(const Duration(milliseconds: 700));
+      final wrong = [for (var n = 1; n <= 10; n++) if (n != r.target) n];
+      for (final w in wrong.take(3)) {
+        await tester.tap(byId('hundred.cell.$w'));
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(sound.said.last, numberClip(w));
+      }
+      expect(sound.played.where((p) => p.$1 == Sfx.nope), hasLength(3));
+      await tester.tap(byId('hundred.cell.${r.target}'));
+      await tester.pump(const Duration(milliseconds: 700));
+      await h.settle();
+      expect(await toyboxRounds(h), [('hundred', 1, 'miss')]);
+      await tester.pump(const Duration(seconds: 4));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('a hidden number: "It\'s hiding!"; a blank square she tries shows what it hid', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'hundred', sound: sound, level: 4);
+      final r = game(tester).debugRound;
+      expect(labelOf(tester, 'hundred.ask'), 'Find where ${r.target} goes');
+      expect(labelOf(tester, 'hundred.cell.${r.target}'), 'Hidden square');
+      await tester.pump(const Duration(seconds: 4));
+      expect(sound.said, [findNumberClip(r.target), VoiceLine.hundredHiding]);
+      final other = r.hidden.firstWhere((n) => n != r.target);
+      await tester.tap(byId('hundred.cell.$other'));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(labelOf(tester, 'hundred.cell.$other'), '$other');
+      await tester.tap(byId('hundred.cell.${r.target}'));
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(labelOf(tester, 'hundred.cell.${r.target}'), '${r.target}, found');
+      await h.settle();
+      expect(await toyboxRounds(h), [('hundred', 4, 'win')], reason: 'one slip is fine on the whole square');
+      await tester.pump(const Duration(seconds: 4));
+      await h.shutdown();
+      handle.dispose();
     });
   });
 }

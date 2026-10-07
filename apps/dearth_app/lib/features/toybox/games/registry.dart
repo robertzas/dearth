@@ -12,6 +12,7 @@ import 'dots.dart';
 import 'farm.dart';
 import 'hear.dart';
 import 'hop.dart';
+import 'hundred.dart';
 import 'ispy.dart';
 import 'jigsaw.dart';
 import 'letters.dart';
@@ -30,6 +31,7 @@ import 'sizes.dart';
 import 'spell.dart';
 import 'stories.dart';
 import 'sudoku.dart';
+import 'tally.dart';
 import 'tracing.dart';
 import 'zoo.dart';
 
@@ -70,4 +72,6 @@ final Map<String, GameBuilder> kGameBuilders = {
   'balance': BalanceGame.new,
   'compare': CompareGame.new,
   'zoo': ZooGame.new,
+  'tally': TallyGame.new,
+  'hundred': HundredGame.new,
 };

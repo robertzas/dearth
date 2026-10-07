@@ -69,6 +69,8 @@ const List<GameInfo> kExpansionGames = [
   GameInfo('hear', 'Hear the Sound', '👂', minMonths: 36, skills: ['Phonics', 'Listening'], levels: 4),
   GameInfo('sight', 'Sight Words', '🚏', minMonths: 48, skills: ['Early reading'], levels: 4),
   GameInfo('balance', 'Banana Balance', '🍌', minMonths: 36, skills: ['Comparing quantities', 'More and fewer'], levels: 4),
+  GameInfo('hundred', 'Hundred Square', '💯', minMonths: 60, skills: ['Counting past twenty', 'Place value'], levels: 4),
+  GameInfo('tally', 'Tallies', '🐇', minMonths: 42, skills: ['Keeping count', 'Counting on', 'Tally marks'], levels: 3),
   GameInfo('zoo', 'Name Zoo', '🦒', minMonths: 42, skills: ['Reading names', 'Letter names', 'Spelling'], levels: 3),
   GameInfo('compare', 'Who Has More?', '🚌', minMonths: 42, skills: ['Comparing numbers', 'More and fewer', 'Number order'], levels: 4),
 ];

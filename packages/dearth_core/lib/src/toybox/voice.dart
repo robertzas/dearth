@@ -7,6 +7,7 @@ import 'hear.dart';
 import 'hop.dart';
 import 'sight.dart';
 import 'spell.dart';
+import 'tally.dart';
 import 'voice_lengths.g.dart';
 import 'words.dart';
 import 'zoo.dart';
@@ -111,6 +112,9 @@ String zooYesClip(ZooMode mode) => 'zoo_yes_${mode.name}';
 /// [name] spelled out, one letter-name clip a letter.
 List<String> zooSpellClips(String name) => [for (final l in name.split('')) letterNameClip(l)];
 
+/// A finished count of bunnies: "One bunny!", "Seven bunnies!"
+String tallyBunniesClip(int n) => 'tally_$n';
+
 /// "Three."
 String numberClip(int n) => 'num_$n';
 
@@ -142,12 +146,25 @@ abstract final class VoiceLine {
   static const balanceAsk = 'balance_ask';
   static const spellMissing = 'spell_missing';
   static const spellBuild = 'spell_build';
+  static const tallyStart = 'tally_start';
+  static const tallyFive = 'tally_five';
+  static const tallyTap = 'tally_tap';
+  static const tallyAsk = 'tally_ask';
+  static const hundredHiding = 'hundred_hiding';
 }
 
 const List<String> _numbers = [
   'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', //
   'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty',
 ];
+
+/// [n] (0–100) in words: "fifty-four", "one hundred".
+String numberWord(int n) {
+  if (n <= 20) return _numbers[n];
+  if (n == 100) return 'one hundred';
+  const tens = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+  return n % 10 == 0 ? tens[n ~/ 10] : '${tens[n ~/ 10]}-${_numbers[n % 10]}';
+}
 
 /// Where espeak's English (which this voice was trained on) says another
 /// word than an American would: a letter Z is "zed", a zebra a "zebb-ra".
@@ -235,12 +252,14 @@ Map<String, String> _lines() {
   for (final l in kLetterSounds.where((l) => l.starts)) {
     lines[spyClip(SpyClue.letter, l.letter)] = '$spy something that starts with ${l.letter}. ${_sound(l)}!';
   }
-  for (var n = 0; n <= 20; n++) {
-    lines[numberClip(n)] = '${_cap(_numbers[n])}.';
+  // To a hundred: Hundred Square asks for any of them.
+  for (var n = 0; n <= 100; n++) {
+    lines[numberClip(n)] = '${_cap(numberWord(n))}.';
   }
-  for (var n = 1; n <= 20; n++) {
-    lines[findNumberClip(n)] = 'Find the number ${_numbers[n]}.';
+  for (var n = 1; n <= 100; n++) {
+    lines[findNumberClip(n)] = 'Find the number ${numberWord(n)}.';
   }
+  lines[VoiceLine.hundredHiding] = "It's hiding! Where does it go?";
   lines[countClip(0)] = 'Zero. Nothing at all!';
   for (var n = 1; n <= 10; n++) {
     lines[countClip(n)] = '${_cap(_numbers.sublist(1, n + 1).join(', '))}.';
@@ -308,6 +327,13 @@ Map<String, String> _lines() {
   lines[zooYesClip(ZooMode.own)] = "That's your name! Thank you!";
   lines[zooYesClip(ZooMode.family)] = 'Thank you!';
   lines[zooYesClip(ZooMode.build)] = 'You spelled it! Thank you!';
+  lines[VoiceLine.tallyStart] = 'Make a mark for each bunny!';
+  lines[VoiceLine.tallyFive] = "Five bunnies already! Let's count on.";
+  lines[VoiceLine.tallyTap] = 'Tap the board for the bunny.';
+  lines[VoiceLine.tallyAsk] = 'How many marks?';
+  for (var n = 1; n <= kTallyMax; n++) {
+    lines[tallyBunniesClip(n)] = '${_cap(_numbers[n])} bunn${n == 1 ? 'y' : 'ies'}!';
+  }
   lines[VoiceLine.spellMissing] = 'Which sound is missing?';
   lines[VoiceLine.spellBuild] = "Let's build it, sound by sound!";
   for (var n = 0; n <= 10; n++) {

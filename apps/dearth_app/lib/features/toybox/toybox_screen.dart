@@ -54,6 +54,8 @@ const Map<String, Color> kGameHues = {
   'balance': Color(0xFFFFD23F),
   'compare': Color(0xFF2FA67A),
   'zoo': Color(0xFFA0522D),
+  'tally': Color(0xFF2F5D50),
+  'hundred': Color(0xFF1E6091),
 };
 
 /// The Toybox (SPEC §10.8, FR-TOY-01): big picture tiles of the games that

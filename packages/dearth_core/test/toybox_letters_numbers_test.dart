@@ -517,4 +517,100 @@ void main() {
       expect([for (var s = 0; s <= 4; s++) zooResult(build, s)], [GameResult.win, GameResult.win, GameResult.helped, GameResult.helped, GameResult.miss]);
     });
   });
+
+  group('Tallies', () {
+    test('FR-TOY-03: 1–5 bunnies → five on the board and 1–5 more → a tally of 2–10 to read among three', () {
+      final totals = <int>{};
+      for (var seed = 0; seed < 200; seed++) {
+        final rng = Random(seed);
+        final mark = tallyRound(1, rng);
+        expect((mark.mode, mark.start), (TallyMode.mark, 0));
+        expect(mark.bunnies, inInclusiveRange(1, 5));
+        final on = tallyRound(2, rng);
+        expect((on.mode, on.start), (TallyMode.countOn, 5));
+        expect(on.total, inInclusiveRange(6, 10));
+        final read = tallyRound(3, rng);
+        expect((read.mode, read.bunnies), (TallyMode.read, 0));
+        expect(read.total, inInclusiveRange(2, kTallyMax));
+        expect(read.choices, hasLength(3));
+        expect(read.choices.toSet(), hasLength(3));
+        expect(read.choices, contains(read.total));
+        expect(read.choices.every((c) => c >= 1 && c <= kTallyMax && (c - read.total).abs() <= 2), isTrue, reason: 'near misses: ${read.choices}');
+        totals.add(read.total);
+      }
+      expect(totals, {for (var n = 2; n <= 10; n++) n});
+    });
+
+    test('never the same count twice running', () {
+      for (var seed = 0; seed < 100; seed++) {
+        final rng = Random(seed);
+        TallyRound? last;
+        for (var i = 0; i < 6; i++) {
+          final r = tallyRound(1 + i % 3, rng, last: last);
+          if (last != null) expect(r.total, isNot(last.total));
+          last = r;
+        }
+      }
+    });
+
+    test('bundles of five; counting back one by one, or by the bundle and then on', () {
+      expect([for (final n in [0, 3, 5, 7, 10]) tallyGroups(n)], [<int>[], [3], [5], [5, 2], [5, 5]]);
+      expect(tallyCountBack(4, byFives: false), [1, 2, 3, 4]);
+      expect(tallyCountBack(7, byFives: true), [5, 6, 7]);
+      expect(tallyCountBack(10, byFives: true), [5, 10]);
+      expect(tallyCountBack(3, byFives: true), [1, 2, 3], reason: 'no bundle yet');
+    });
+
+    test('slips: one extra mark is fine; reading among three is a counting round', () {
+      const mark = TallyRound(TallyMode.mark, bunnies: 4), read = TallyRound(TallyMode.read, start: 7, choices: [6, 7, 9]);
+      expect([for (var s = 0; s <= 4; s++) tallyResult(mark, s)], [GameResult.win, GameResult.win, GameResult.helped, GameResult.helped, GameResult.miss]);
+      expect([for (var s = 0; s <= 2; s++) tallyResult(read, s)], [GameResult.win, GameResult.helped, GameResult.miss]);
+    });
+  });
+
+  group('Hundred Square', () {
+    test('FR-TOY-03: one row → two rows → the whole square, mostly past twenty → a hidden number\'s place', () {
+      var past20 = 0;
+      for (var seed = 0; seed < 200; seed++) {
+        final rng = Random(seed);
+        final one = hundredRound(1, rng), two = hundredRound(2, rng), all = hundredRound(3, rng), hide = hundredRound(4, rng);
+        expect((one.rows, two.rows, all.rows, hide.rows), (1, 2, 10, 10));
+        expect(one.target, inInclusiveRange(1, 10));
+        expect(two.target, inInclusiveRange(1, 20));
+        expect(all.target, inInclusiveRange(1, 100));
+        expect(all.hidden, isEmpty);
+        if (all.target > 20) past20++;
+        expect(hide.hiding, isTrue);
+        expect(hide.hidden, hasLength(13));
+        // Its neighbors in the row stay, so they say where it goes.
+        for (final n in [hide.target - 1, hide.target + 1]) {
+          if ((n - 1) ~/ 10 == hide.row && n >= 1 && n <= 100) expect(hide.hidden, isNot(contains(n)), reason: 'seed $seed: ${hide.target}');
+        }
+      }
+      expect(past20, greaterThan(140), reason: 'mostly past twenty');
+    });
+
+    test('the row is the tens; never the same number twice running; every number has its words', () {
+      expect([for (final n in [1, 10, 11, 54, 100]) HundredRound(10, n).row], [0, 0, 1, 5, 9]);
+      for (var seed = 0; seed < 100; seed++) {
+        final rng = Random(seed);
+        HundredRound? last;
+        for (var i = 0; i < 6; i++) {
+          final r = hundredRound(3, rng, last: last);
+          if (last != null) expect(r.target, isNot(last.target));
+          last = r;
+        }
+      }
+      expect([for (final n in [7, 21, 40, 54, 99, 100]) numberWord(n)], ['seven', 'twenty-one', 'forty', 'fifty-four', 'ninety-nine', 'one hundred']);
+      for (var n = 1; n <= 100; n++) {
+        expect(kVoiceLines, contains(findNumberClip(n)));
+        expect(kVoiceLines, contains(numberClip(n)));
+      }
+    });
+
+    test('slips: on a short square a slip is helped; on the whole square one is fine', () {
+      expect([for (var s = 0; s <= 2; s++) hundredResult(const HundredRound(1, 5), s)], [GameResult.win, GameResult.helped, GameResult.miss]);
+      expect([for (var s = 0; s <= 4; s++) hundredResult(const HundredRound(10, 54), s)], [GameResult.win, GameResult.win, GameResult.helped, GameResult.helped, GameResult.miss]);
+    });
+  });
 }
