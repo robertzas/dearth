@@ -3,6 +3,7 @@ import 'biglittle.dart';
 import 'compare.dart';
 import 'creature.dart';
 import 'dots.dart';
+import 'dressup.dart';
 import 'freeze.dart';
 import 'hear.dart';
 import 'hop.dart';
@@ -116,6 +117,17 @@ List<String> zooSpellClips(String name) => [for (final l in name.split('')) lett
 /// A finished count of bunnies: "One bunny!", "Seven bunnies!"
 String tallyBunniesClip(int n) => 'tally_$n';
 
+/// "It's snowy today! What should Buddy wear?" (or, with no forecast,
+/// "Let's pretend it's snowy! What should Buddy wear?").
+String dressDayClip(DressWeather w, {required bool pretend}) => 'dress_${pretend ? 'pretend' : 'day'}_${w.name}';
+
+/// "What should Buddy wear on top?", "And on the legs?", "What shoes?",
+/// "One more thing!"
+String dressSlotClip(DressSlot slot) => 'dress_slot_${slot.name}';
+
+/// The item's name when picked: "Boots!", "A sun hat!"
+String dressItemClip(DressItem item) => 'dress_item_${item.name}';
+
 /// "Dance like a frog!", "Hop like a bunny!"
 String freezeAnimalClip(FreezeAnimal a) => 'freeze_${a.name}';
 
@@ -159,6 +171,8 @@ abstract final class VoiceLine {
   static const freezeStop = 'freeze_stop';
   static const freezeGo = 'freeze_go';
   static const freezeDone = 'freeze_done';
+  static const seqStart = 'seq_start';
+  static const dressDone = 'dress_done';
 }
 
 const List<String> _numbers = [
@@ -349,6 +363,19 @@ Map<String, String> _lines() {
   for (final a in FreezeAnimal.values) {
     lines[freezeAnimalClip(a)] = a.line;
   }
+  lines[VoiceLine.seqStart] = 'Tap the squares to make music!';
+  for (final w in DressWeather.values) {
+    lines[dressDayClip(w, pretend: false)] = '${w.line} What should Buddy wear?';
+    lines[dressDayClip(w, pretend: true)] = "Let's pretend ${w.line.replaceFirst("It's", "it's").replaceFirst(' today', '')} What should Buddy wear?";
+  }
+  lines[dressSlotClip(DressSlot.top)] = 'What should Buddy wear on top?';
+  lines[dressSlotClip(DressSlot.legs)] = 'And on the legs?';
+  lines[dressSlotClip(DressSlot.feet)] = 'What shoes?';
+  lines[dressSlotClip(DressSlot.extra)] = 'One more thing!';
+  for (final i in DressItem.values) {
+    lines[dressItemClip(i)] = i.line;
+  }
+  lines[VoiceLine.dressDone] = 'Ready to go outside!';
   lines[VoiceLine.spellMissing] = 'Which sound is missing?';
   lines[VoiceLine.spellBuild] = "Let's build it, sound by sound!";
   for (var n = 0; n <= 10; n++) {

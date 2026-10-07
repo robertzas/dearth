@@ -25,6 +25,16 @@ class GameController {
   /// The household's other names, people's and pets', as the family says
   /// them (a nickname when there is one): Name Zoo's cards.
   List<String> get family => [for (final p in _state.ref.read(familyProvider)) if (p.id != kid.id) p.nickname ?? p.name];
+
+  /// Today's kind of day from the household's real forecast (Weather
+  /// Dress-Up), by the rules What to wear uses; null without a forecast.
+  DressWeather? get weather {
+    final ref = _state.ref;
+    final report = ref.read(weatherProvider).value;
+    if (report == null) return null;
+    final w = wearInputs(report, todayIso: ref.read(todayProvider).iso, nowMs: ref.read(householdTimeProvider).nowMs());
+    return dressWeatherFor(feelsLikeC: w.feelsLikeC, precipProb: w.precipProb, precipMm: w.precipMm, snow: w.snow, windKph: w.windKph);
+  }
   math.Random get random => _state._random;
 
   /// The level this round is at.
@@ -197,6 +207,9 @@ class GameScreenState extends ConsumerState<GameScreen> {
     final t = DTheme.of(context);
     final builder = kGameBuilders[widget.game.id];
     final left = ref.watch(toyboxTimeProvider(widget.kid.id)).minutesLeft;
+    // Keeps the forecast loaded for GameController.weather (Riverpod pauses
+    // what nothing watches); only its arrival rebuilds.
+    ref.watch(weatherProvider.select((w) => w.hasValue));
     return screenTid(
       'screen.game',
       PopScope(

@@ -438,19 +438,8 @@ class _WearCard extends ConsumerWidget {
     final t = DTheme.of(context);
     final today = ref.watch(todayProvider);
     final nowMs = ref.watch(nowMinuteMsProvider);
-    final d = report.dayFor(today.iso);
-    final hours = report.hoursFrom(nowMs, 12);
-    final dayFeels = [for (final h in hours) if (h.isDay && h.tempC != null) h.tempC!];
-    final feels = dayFeels.isEmpty ? (report.current?.feelsLikeC ?? report.current?.tempC ?? d?.lowC ?? 15) : dayFeels.reduce(math.min);
-    final items = whatToWear(
-      feelsLikeC: feels,
-      precipProb: d?.precipProb ?? 0,
-      precipMm: d?.precipMm ?? 0,
-      snow: d?.condition.isSnowy ?? false,
-      windKph: d?.windMaxKph ?? 0,
-      uvMax: d?.uvMax ?? 0,
-      sunny: d?.condition == WxCondition.clear || d?.condition == WxCondition.mostlyClear,
-    );
+    final w = wearInputs(report, todayIso: today.iso, nowMs: nowMs);
+    final items = whatToWear(feelsLikeC: w.feelsLikeC, precipProb: w.precipProb, precipMm: w.precipMm, snow: w.snow, windKph: w.windKph, uvMax: w.uvMax, sunny: w.sunny);
     return HomeCard(
       id: 'weather.wear',
       title: 'What to wear today',

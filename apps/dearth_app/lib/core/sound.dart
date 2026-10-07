@@ -41,10 +41,15 @@ enum Sfx {
   cat,
   frog,
   owl,
+  // Music Sequencer: one short call each, cut from the same recordings.
+  dogBeat,
+  catBeat,
+  frogBeat,
+  chickenBeat,
 }
 
 /// The farm's animals (recordings in assets/sounds/animals).
-const Set<Sfx> kAnimalSounds = {Sfx.cow, Sfx.pig, Sfx.sheep, Sfx.rooster, Sfx.chicken, Sfx.horse, Sfx.dog, Sfx.cat, Sfx.frog, Sfx.owl};
+const Set<Sfx> kAnimalSounds = {Sfx.cow, Sfx.pig, Sfx.sheep, Sfx.rooster, Sfx.chicken, Sfx.horse, Sfx.dog, Sfx.cat, Sfx.frog, Sfx.owl, Sfx.dogBeat, Sfx.catBeat, Sfx.frogBeat, Sfx.chickenBeat};
 
 /// The xylophone sample's pitch (C4); bars play it at `rate = 2^(semitones/12)`.
 const int kXylophoneBaseMidi = 60;

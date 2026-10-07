@@ -9,6 +9,7 @@ import 'counting.dart';
 import 'creature.dart';
 import 'differences.dart';
 import 'dots.dart';
+import 'dressup.dart';
 import 'farm.dart';
 import 'freeze.dart';
 import 'hear.dart';
@@ -25,6 +26,7 @@ import 'oddone.dart';
 import 'paint.dart';
 import 'patterns.dart';
 import 'rhymes.dart';
+import 'sequencer.dart';
 import 'shadows.dart';
 import 'shapes.dart';
 import 'sight.dart';
@@ -76,4 +78,6 @@ final Map<String, GameBuilder> kGameBuilders = {
   'tally': TallyGame.new,
   'hundred': HundredGame.new,
   'freeze': FreezeGame.new,
+  'sequencer': SequencerGame.new,
+  'dressup': DressGame.new,
 };

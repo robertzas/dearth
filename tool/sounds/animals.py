@@ -8,7 +8,8 @@ out the loudness across animals, and writes short mono MP3s to
 apps/dearth_app/assets/sounds/animals/. Run it again to rebuild them; the
 originals are cached in ~/.cache/dearth/sounds/bsb.
 
-Needs curl and ffmpeg (with libmp3lame).
+Needs curl and ffmpeg (with libmp3lame). `animals.py beats` makes only the
+Music Sequencer's short beats.
 """
 import array
 import math
@@ -35,6 +36,15 @@ SOURCES = {
     "cat": ("1472", 1, 1.2),  # "Little meow of a cat 2"
     "frog": ("0819", 2, 1.4),  # "One frog"
     "owl": ("1763", 1, 1.5),  # "Tawny owl 1"
+}
+
+# Music Sequencer's beats: one short call each, from the same recordings, so
+# a step every 0.3 s never piles calls on top of each other.
+BEATS = {
+    "dogBeat": ("2954", 1, 0.4),
+    "catBeat": ("1472", 1, 0.55),
+    "frogBeat": ("0819", 1, 0.45),
+    "chickenBeat": ("0453", 1, 0.35),
 }
 
 
@@ -112,5 +122,7 @@ def build(animal: str, sound_id: str, keep: int, longest: float) -> None:
 
 if __name__ == "__main__":
     OUT.mkdir(parents=True, exist_ok=True)
-    for name, (sid, keep, longest) in SOURCES.items():
+    # `animals.py beats` makes only the sequencer's beats.
+    todo = BEATS if sys.argv[1:] == ["beats"] else {**SOURCES, **BEATS}
+    for name, (sid, keep, longest) in todo.items():
         build(name, sid, keep, longest)

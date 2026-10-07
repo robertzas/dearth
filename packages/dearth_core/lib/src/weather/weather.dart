@@ -544,6 +544,23 @@ String wearLabel(WearItem item) => switch (item) {
       WearItem.sunscreen => 'Sunscreen',
     };
 
+/// What "what to wear" decides from (FR-WX-07): the coldest daytime
+/// temperature in the next 12 hours (else the feel right now, else the
+/// day's low), and today's rain, snow, wind, UV and sky.
+({double feelsLikeC, double precipProb, double precipMm, bool snow, double windKph, double uvMax, bool sunny}) wearInputs(WeatherReport report, {required String todayIso, required int nowMs}) {
+  final d = report.dayFor(todayIso);
+  final dayFeels = [for (final h in report.hoursFrom(nowMs, 12)) if (h.isDay && h.tempC != null) h.tempC!];
+  return (
+    feelsLikeC: dayFeels.isEmpty ? (report.current?.feelsLikeC ?? report.current?.tempC ?? d?.lowC ?? 15) : dayFeels.reduce(math.min),
+    precipProb: d?.precipProb ?? 0,
+    precipMm: d?.precipMm ?? 0,
+    snow: d?.condition.isSnowy ?? false,
+    windKph: d?.windMaxKph ?? 0,
+    uvMax: d?.uvMax ?? 0,
+    sunny: d?.condition == WxCondition.clear || d?.condition == WxCondition.mostlyClear,
+  );
+}
+
 /// Rule-based outfit for the day: dressing for the coldest daytime feel,
 /// protecting against rain/snow, wind and UV.
 List<WearItem> whatToWear({

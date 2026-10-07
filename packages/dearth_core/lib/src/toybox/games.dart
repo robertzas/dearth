@@ -69,8 +69,11 @@ const List<GameInfo> kExpansionGames = [
   GameInfo('hear', 'Hear the Sound', '👂', minMonths: 36, skills: ['Phonics', 'Listening'], levels: 4),
   GameInfo('sight', 'Sight Words', '🚏', minMonths: 48, skills: ['Early reading'], levels: 4),
   GameInfo('balance', 'Banana Balance', '🍌', minMonths: 36, skills: ['Comparing quantities', 'More and fewer'], levels: 4),
+  // Nothing to win: her own beats. Visits unlock levels.
+  GameInfo('sequencer', 'Music Sequencer', '🥁', minMonths: 48, skills: ['Patterns', 'Rhythm', 'Music'], levels: 4, freePlay: true),
   // Nothing to win: the screen can't see her freeze. Visits unlock levels.
   GameInfo('freeze', 'Freeze Dance', '🕺', minMonths: 24, skills: ['Movement', 'Self-control', 'Listening'], levels: 3, freePlay: true),
+  GameInfo('dressup', 'Weather Dress-Up', '🧥', minMonths: 30, skills: ['Reasoning', 'Weather', 'Getting dressed'], levels: 3),
   GameInfo('hundred', 'Hundred Square', '💯', minMonths: 60, skills: ['Counting past twenty', 'Place value'], levels: 4),
   GameInfo('tally', 'Tallies', '🐇', minMonths: 42, skills: ['Keeping count', 'Counting on', 'Tally marks'], levels: 3),
   GameInfo('zoo', 'Name Zoo', '🦒', minMonths: 42, skills: ['Reading names', 'Letter names', 'Spelling'], levels: 3),

@@ -80,4 +80,75 @@ void main() {
       expect(kFreezeTune.nonNulls.every((m) => const {0, 2, 4, 7, 9}.contains(m % 12)), isTrue, reason: 'C major pentatonic: nothing sounds wrong');
     });
   });
+
+  group('Music Sequencer', () {
+    test('FR-TOY-03: 4 steps × 2 animals → 8 × 2 → 8 × 3 → 8 × 4; a beat to start, the dice never leaves a row empty', () {
+      expect(gameById('sequencer')!.freePlay, isTrue);
+      expect([for (var l = 1; l <= 4; l++) (sequencerSize(l).steps, sequencerSize(l).tracks.length)], [(4, 2), (8, 2), (8, 3), (8, 4)]);
+      final starter = sequencerPattern(sequencerSize(4));
+      expect(starter.map((row) => row.where((on) => on).length), [2, 2, 1, 1], reason: 'dog on the beat, cat between, frog and chicken answering');
+      expect(starter.first, [true, false, false, false, true, false, false, false]);
+      for (var seed = 0; seed < 200; seed++) {
+        for (var l = 1; l <= 4; l++) {
+          final size = sequencerSize(l);
+          final p = sequencerPattern(size, random: Random(seed));
+          expect(p, hasLength(size.tracks.length));
+          for (final row in p) {
+            expect(row, hasLength(size.steps));
+            final lit = row.where((on) => on).length;
+            expect(lit, inInclusiveRange(1, size.steps ~/ 2), reason: 'seed $seed level $l');
+          }
+        }
+      }
+      expect({for (final t in SeqTrack.values) t.sound}, {'dogBeat', 'catBeat', 'frogBeat', 'chickenBeat'});
+    });
+  });
+
+  group('Weather Dress-Up', () {
+    test('FR-TOY-03: the kind of day follows What to wear\'s rules: wet first, then how warm it feels', () {
+      expect(dressWeatherFor(feelsLikeC: 2, precipProb: 80, snow: true), DressWeather.snow);
+      expect(dressWeatherFor(feelsLikeC: 12, precipMm: 3), DressWeather.rain);
+      expect(dressWeatherFor(feelsLikeC: 3), DressWeather.cold);
+      expect(dressWeatherFor(feelsLikeC: 14), DressWeather.cool);
+      expect(dressWeatherFor(feelsLikeC: 22), DressWeather.warm);
+      expect(dressWeatherFor(feelsLikeC: 29), DressWeather.hot);
+      expect(dressWeatherFor(feelsLikeC: 9, windKph: 40), DressWeather.cold, reason: 'wind makes it feel colder');
+    });
+
+    test('the top → the top and shoes → the whole outfit; one choice suits, the others are the wrong weather\'s', () {
+      for (var seed = 0; seed < 200; seed++) {
+        for (final w in DressWeather.values) {
+          for (var level = 1; level <= 3; level++) {
+            final r = dressRound(level, Random(seed), weather: w);
+            expect(r.weather, w);
+            expect(r.pretend, isFalse);
+            expect(r.picks.map((p) => p.slot), switch (level) { 1 => [DressSlot.top], 2 => [DressSlot.top, DressSlot.feet], _ => DressSlot.values });
+            for (final p in r.picks) {
+              expect(p.choices.where(p.suits.contains), hasLength(1), reason: 'one that suits: $w ${p.slot} ${p.choices}');
+              expect(p.choices.length, inInclusiveRange(2, 3));
+              expect(p.choices.every((i) => i.slot == p.slot), isTrue);
+            }
+          }
+        }
+      }
+      // Every kind of day dresses every part, and nothing suits both a snowy and a hot day.
+      for (final w in DressWeather.values) {
+        expect(kDressSuits[w]!.keys.toSet(), DressSlot.values.toSet());
+      }
+      for (final slot in DressSlot.values) {
+        expect(kDressSuits[DressWeather.hot]![slot]!.intersection(kDressSuits[DressWeather.snow]![slot]!), isEmpty, reason: '$slot');
+      }
+    });
+
+    test('without a forecast it pretends, a different day each time', () {
+      final rng = Random(4);
+      DressRound? last;
+      for (var i = 0; i < 30; i++) {
+        final r = dressRound(2, rng, last: last);
+        expect(r.pretend, isTrue);
+        if (last != null) expect(r.weather, isNot(last.weather));
+        last = r;
+      }
+    });
+  });
 }
