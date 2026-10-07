@@ -88,7 +88,8 @@ back.
   Hear the Sound (a parrot says a sound; she finds the letter, up to sh, ch and th),
   Sight Words (she finds the word on a street sign and the bus stops there),
   Banana Balance (the side of the see-saw with more bananas goes down)
-  Hundred Square (a ladybug flies to the number she finds and its row of ten lights; at the top,
+  Freeze Dance (a buddy dances to the app's own music and freezes in ice when it stops;
+  then animal dances), Hundred Square (a ladybug flies to the number she finds and its row of ten lights; at the top,
   hidden numbers to place), Tallies (a chalk mark for each bunny that hops up, the fifth crossing the four, then
   counting on from five and reading a tally), Name Zoo (the animal at the gate needs a name card; the voice spells her own
   name, then the family's, and she finds or builds it) and Who Has More? (buses with numbers; she picks the one with more kids, or fewer, or lines

@@ -62,4 +62,22 @@ void main() {
       expect(creatureClip(c), 'creature_gigglezoo');
     });
   });
+
+  group('Freeze Dance', () {
+    test('FR-TOY-03: long dances and steady freezes → uneven ones → a different animal each dance', () {
+      expect(gameById('freeze')!.freePlay, isTrue, reason: 'the screen can\'t see her freeze: nothing to score');
+      for (var seed = 0; seed < 200; seed++) {
+        final rng = Random(seed);
+        final one = freezeSong(1, rng), two = freezeSong(2, rng), three = freezeSong(3, rng);
+        expect(one, hasLength(4));
+        expect(one.every((t) => t.danceMs >= 8000 && t.danceMs <= 10000 && t.freezeMs == 3000 && t.animal == null), isTrue);
+        expect(two, hasLength(5));
+        expect(two.every((t) => t.danceMs >= 4000 && t.danceMs <= 9000 && t.freezeMs >= 1500 && t.freezeMs <= 5000), isTrue);
+        expect(three.map((t) => t.animal).toSet(), hasLength(5), reason: 'a different animal each dance');
+        expect(three.every((t) => t.animal != null), isTrue);
+      }
+      expect(kFreezeTune, hasLength(16));
+      expect(kFreezeTune.nonNulls.every((m) => const {0, 2, 4, 7, 9}.contains(m % 12)), isTrue, reason: 'C major pentatonic: nothing sounds wrong');
+    });
+  });
 }

@@ -3,6 +3,7 @@ import 'biglittle.dart';
 import 'compare.dart';
 import 'creature.dart';
 import 'dots.dart';
+import 'freeze.dart';
 import 'hear.dart';
 import 'hop.dart';
 import 'sight.dart';
@@ -115,6 +116,9 @@ List<String> zooSpellClips(String name) => [for (final l in name.split('')) lett
 /// A finished count of bunnies: "One bunny!", "Seven bunnies!"
 String tallyBunniesClip(int n) => 'tally_$n';
 
+/// "Dance like a frog!", "Hop like a bunny!"
+String freezeAnimalClip(FreezeAnimal a) => 'freeze_${a.name}';
+
 /// "Three."
 String numberClip(int n) => 'num_$n';
 
@@ -151,6 +155,10 @@ abstract final class VoiceLine {
   static const tallyTap = 'tally_tap';
   static const tallyAsk = 'tally_ask';
   static const hundredHiding = 'hundred_hiding';
+  static const freezeStart = 'freeze_start';
+  static const freezeStop = 'freeze_stop';
+  static const freezeGo = 'freeze_go';
+  static const freezeDone = 'freeze_done';
 }
 
 const List<String> _numbers = [
@@ -333,6 +341,13 @@ Map<String, String> _lines() {
   lines[VoiceLine.tallyAsk] = 'How many marks?';
   for (var n = 1; n <= kTallyMax; n++) {
     lines[tallyBunniesClip(n)] = '${_cap(_numbers[n])} bunn${n == 1 ? 'y' : 'ies'}!';
+  }
+  lines[VoiceLine.freezeStart] = "Let's dance! When the music stops, freeze!";
+  lines[VoiceLine.freezeStop] = 'Freeze!';
+  lines[VoiceLine.freezeGo] = 'Dance!';
+  lines[VoiceLine.freezeDone] = 'Great dancing!';
+  for (final a in FreezeAnimal.values) {
+    lines[freezeAnimalClip(a)] = a.line;
   }
   lines[VoiceLine.spellMissing] = 'Which sound is missing?';
   lines[VoiceLine.spellBuild] = "Let's build it, sound by sound!";

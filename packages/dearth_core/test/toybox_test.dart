@@ -265,6 +265,7 @@ void main() {
         ...kExpansionPictures,
         for (final p in kDotPictures) p.emoji,
         ...kZooAnimals,
+        for (final a in FreezeAnimal.values) a.emoji,
       ];
       expect([for (final p in pictures) if (!draws(p)) p], isEmpty);
     });

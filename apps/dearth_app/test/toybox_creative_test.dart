@@ -1,5 +1,6 @@
 import 'package:dearth_app/core/sound.dart';
 import 'package:dearth_app/features/toybox/games/creature.dart';
+import 'package:dearth_app/features/toybox/games/freeze.dart';
 import 'package:dearth_core/dearth_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -12,7 +13,7 @@ import 'support/toybox_harness.dart';
 void main() {
   for (final size in const [Size(390, 844), Size(844, 390), Size(1080, 1920), Size(1920, 1080)]) {
     testWidgets('every make-and-move game lays out on a ${size.width.toInt()}×${size.height.toInt()} screen at its busiest level', (tester) async {
-      await expectGamesLayOut(tester, const [('creature', 1), ('creature', 3)], size: size);
+      await expectGamesLayOut(tester, const [('creature', 1), ('creature', 3), ('freeze', 1), ('freeze', 3)], size: size);
     });
   }
 
@@ -100,6 +101,61 @@ void main() {
         }
         expect(labelOf(tester, 'creature.me'), describe(c, CreaturePart.values));
       }
+      await h.shutdown();
+      handle.dispose();
+    });
+  });
+
+  group('Freeze Dance', () {
+    FreezeGameState game(WidgetTester tester) => tester.state<FreezeGameState>(find.byType(FreezeGame));
+
+    testWidgets('FR-TOY-03: music while it dances; "Freeze!" and silence; "Dance!" and on; "Great dancing!" at the end', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'freeze', sound: sound, level: 1);
+      final song = game(tester).debugSong;
+      expectNoFallbackText(byId('screen.game'));
+      expect(labelOf(tester, 'freeze.state'), 'Ready to dance');
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(sound.said, [VoiceLine.freezeStart]);
+      await tester.pump(afterVoice(VoiceLine.freezeStart) + const Duration(seconds: 2));
+      expect(labelOf(tester, 'freeze.state'), 'Dancing');
+      expect(sound.played.map((p) => p.$1), containsAll([Sfx.xylophone, Sfx.kick, Sfx.hat]), reason: 'the tune and the drums');
+      // To the freeze: the voice says so, and the music stops dead.
+      for (var i = 0; i < 120 && !game(tester).debugFrozen; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(sound.said.last, VoiceLine.freezeStop);
+      expect(labelOf(tester, 'freeze.state'), 'Frozen');
+      final heard = sound.played.length;
+      await tester.pump(const Duration(milliseconds: 2500));
+      expect(sound.played.length, heard, reason: 'silence while frozen');
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(sound.said.last, VoiceLine.freezeGo);
+      expect(game(tester).debugDancing, isTrue);
+      // The rest of the song.
+      final rest = song.skip(1).fold<int>(0, (ms, t) => ms + t.danceMs + t.freezeMs);
+      await tester.pump(Duration(milliseconds: rest));
+      expect(sound.said.last, VoiceLine.freezeDone);
+      expect(labelOf(tester, 'freeze.state'), 'Great dancing!');
+      await h.settle();
+      expect(await toyboxRounds(h), [('freeze', 1, 'win')]);
+      await tester.pump(const Duration(seconds: 6));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('the top level: each dance is an animal\'s, named by the voice', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'freeze', sound: sound, level: 3);
+      final first = game(tester).debugSong.first.animal!;
+      await tester.pump(const Duration(milliseconds: 700) + afterVoice(VoiceLine.freezeStart) + const Duration(milliseconds: 300));
+      expect(sound.said.last, freezeAnimalClip(first));
+      expect(labelOf(tester, 'freeze.state'), 'Dancing like a ${first.name}');
+      await tester.tap(byId('freeze.buddy'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(sound.played.where((p) => p.$1 == Sfx.sparkle), hasLength(1), reason: 'a tap makes it twirl');
       await h.shutdown();
       handle.dispose();
     });

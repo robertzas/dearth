@@ -35,4 +35,11 @@ test.describe('Toybox make-and-move games', () => {
     await expectText(tid(page, 'creature.me'), 'dancing');
     await expect.poll(() => label(page, 'creature.me'), { timeout: 15_000 }).not.toContain('dancing');
   });
+
+  test('FR-TOY-03: Freeze Dance — the buddy dances, freezes when the music stops, and dances again', async ({ page }) => {
+    await openToyboxGame(page, 'freeze');
+    await expectText(tid(page, 'freeze.state'), /^Dancing/);
+    await expectText(tid(page, 'freeze.state'), 'Frozen', 25_000);
+    await expectText(tid(page, 'freeze.state'), /^Dancing/, 15_000);
+  });
 });

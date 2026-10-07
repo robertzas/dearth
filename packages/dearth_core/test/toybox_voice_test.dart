@@ -221,6 +221,8 @@ void main() {
         for (var n = 0; n <= 10; n++) countClip(n),
         for (var n = 1; n <= 100; n++) findNumberClip(n),
         VoiceLine.hundredHiding,
+        VoiceLine.freezeStart, VoiceLine.freezeStop, VoiceLine.freezeGo, VoiceLine.freezeDone,
+        for (final a in FreezeAnimal.values) freezeAnimalClip(a),
         VoiceLine.traceName, VoiceLine.traceNameDone, VoiceLine.breatheStart, VoiceLine.breatheIn, VoiceLine.breatheOut, VoiceLine.breatheDone,
         VoiceLine.makeCreature, VoiceLine.dotsNumbers, VoiceLine.dotsLetters,
         for (final p in kDotPictures) dotsDoneClip(p),

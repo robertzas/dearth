@@ -10,6 +10,7 @@ import 'creature.dart';
 import 'differences.dart';
 import 'dots.dart';
 import 'farm.dart';
+import 'freeze.dart';
 import 'hear.dart';
 import 'hop.dart';
 import 'hundred.dart';
@@ -74,4 +75,5 @@ final Map<String, GameBuilder> kGameBuilders = {
   'zoo': ZooGame.new,
   'tally': TallyGame.new,
   'hundred': HundredGame.new,
+  'freeze': FreezeGame.new,
 };

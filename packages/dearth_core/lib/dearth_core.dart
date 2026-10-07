@@ -37,6 +37,7 @@ export 'src/toybox/compare.dart';
 export 'src/toybox/creature.dart';
 export 'src/toybox/dots.dart';
 export 'src/toybox/expansion.dart';
+export 'src/toybox/freeze.dart';
 export 'src/toybox/games.dart';
 export 'src/toybox/hear.dart';
 export 'src/toybox/hop.dart';
