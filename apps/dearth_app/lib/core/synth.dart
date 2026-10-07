@@ -239,8 +239,9 @@ Float32List honkSound() {
             x += math.sin(2 * math.pi * hz * k * t) / (k * k);
           }
         }
-        // 8 ms in and out: a toot, not a click.
-        return x * math.min(1.0, math.min(t, seconds - t) / 0.008);
+        // 8 ms in, a 40 ms curved release: a toot that ends without a click.
+        final release = math.min(1.0, (seconds - t) / 0.04);
+        return x * math.min(1.0, t / 0.008) * release * release;
       });
   return mix([(0, beep(0.12)), (0.18, beep(0.2))], peak: 0.5);
 }
