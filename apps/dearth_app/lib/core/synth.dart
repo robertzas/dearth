@@ -229,6 +229,22 @@ Float32List cheerSound() => mix([
 /// One counted flower: a short mallet note (the game raises its pitch).
 Float32List blipSound() => normalize(strike(midiToHz(72), seconds: 0.3, partials: kMalletPartials, attack: 0.002), peak: 0.55);
 
+/// A bus horn, friendly: "beep-beep", two notes a third apart sounding
+/// together (a car horn's chord), mellow harmonics, soft edges.
+Float32List honkSound() {
+  Float32List beep(double seconds) => _render(seconds, (t, _) {
+        var x = 0.0;
+        for (final hz in const [392.0, 494.0]) {
+          for (var k = 1; k <= 5; k++) {
+            x += math.sin(2 * math.pi * hz * k * t) / (k * k);
+          }
+        }
+        // 8 ms in and out: a toot, not a click.
+        return x * math.min(1.0, math.min(t, seconds - t) / 0.008);
+      });
+  return mix([(0, beep(0.12)), (0.18, beep(0.2))], peak: 0.5);
+}
+
 /// Drums for the music toy: kick, snare, hi-hat, tom.
 Float32List kickDrum() => normalize(_sweep(150, 42, 0.32, decay: 0.12, attack: 0.002), peak: 0.85);
 Float32List snareDrum() => mix([(0, _hiss(0.2, cutoff: 1200, decay: 0.07, seed: 5)), (0, _sweep(210, 170, 0.12, decay: 0.05))], peak: 0.7);

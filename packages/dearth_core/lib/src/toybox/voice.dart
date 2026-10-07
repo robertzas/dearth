@@ -1,5 +1,6 @@
 import 'balance.dart';
 import 'biglittle.dart';
+import 'compare.dart';
 import 'creature.dart';
 import 'dots.dart';
 import 'hear.dart';
@@ -88,6 +89,14 @@ String sightWordClip(String word) => 'sight_${sightSlug(word)}';
 
 /// "Five is more than three."
 String balanceMoreClip(int more, int fewer) => 'balance_${more}_$fewer';
+
+/// "Which bus has more kids?", "Which bus has fewer kids?", "Line up the
+/// buses. Fewest kids first!"
+String compareAskClip(CompareAsk ask) => 'compare_ask_${ask.name}';
+
+/// Said after the bus's number: "That bus has more kids!", "That bus has
+/// fewer kids!", "All lined up, from fewest to most!"
+String compareYesClip(CompareAsk ask) => 'compare_yes_${ask.name}';
 
 /// "Three."
 String numberClip(int n) => 'num_$n';
@@ -274,6 +283,12 @@ Map<String, String> _lines() {
   for (final (more, fewer) in kBalancePairs) {
     lines[balanceMoreClip(more, fewer)] = '${_cap(_numbers[more])} is more than ${_numbers[fewer]}.';
   }
+  lines[compareAskClip(CompareAsk.more)] = 'Which bus has more kids?';
+  lines[compareAskClip(CompareAsk.fewer)] = 'Which bus has fewer kids?';
+  lines[compareAskClip(CompareAsk.order)] = 'Line up the buses. Fewest kids first!';
+  lines[compareYesClip(CompareAsk.more)] = 'That bus has more kids!';
+  lines[compareYesClip(CompareAsk.fewer)] = 'That bus has fewer kids!';
+  lines[compareYesClip(CompareAsk.order)] = 'All lined up, from fewest to most!';
   lines[VoiceLine.spellMissing] = 'Which sound is missing?';
   lines[VoiceLine.spellBuild] = "Let's build it, sound by sound!";
   for (var n = 0; n <= 10; n++) {

@@ -241,6 +241,7 @@ void main() {
         for (final w in kSightWords) ...[sightAskClip(w), sightWordClip(w)],
         VoiceLine.balanceAsk,
         for (final (more, fewer) in kBalancePairs) balanceMoreClip(more, fewer),
+        for (final a in CompareAsk.values) ...[compareAskClip(a), compareYesClip(a)],
       ];
       expect(asked.where((a) => !ids.contains(a)), isEmpty);
       expect(ids.difference(asked.toSet()), isEmpty, reason: 'no line nothing says');

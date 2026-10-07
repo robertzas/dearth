@@ -111,4 +111,25 @@ test.describe('Toybox number and letter games', () => {
     await expectText(tid(page, 'balance.ask'), `${Math.max(left, right)} is more than ${Math.min(left, right)}`);
     await expectCheered(page);
   });
+
+  test('FR-TOY-03: Who Has More? — buses pull in with their numbers and she picks the one the voice asks for', async ({ page }) => {
+    await openToyboxGame(page, 'compare', true);
+    // The question comes once every bus has stopped and said its number.
+    await expectText(tid(page, 'compare.ask'), /Which bus has (more|fewer) kids\?|Line up the buses/);
+    const ask = await textOf(tid(page, 'compare.ask'));
+    const buses = await idsUnder(page, 'compare.bus.');
+    const numbers: number[] = [];
+    for (const id of buses) numbers.push(Number((await textOf(tid(page, id))).match(/Bus (\d+)/)![1]));
+    if (ask.includes('Line up')) {
+      // Fewest first, then the next, then the most.
+      for (const n of [...numbers].sort((a, b) => a - b)) await tap(tid(page, buses[numbers.indexOf(n)]));
+      await expectText(tid(page, 'compare.ask'), `In order: ${[...numbers].sort((a, b) => a - b).join(', ')}`);
+    } else {
+      const want = ask.includes('fewer') ? Math.min(...numbers) : Math.max(...numbers);
+      await tap(tid(page, buses[numbers.indexOf(want)]));
+      // Lasting labels: they stay until the buses drive off.
+      await expectText(tid(page, 'compare.ask'), `${want} has ${ask.includes('fewer') ? 'fewer' : 'more'}`);
+    }
+    await expectCheered(page);
+  });
 });

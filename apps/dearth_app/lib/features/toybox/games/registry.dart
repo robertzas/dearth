@@ -4,6 +4,7 @@ import 'biglittle.dart';
 import 'breathe.dart';
 import 'bubbles.dart';
 import 'coloring.dart';
+import 'compare.dart';
 import 'counting.dart';
 import 'creature.dart';
 import 'differences.dart';
@@ -66,4 +67,5 @@ final Map<String, GameBuilder> kGameBuilders = {
   'hear': HearGame.new,
   'sight': SightGame.new,
   'balance': BalanceGame.new,
+  'compare': CompareGame.new,
 };

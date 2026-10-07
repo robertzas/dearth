@@ -32,6 +32,7 @@ export 'src/time/household_time.dart';
 export 'src/time/local_date.dart';
 export 'src/toybox/balance.dart';
 export 'src/toybox/biglittle.dart';
+export 'src/toybox/compare.dart';
 export 'src/toybox/creature.dart';
 export 'src/toybox/dots.dart';
 export 'src/toybox/expansion.dart';

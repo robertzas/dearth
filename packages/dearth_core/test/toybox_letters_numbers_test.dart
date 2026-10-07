@@ -408,4 +408,49 @@ void main() {
       expect([for (var s = 0; s <= 2; s++) balanceResult(s)], [GameResult.win, GameResult.helped, GameResult.miss]);
     });
   });
+
+  group('Who Has More?', () {
+    test('FR-TOY-03: 0–9 → 0–20 with a teen → more or fewer, mixed → three buses to line up', () {
+      final asks = <CompareAsk>{};
+      for (var seed = 0; seed < 200; seed++) {
+        final rng = Random(seed);
+        for (var level = 1; level <= gameById('compare')!.levels; level++) {
+          final r = compareRound(level, rng);
+          final why = 'seed $seed, level $level: ${r.buses}';
+          expect(r.buses, hasLength(level == 4 ? 3 : 2), reason: why);
+          expect(r.buses.toSet(), hasLength(r.buses.length), reason: 'never two the same ($why)');
+          expect(r.buses.every((n) => n >= 0 && n <= (level == 1 ? 9 : kCompareMax)), isTrue, reason: why);
+          expect(r.lineUp, [...r.buses]..sort(), reason: why);
+          if (level == 1) expect(r.lineUp.last - r.lineUp.first, greaterThanOrEqualTo(2), reason: 'neighbors are hard at 3½ ($why)');
+          if (level >= 2) expect(r.lineUp.last, greaterThanOrEqualTo(10), reason: 'a teen on the bus ($why)');
+          expect(r.ask, switch (level) { 1 || 2 => CompareAsk.more, 4 => CompareAsk.order, _ => isIn([CompareAsk.more, CompareAsk.fewer]) }, reason: why);
+          if (level == 3) asks.add(r.ask);
+          if (r.ask == CompareAsk.more) expect(r.buses[r.answer], r.lineUp.last, reason: why);
+          if (r.ask == CompareAsk.fewer) expect(r.buses[r.answer], r.lineUp.first, reason: why);
+        }
+      }
+      expect(asks, {CompareAsk.more, CompareAsk.fewer}, reason: 'level 3 mixes the two questions');
+    });
+
+    test('the answer stands left or right by chance; never the same buses twice running', () {
+      var first = 0;
+      for (var seed = 0; seed < 300; seed++) {
+        final rng = Random(seed);
+        CompareRound? last;
+        for (var i = 0; i < 4; i++) {
+          final r = compareRound(2, rng, last: last);
+          if (last != null) expect(r.lineUp, isNot(last.lineUp));
+          last = r;
+          if (r.answer == 0) first++;
+        }
+      }
+      expect(first, inInclusiveRange(480, 720), reason: 'about half of 1200');
+    });
+
+    test('slips: two buses are counting rounds; lining up three allows one slip', () {
+      const two = CompareRound(CompareAsk.more, [3, 7]), three = CompareRound(CompareAsk.order, [3, 7, 12]);
+      expect([for (var s = 0; s <= 2; s++) compareResult(two, s)], [GameResult.win, GameResult.helped, GameResult.miss]);
+      expect([for (var s = 0; s <= 4; s++) compareResult(three, s)], [GameResult.win, GameResult.win, GameResult.helped, GameResult.helped, GameResult.miss]);
+    });
+  });
 }

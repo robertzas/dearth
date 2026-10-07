@@ -69,6 +69,7 @@ const List<GameInfo> kExpansionGames = [
   GameInfo('hear', 'Hear the Sound', '👂', minMonths: 36, skills: ['Phonics', 'Listening'], levels: 4),
   GameInfo('sight', 'Sight Words', '🚏', minMonths: 48, skills: ['Early reading'], levels: 4),
   GameInfo('balance', 'Banana Balance', '🍌', minMonths: 36, skills: ['Comparing quantities', 'More and fewer'], levels: 4),
+  GameInfo('compare', 'Who Has More?', '🚌', minMonths: 42, skills: ['Comparing numbers', 'More and fewer', 'Number order'], levels: 4),
 ];
 
 GameInfo? gameById(String id) => kGames.where((g) => g.id == id).firstOrNull;

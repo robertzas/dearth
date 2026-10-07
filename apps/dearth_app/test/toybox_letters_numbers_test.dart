@@ -1,6 +1,7 @@
 import 'package:dearth_app/core/sound.dart';
 import 'package:dearth_app/features/toybox/games/balance.dart';
 import 'package:dearth_app/features/toybox/games/biglittle.dart';
+import 'package:dearth_app/features/toybox/games/compare.dart';
 import 'package:dearth_app/features/toybox/games/dots.dart';
 import 'package:dearth_app/features/toybox/games/dots_pictures.dart';
 import 'package:dearth_app/features/toybox/games/hear.dart';
@@ -20,7 +21,7 @@ import 'support/toybox_harness.dart';
 void main() {
   for (final size in const [Size(390, 844), Size(844, 390), Size(1080, 1920), Size(1920, 1080)]) {
     testWidgets('every number and letter game lays out on a ${size.width.toInt()}×${size.height.toInt()} screen at its busiest level', (tester) async {
-      await expectGamesLayOut(tester, const [('dots', 1), ('dots', 4), ('dots', 6), ('biglittle', 1), ('biglittle', 2), ('biglittle', 3), ('hop', 1), ('hop', 2), ('hop', 4), ('spell', 1), ('spell', 3), ('spell', 4), ('hear', 1), ('hear', 3), ('hear', 4), ('sight', 1), ('sight', 3), ('sight', 4), ('balance', 2), ('balance', 3), ('balance', 4)], size: size);
+      await expectGamesLayOut(tester, const [('dots', 1), ('dots', 4), ('dots', 6), ('biglittle', 1), ('biglittle', 2), ('biglittle', 3), ('hop', 1), ('hop', 2), ('hop', 4), ('spell', 1), ('spell', 3), ('spell', 4), ('hear', 1), ('hear', 3), ('hear', 4), ('sight', 1), ('sight', 3), ('sight', 4), ('balance', 2), ('balance', 3), ('balance', 4), ('compare', 1), ('compare', 3), ('compare', 4)], size: size);
     });
   }
 
@@ -818,6 +819,127 @@ void main() {
       await h.settle();
       expect(await toyboxRounds(h), [('balance', 3, 'win')]);
       await tester.pump(const Duration(seconds: 4));
+      await h.shutdown();
+    });
+  });
+
+  group('Who Has More?', () {
+    CompareGameState game(WidgetTester tester) => tester.state<CompareGameState>(find.byType(CompareGame));
+    String bus(int i) => 'compare.bus.$i';
+
+    /// Lets the buses pull in, one number each, until the question is asked.
+    Future<void> untilAsked(WidgetTester tester) async {
+      for (var i = 0; i < 120 && !game(tester).debugAsked; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(game(tester).debugAsked, isTrue);
+      await tester.pump(const Duration(milliseconds: 900)); // the last bus has parked
+    }
+
+    testWidgets('FR-TOY-03: each bus says its number as it stops; the bus with more honks, fills with kids and the voice says so', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'compare', sound: sound, level: 1);
+      final r = game(tester).debugRound;
+      expectNoFallbackText(byId('screen.game'));
+      expect(labelOf(tester, 'compare.ask'), 'Here come the buses');
+      await untilAsked(tester);
+      expect(sound.said, [numberClip(r.buses[0]), numberClip(r.buses[1]), compareAskClip(CompareAsk.more)]);
+      expect(sound.played.where((p) => p.$1 == Sfx.honk), hasLength(2), reason: 'a toot as each bus pulls in');
+      expect(labelOf(tester, 'compare.ask'), 'Which bus has more kids?');
+      expect(labelOf(tester, bus(0)), 'Bus ${r.buses[0]}');
+      expect(game(tester).debugKidsShown, isFalse, reason: 'the numbers first; the kids are the answer');
+      final n = r.buses[r.answer];
+      await tester.tap(byId(bus(r.answer)));
+      await tester.pump();
+      expect(sound.said.last, numberClip(n));
+      expect(labelOf(tester, 'compare.ask'), '$n has more');
+      expect(labelOf(tester, bus(r.answer)), 'Bus $n, $n kid${n == 1 ? '' : 's'}');
+      await tester.pump(const Duration(seconds: 2));
+      expect(sound.said.last, compareYesClip(CompareAsk.more));
+      await h.settle();
+      expect(await toyboxRounds(h), [('compare', 1, 'win')]);
+      await tester.pump(const Duration(seconds: 6));
+      expect(game(tester).debugRound, isNot(same(r)), reason: 'the buses drive off and new ones come');
+      await tester.pump(const Duration(seconds: 8));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('a wrong bus wiggles and says its number, the kids show and the right bus glows; the round is helped', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'compare', sound: sound, level: 3);
+      final r = game(tester).debugRound;
+      await untilAsked(tester);
+      expect(sound.said.last, compareAskClip(r.ask));
+      final wrong = 1 - r.answer;
+      await tester.tap(byId(bus(wrong)));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(sound.said.last, numberClip(r.buses[wrong]));
+      expect(sound.played.where((p) => p.$1 == Sfx.nope), hasLength(1));
+      expect(game(tester).debugKidsShown, isTrue, reason: 'now she can see who has more');
+      expect(labelOf(tester, 'compare.ask'), r.ask == CompareAsk.more ? 'Which bus has more kids?' : 'Which bus has fewer kids?');
+      await tester.tap(byId(bus(r.answer)));
+      await tester.pump(const Duration(seconds: 2));
+      expect(labelOf(tester, 'compare.ask'), '${r.buses[r.answer]} has ${r.ask == CompareAsk.more ? 'more' : 'fewer'}');
+      expect(sound.said.last, compareYesClip(r.ask));
+      await h.settle();
+      expect(await toyboxRounds(h), [('compare', 3, 'helped')]);
+      await tester.pump(const Duration(seconds: 8));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('three buses line up at the stop, fewest first; a bus already in line only says its number', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'compare', sound: sound, level: 4);
+      final r = game(tester).debugRound;
+      expect(r.ask, CompareAsk.order);
+      await untilAsked(tester);
+      expect(sound.said.last, compareAskClip(CompareAsk.order));
+      final first = r.buses.indexOf(r.lineUp.first);
+      await tester.tap(byId(bus(first)));
+      await tester.pump(const Duration(seconds: 1));
+      expect(game(tester).debugLined, [first]);
+      expect(labelOf(tester, bus(first)), contains('in line'));
+      await tester.tap(byId(bus(first)));
+      await tester.pump(const Duration(seconds: 1));
+      expect(sound.played.where((p) => p.$1 == Sfx.nope), isEmpty, reason: 'not a slip');
+      for (final n in r.lineUp.skip(1)) {
+        await tester.tap(byId(bus(r.buses.indexOf(n))));
+        await tester.pump(const Duration(seconds: 1));
+      }
+      expect(game(tester).debugLined, [for (final n in r.lineUp) r.buses.indexOf(n)]);
+      expect(labelOf(tester, 'compare.ask'), 'In order: ${r.lineUp.join(', ')}');
+      await tester.pump(const Duration(seconds: 1));
+      expect(sound.said.last, compareYesClip(CompareAsk.order));
+      await h.settle();
+      expect(await toyboxRounds(h), [('compare', 4, 'win')]);
+      await tester.pump(const Duration(seconds: 8));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('a tap before the question says the number and counts for nothing; a long pause asks again and shows the kids', (tester) async {
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'compare', sound: sound, level: 2);
+      final r = game(tester).debugRound;
+      await tester.pump(const Duration(milliseconds: 1500)); // the first bus has stopped
+      await tester.tap(byId(bus(0)));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(sound.said.last, numberClip(r.buses[0]));
+      await untilAsked(tester);
+      expect(game(tester).debugKidsShown, isFalse);
+      await tester.pump(const Duration(seconds: 12));
+      expect(game(tester).debugKidsShown, isTrue);
+      expect(sound.said.where((c) => c == compareAskClip(CompareAsk.more)), hasLength(2));
+      await tester.tap(byId(bus(r.answer)));
+      await tester.pump(const Duration(seconds: 2));
+      await h.settle();
+      expect(await toyboxRounds(h), [('compare', 2, 'win')]);
+      await tester.pump(const Duration(seconds: 8));
       await h.shutdown();
     });
   });

@@ -10,6 +10,7 @@ import '../../app/grown_up.dart';
 import '../../app/router.dart';
 import '../../core/data/household.dart';
 import 'game_host.dart';
+import 'games/compare.dart';
 import 'games/creature.dart';
 import 'games/dots_pictures.dart';
 import 'games/registry.dart';
@@ -51,6 +52,7 @@ const Map<String, Color> kGameHues = {
   'hear': Color(0xFFEE7B30),
   'sight': Color(0xFFDE4B33),
   'balance': Color(0xFFFFD23F),
+  'compare': Color(0xFF2FA67A),
 };
 
 /// The Toybox (SPEC §10.8, FR-TOY-01): big picture tiles of the games that
@@ -251,7 +253,8 @@ class _Tile extends ConsumerWidget {
 /// A game's picture: its emoji, or for Bubble Pop painted bubbles (the
 /// bubble emoji is newer than Android 10, so the kitchen frame can't draw it),
 /// for Build-a-Creature one of its creatures, and for Dot-to-Dot a star half
-/// joined (a plain star reads as a reward, not a game).
+/// joined (a plain star reads as a reward, not a game), and for Who Has
+/// More? one of its buses.
 class GameIcon extends StatelessWidget {
   const GameIcon(this.game, {super.key, required this.size});
   final GameInfo game;
@@ -263,6 +266,7 @@ class GameIcon extends StatelessWidget {
   Widget build(BuildContext context) => switch (game.id) {
         'bubbles' => SizedBox.square(dimension: size, child: const RepaintBoundary(child: CustomPaint(painter: _BubblesIcon()))),
         'creature' => SizedBox.square(dimension: size, child: RepaintBoundary(child: CustomPaint(painter: CreaturePainter(_creature)))),
+        'compare' => CompareIcon(size: size),
         'dots' => SizedBox.square(dimension: size, child: RepaintBoundary(child: CustomPaint(painter: _DotsIcon(DTheme.of(context).text.kidTitle)))),
         _ => DEmoji(game.emoji, size: size),
       };
