@@ -19,14 +19,16 @@ void main() {
     await h.settle();
   }
 
-  testWidgets('FR-TOY-01: Ava’s Toybox has the games for her age, “new!” until she opens one', (tester) async {
+  testWidgets('FR-TOY-01: Ava’s Toybox has every game, hers first, “new!” until she opens one', (tester) async {
     final handle = tester.ensureSemantics();
     final h = await AppHarness.demo(tester);
     await toybox(h);
     for (final g in kGames.where((g) => g.minMonths <= 30)) {
       expect(byId('toybox.game.${g.id}'), findsOneWidget, reason: g.id);
     }
-    expect(byId('toybox.game.counting'), findsNothing, reason: 'counting is for 3+');
+    final shown = [for (final g in h.container.read(kidGamesProvider('p-ava'))) g.id];
+    expect(shown, hasLength(kGames.length), reason: 'every game is on by default');
+    expect(shown.indexOf('counting'), greaterThan(shown.indexOf('memory')), reason: 'counting is for 3+, so it comes after hers');
     expect(byId('toybox.new.bubbles'), findsOneWidget);
 
     await tester.tap(byId('toybox.game.bubbles'));

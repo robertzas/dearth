@@ -13,12 +13,11 @@ import 'package:material_ui/material_ui.dart';
 import 'app_harness.dart';
 
 /// Opens [game] from Ava's Toybox on the demo household (she is 2½), at a
-/// pinned [level] when given. Games for older kids are opened early for her.
+/// pinned [level] when given (every game is on by default).
 /// Fails unless the game opened.
 Future<AppHarness> openToyboxGame(WidgetTester tester, String game, {RecordingSound? sound, int? level, Size size = const Size(1920, 1080)}) async {
   final h = await AppHarness.demo(tester, sound: sound ?? RecordingSound(), size: size);
-  final info = gameById(game)!;
-  final settings = ToyboxSettings(pins: {'p-ava.$game': ?level}, early: {if (info.minMonths > 30) 'p-ava.$game'});
+  final settings = ToyboxSettings(pins: {'p-ava.$game': ?level});
   await h.write((w) => [settingOp(w, SettingKeys.toybox, settings.toJson())]);
   h.container.read(routerProvider).go('/toybox');
   await h.settle();
@@ -47,7 +46,7 @@ Future<void> expectGamesLayOut(WidgetTester tester, List<(String, int)> games, {
   final ava = (await tester.runAsync(() => (h.db.select(h.db.profiles)..where((p) => p.id.equals('p-ava'))).getSingle()))!;
   for (final (game, level) in games) {
     final info = gameById(game)!;
-    await h.write((w) => [settingOp(w, SettingKeys.toybox, ToyboxSettings(pins: {'p-ava.$game': level}, early: {'p-ava.$game'}).toJson())]);
+    await h.write((w) => [settingOp(w, SettingKeys.toybox, ToyboxSettings(pins: {'p-ava.$game': level}).toJson())]);
     final navigator = Navigator.of(tester.element(find.byType(ToyboxScreen)), rootNavigator: true);
     unawaited(navigator.push<void>(PageRouteBuilder<void>(pageBuilder: (_, _, _) => GameScreen(game: info, kid: ava))));
     await h.settle(5);

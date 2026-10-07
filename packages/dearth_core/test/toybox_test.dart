@@ -50,20 +50,16 @@ void main() {
       expect(ageInMonths(today: today), 30);
     });
 
-    test('games appear as a kid grows; grown-ups can switch any off', () {
-      expect(gamesFor(24).map((g) => g.id), isNot(contains('memory')));
-      expect(gamesFor(30).map((g) => g.id), containsAll(['memory', 'monster']));
-      expect(gamesFor(30).map((g) => g.id), isNot(contains('counting')));
-      expect(gamesFor(48).map((g) => g.id), isNot(contains('spell')), reason: 'Word Builder waits until 4½');
-      expect(gamesFor(60).length, kGames.length);
+    test('FR-TOY-01: every game is on by default, the ones that suit her age first; grown-ups can switch any off', () {
+      for (final months in [24, 30, 48, 60]) {
+        final ids = gamesFor(months).map((g) => g.id).toList();
+        expect(ids.toSet(), {for (final g in kGames) g.id}, reason: 'all of them at $months months');
+        final suits = [for (final g in kGames) if (g.minMonths <= months) g.id];
+        expect(ids.take(suits.length), suits, reason: 'her own first, in launcher order');
+      }
+      expect(gamesFor(30).indexOf(gameById('memory')!), lessThan(gamesFor(30).indexOf(gameById('spell')!)));
       expect(gamesFor(48, off: {'paint'}).map((g) => g.id), isNot(contains('paint')));
-    });
-
-    test('a grown-up can open a game early; launcher order stays', () {
-      final ids = gamesFor(30, early: {'counting'}).map((g) => g.id).toList();
-      expect(ids, contains('counting'));
-      expect(ids, [for (final g in kGames) if (ids.contains(g.id)) g.id], reason: 'in launcher order');
-      expect(gamesFor(30, off: {'counting'}, early: {'counting'}).map((g) => g.id), contains('counting'), reason: 'early wins');
+      expect(gamesFor(24, off: {'spell'}).map((g) => g.id), isNot(contains('spell')), reason: 'a game for older kids can be switched off too');
     });
 
     test('a daily budget counts down; hours can run past midnight', () {

@@ -92,11 +92,11 @@ back.
   name, then the family's, and she finds or builds it) and Who Has More? (buses with numbers; she picks the one with more kids, or fewer, or lines
   three up, and the kids fill the windows ten to a deck). The letter, word
   and number games talk: every line is a clip bundled with the app, so they
-  work on a display with no text-to-speech. Each kid sees the games that suit their age, and every game
+  work on a display with no text-to-speech. Every game is on for every kid, the ones that suit their age first, and every game
   adapts: three wins in a row go up a level, three misses ease off, and
   nothing ever says "wrong". Grown-ups set a daily time limit and opening
   hours (a game says goodnight when time is up), cap the volume, switch
-  games off or open them early, and pin levels.
+  games off, and pin levels.
 - **Weather.** The current conditions and a 36-hour chart with rain, sun
   and UV bands. It also shows a rain summary, a 10-day forecast, sunrise,
   sunset and the moon, what to wear, and alerts. Sources are Open-Meteo,

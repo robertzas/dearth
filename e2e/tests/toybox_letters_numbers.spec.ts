@@ -3,12 +3,11 @@ import { expectCheered, expectText, idsUnder, openToyboxGame, tap, textOf, tid }
 
 // The Toybox's number and letter games (SPEC FR-TOY-03), played from what
 // the screen shows (labels). The voice itself can't be heard here; the
-// widget tests check which clips play. Ava is 2½ in the demo, so each game
-// is opened early from Settings first.
+// widget tests check which clips play.
 
 test.describe('Toybox number and letter games', () => {
   test('FR-TOY-03: Dot-to-Dot — she joins the dots in order and the picture appears', async ({ page }) => {
-    await openToyboxGame(page, 'dots', true);
+    await openToyboxGame(page, 'dots');
     await expectText(tid(page, 'dots.ask'), 'Start at 1');
     await expectText(tid(page, 'dots.board'), 'Join the dots: 0 of 5');
     const dots = await idsUnder(page, 'dots.dot.');
@@ -23,7 +22,7 @@ test.describe('Toybox number and letter games', () => {
   });
 
   test('FR-TOY-03: Big & Little Letters — each small letter finds its capital', async ({ page }) => {
-    await openToyboxGame(page, 'biglittle', true);
+    await openToyboxGame(page, 'biglittle');
     await expectText(tid(page, 'biglittle.ask'), 'Little letters find big letters');
     const bigs = await idsUnder(page, 'biglittle.big.');
     const littles = await idsUnder(page, 'biglittle.little.');
@@ -43,7 +42,7 @@ test.describe('Toybox number and letter games', () => {
   });
 
   test('FR-TOY-03: Frog Hop — the frog hops to the pad the voice asks for', async ({ page }) => {
-    await openToyboxGame(page, 'hop', true);
+    await openToyboxGame(page, 'hop');
     await expectText(tid(page, 'hop.ask'), /^Hop to \d+$/);
     const target = (await textOf(tid(page, 'hop.ask'))).trim().replace('Hop to ', '');
     await tap(tid(page, `hop.pad.${target}`));
@@ -54,7 +53,7 @@ test.describe('Toybox number and letter games', () => {
   });
 
   test('FR-TOY-03: Word Builder — she puts the missing sound into the word', async ({ page }) => {
-    await openToyboxGame(page, 'spell', true);
+    await openToyboxGame(page, 'spell');
     await expectText(tid(page, 'spell.ask'), /^Which sound is missing in [a-z]+\?$/);
     const word = (await textOf(tid(page, 'spell.picture'))).trim();
     expect(word).toMatch(/^[a-z]{3}$/);
@@ -74,7 +73,7 @@ test.describe('Toybox number and letter games', () => {
   });
 
   test('FR-TOY-03: Hear the Sound — she taps the letter that makes the parrot’s sound', async ({ page }) => {
-    await openToyboxGame(page, 'hear', true);
+    await openToyboxGame(page, 'hear');
     await expectText(tid(page, 'hear.ask'), /^Which letter says [a-z]\?$/);
     const letter = (await textOf(tid(page, 'hear.ask'))).trim().replace('Which letter says ', '').replace('?', '');
     await tap(tid(page, 'hear.parrot'));
@@ -85,7 +84,7 @@ test.describe('Toybox number and letter games', () => {
   });
 
   test('FR-TOY-03: Sight Words — she finds the sign that says the word, and the bus stops there', async ({ page }) => {
-    await openToyboxGame(page, 'sight', true);
+    await openToyboxGame(page, 'sight');
     await expectText(tid(page, 'sight.ask'), /^Find the word [a-zA-Z]+$/);
     const word = (await textOf(tid(page, 'sight.ask'))).trim().replace('Find the word ', '');
     let sign = '';
@@ -100,7 +99,7 @@ test.describe('Toybox number and letter games', () => {
   });
 
   test('FR-TOY-03: Banana Balance — she picks the side with more and the see-saw tips that way', async ({ page }) => {
-    await openToyboxGame(page, 'balance', true);
+    await openToyboxGame(page, 'balance');
     await expectText(tid(page, 'balance.ask'), 'Which side has more?');
     const count = async (side: string) => Number((await textOf(tid(page, `balance.side.${side}`))).match(/(\d+)/)![1]);
     const left = await count('left');
@@ -113,7 +112,7 @@ test.describe('Toybox number and letter games', () => {
   });
 
   test('FR-TOY-03: Who Has More? — buses pull in with their numbers and she picks the one the voice asks for', async ({ page }) => {
-    await openToyboxGame(page, 'compare', true);
+    await openToyboxGame(page, 'compare');
     // The question comes once every bus has stopped and said its number.
     await expectText(tid(page, 'compare.ask'), /Which bus has (more|fewer) kids\?|Line up the buses/);
     const ask = await textOf(tid(page, 'compare.ask'));
@@ -134,7 +133,7 @@ test.describe('Toybox number and letter games', () => {
   });
 
   test('FR-TOY-03: Name Zoo — the animal at the gate needs her name card, and she finds it', async ({ page }) => {
-    await openToyboxGame(page, 'zoo', true);
+    await openToyboxGame(page, 'zoo');
     // Level 1: her own name, spelled by the voice; the label names it for tests.
     await expectText(tid(page, 'zoo.ask'), 'Find your name: Ava');
     const cards = await idsUnder(page, 'zoo.card.');

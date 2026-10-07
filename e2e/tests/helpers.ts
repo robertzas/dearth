@@ -161,15 +161,9 @@ export async function hold(page: Page, target: Locator, ms = 3300): Promise<void
 }
 
 
-/** Opens [game] from Ava's Toybox, switching it on early first when it's for an older kid. */
-export async function openToyboxGame(page: Page, game: string, early = false): Promise<void> {
+/** Opens [game] from Ava's Toybox (every game is on by default). */
+export async function openToyboxGame(page: Page, game: string): Promise<void> {
   await openDemo(page, '/toybox');
-  if (early) {
-    await hold(page, tid(page, 'toybox.grownups'));
-    await expect(tids(page, 'screen.settings').first()).toBeVisible();
-    await tap(await scrollTo(page, `toybox.on.${game}`));
-    await goTo(page, 'toybox');
-  }
   await tap(await scrollTo(page, `toybox.game.${game}`));
   await expect(tid(page, `game.${game}`)).toBeVisible();
 }

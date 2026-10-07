@@ -3,8 +3,7 @@ import { expectCheered, expectText, idsUnder, openToyboxGame, tap, textOf, tid }
 
 // The Toybox's voice games (SPEC FR-TOY-03), played from what the screen
 // shows (labels). The voice itself can't be heard here; the widget tests
-// check which clips play. Ava is 2½ in the demo, so each game is opened
-// early from Settings first.
+// check which clips play.
 
 const label = async (page: Page, id: string): Promise<string> => (await textOf(tid(page, id))).trim();
 
@@ -34,7 +33,7 @@ async function traceGlyph(page: Page): Promise<void> {
 
 test.describe('Toybox voice games', () => {
   test('FR-TOY-03: Letter Sounds — she taps each letter to hear it and see its picture', async ({ page }) => {
-    await openToyboxGame(page, 'letters', true);
+    await openToyboxGame(page, 'letters');
     await expectText(tid(page, 'letters.ask'), 'Tap a letter');
     for (const id of await idsUnder(page, 'letters.letter.')) {
       await tap(tid(page, id));
@@ -44,7 +43,7 @@ test.describe('Toybox voice games', () => {
   });
 
   test('FR-TOY-03: Rhyme Time — she listens to the pictures until she finds the rhyme', async ({ page }) => {
-    await openToyboxGame(page, 'rhymes', true);
+    await openToyboxGame(page, 'rhymes');
     await expectText(tid(page, 'rhymes.ask'), /What rhymes with \w+\?/);
     for (const id of await idsUnder(page, 'rhymes.choice.')) {
       if ((await label(page, 'rhymes.ask')).includes('they rhyme')) break;
@@ -55,7 +54,7 @@ test.describe('Toybox voice games', () => {
   });
 
   test('FR-TOY-03: I Spy — she finds the thing of the color the voice spies', async ({ page }) => {
-    await openToyboxGame(page, 'ispy', true);
+    await openToyboxGame(page, 'ispy');
     await expectText(tid(page, 'ispy.ask'), /I spy something \w+/);
     const color = (await label(page, 'ispy.ask')).split(' ').pop()!;
     const things = await idsUnder(page, 'ispy.thing.');
@@ -71,7 +70,7 @@ test.describe('Toybox voice games', () => {
   });
 
   test('FR-TOY-03: Letter & Name Tracing — a scribble draws nothing, a finger along the dots traces the line', async ({ page }) => {
-    await openToyboxGame(page, 'tracing', true);
+    await openToyboxGame(page, 'tracing');
     await expectText(tid(page, 'tracing.ask'), 'Trace the line');
     await expectText(tid(page, 'trace.board'), /: 0 of \d done/);
     await traceGlyph(page);
@@ -80,7 +79,7 @@ test.describe('Toybox voice games', () => {
   });
 
   test('FR-TOY-03: Number Tracing — the number is traced, then counted out', async ({ page }) => {
-    await openToyboxGame(page, 'numbers', true);
+    await openToyboxGame(page, 'numbers');
     await expectText(tid(page, 'numbers.ask'), /Trace \d/);
     const n = (await label(page, 'numbers.ask')).replace('Trace ', '');
     await traceGlyph(page);
@@ -89,7 +88,7 @@ test.describe('Toybox voice games', () => {
   });
 
   test('FR-TOY-03: Breathing Buddy — a tap on the balloon starts slow breaths', async ({ page }) => {
-    await openToyboxGame(page, 'breathe', true);
+    await openToyboxGame(page, 'breathe');
     await expectText(tid(page, 'breathe.ask'), 'Tap the balloon');
     await tap(tid(page, 'breathe.balloon'));
     await expectText(tid(page, 'breathe.ask'), 'Breathe in', 10_000);

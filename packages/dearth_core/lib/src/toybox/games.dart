@@ -135,12 +135,15 @@ int ageInMonths({required DateTime today, DateTime? birthday, String? stage}) {
   return switch (stage) { 'preschool' => 42, 'prek' => 54, _ => 30 };
 }
 
-/// The games a kid of [months] sees: the ones that suit their age, minus
-/// those a grown-up switched [off], plus any they opened [early] (ages are
-/// starting points, not limits).
-List<GameInfo> gamesFor(int months, {Set<String> off = const {}, Set<String> early = const {}}) => [
+/// The games a kid of [months] sees: every game but those a grown-up
+/// switched [off] (owner, 2026-10-07: all games are on by default; ages are
+/// starting points, not limits). The ones that suit their age come first,
+/// so a toddler finds hers at the top and the bigger kids' games after.
+List<GameInfo> gamesFor(int months, {Set<String> off = const {}}) => [
       for (final g in kGames)
-        if ((g.minMonths <= months && !off.contains(g.id)) || early.contains(g.id)) g,
+        if (g.minMonths <= months && !off.contains(g.id)) g,
+      for (final g in kGames)
+        if (g.minMonths > months && !off.contains(g.id)) g,
     ];
 
 /// Toybox time today (FR-TOY-05): minutes left of [budgetMinutes] after

@@ -12,11 +12,10 @@ import '../kids/kids_data.dart';
 /// The grown-ups' Toybox rules (SPEC FR-TOY-05), one household setting.
 @immutable
 class ToyboxSettings {
-  const ToyboxSettings({this.off = const {}, this.early = const {}, this.budgetMinutes, this.opens, this.closes, this.volume = 1, this.pins = const {}});
+  const ToyboxSettings({this.off = const {}, this.budgetMinutes, this.opens, this.closes, this.volume = 1, this.pins = const {}});
 
   factory ToyboxSettings.from(Map<String, Object?> v) => ToyboxSettings(
         off: {for (final g in v['off'] is List ? v['off']! as List : const []) '$g'},
-        early: {for (final g in v['early'] is List ? v['early']! as List : const []) '$g'},
         budgetMinutes: (v['budget'] as num?)?.toInt(),
         opens: v['opens'] as String?,
         closes: v['closes'] as String?,
@@ -31,26 +30,18 @@ class ToyboxSettings {
   /// Games a grown-up switched off, by `kidId.gameId`.
   final Set<String> off;
 
-  /// Games a grown-up opened before their age, by `kidId.gameId` (ages are
-  /// starting points, not limits: Appendix B).
-  final Set<String> early;
-
   Set<String> _games(Set<String> keys, String kidId) => {
         for (final k in keys)
           if (k.startsWith('$kidId.')) k.substring(kidId.length + 1),
       };
 
   Set<String> offFor(String kidId) => _games(off, kidId);
-  Set<String> earlyFor(String kidId) => _games(early, kidId);
 
-  /// Shows or hides [game] for a kid. A game that [suits] their age is
-  /// hidden by switching it off; a younger kid gets it by opening it early.
-  ToyboxSettings withGame(String kidId, String game, {required bool on, required bool suits}) {
+  /// Shows or hides [game] for a kid (every game is on until a grown-up
+  /// switches it off).
+  ToyboxSettings withGame(String kidId, String game, {required bool on}) {
     final key = '$kidId.$game';
-    return copyWith(
-      off: {...off}..remove(key)..addAll([if (!on && suits) key]),
-      early: {...early}..remove(key)..addAll([if (on && !suits) key]),
-    );
+    return copyWith(off: {...off}..remove(key)..addAll([if (!on) key]));
   }
 
   /// Minutes a day per kid; null: no limit.
@@ -70,7 +61,6 @@ class ToyboxSettings {
 
   Map<String, Object?> toJson() => {
         'off': (off.toList()..sort()),
-        'early': (early.toList()..sort()),
         'budget': ?budgetMinutes,
         'opens': ?opens,
         'closes': ?closes,
@@ -78,9 +68,8 @@ class ToyboxSettings {
         'pins': pins,
       };
 
-  ToyboxSettings copyWith({Set<String>? off, Set<String>? early, int? Function()? budgetMinutes, (String?, String?)? hours, double? volume, Map<String, int>? pins}) => ToyboxSettings(
+  ToyboxSettings copyWith({Set<String>? off, int? Function()? budgetMinutes, (String?, String?)? hours, double? volume, Map<String, int>? pins}) => ToyboxSettings(
         off: off ?? this.off,
-        early: early ?? this.early,
         budgetMinutes: budgetMinutes == null ? this.budgetMinutes : budgetMinutes(),
         opens: hours == null ? opens : hours.$1,
         closes: hours == null ? closes : hours.$2,
@@ -128,7 +117,7 @@ final kidMonthsProvider = Provider.family<int, String>((ref, kidId) {
 /// The games this kid sees, launcher order.
 final kidGamesProvider = Provider.family<List<GameInfo>, String>((ref, kidId) {
   final s = ref.watch(toyboxSettingsProvider);
-  return gamesFor(ref.watch(kidMonthsProvider(kidId)), off: s.offFor(kidId), early: s.earlyFor(kidId));
+  return gamesFor(ref.watch(kidMonthsProvider(kidId)), off: s.offFor(kidId));
 });
 
 // ─────────────────────────────── Rounds & levels ────────────────────────────

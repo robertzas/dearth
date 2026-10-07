@@ -77,10 +77,10 @@ class _ToyboxSectionState extends ConsumerState<ToyboxSection> {
             ),
           SettingsGroup(
             title: '${kid.name}’s games',
-            footer: 'Kids see the games that suit their age. Switch one off to hide it, or on to let them try it early.',
+            footer: 'Every game is on. The ones that suit ${kid.name}’s age come first; the rest are there to try. Switch one off to hide it.',
             children: [
               for (final g in kGames.where((g) => kGameBuilders.containsKey(g.id)))
-                _GameSwitch(game: g, kid: kid, months: months, settings: s, onChanged: (on) => _save((s) => s.withGame(kid.id, g.id, on: on, suits: g.minMonths <= months))),
+                _GameSwitch(game: g, kid: kid, months: months, settings: s, onChanged: (on) => _save((s) => s.withGame(kid.id, g.id, on: on))),
             ],
           ),
           SettingsGroup(
@@ -121,13 +121,13 @@ class _GameSwitch extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = DTheme.of(context);
     final suits = game.minMonths <= months;
-    final on = suits ? !settings.offFor(kid.id).contains(game.id) : settings.earlyFor(kid.id).contains(game.id);
+    final on = !settings.offFor(kid.id).contains(game.id);
     final age = '${game.minMonths ~/ 12}${game.minMonths % 12 == 6 ? '½' : ''}+';
     return DSwitchRow(
       id: 'toybox.on.${game.id}',
       leading: GameIcon(game, size: 28 * t.scale),
       title: game.title,
-      subtitle: '$age · ${game.skills.join(', ')}${suits ? '' : (on ? ' · opened early' : ' · when ${kid.name} is older')}',
+      subtitle: '$age · ${game.skills.join(', ')}${suits ? '' : ' · a stretch for ${kid.name} now'}',
       value: on,
       onChanged: onChanged,
     );

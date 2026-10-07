@@ -1168,8 +1168,10 @@ her thinking* from age 2 to 5, adapt to her level, and respect family limits.
 
 - **FR-TOY-01 [M3]** **Launcher:** big illustrated square tiles (six across
   on a landscape wall, four on a portrait one, two on a phone), no reading
-  required, filtered to the child's stage, with a "new!" sparkle on recently
-  unlocked games. A grown-up corner leads to settings.
+  required, every game on by default (owner, 2026-10-07: ages are starting
+  points), the ones that suit the child's stage first, with a "new!"
+  sparkle on games not yet opened. Grown-ups can switch any game off per
+  kid. A grown-up corner leads to settings.
 - **FR-TOY-02 [M3]** **Launch set (M3).** The full catalog with age bands,
   skills and difficulty ladders is in Appendix B.
 

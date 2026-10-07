@@ -65,14 +65,20 @@ test.describe('Toybox', () => {
     await expectCheered(page);
   });
 
-  test('FR-TOY-02/05: a grown-up opens Counting Garden early; she counts the buds and picks how many', async ({ page }) => {
+  test('FR-TOY-01/05: every game is on; a grown-up switches one off and it leaves the Toybox', async ({ page }) => {
     await openDemo(page, '/toybox');
-    await expect(tid(page, 'toybox.game.counting')).toHaveCount(0);
+    // Counting Garden is for 3+, and Ava (2½) has it anyway: ages are starting points.
+    await expect(await scrollTo(page, 'toybox.game.counting')).toBeVisible();
     await hold(page, tid(page, 'toybox.grownups'));
     await expect(tids(page, 'screen.settings').first()).toBeVisible();
     await tap(await scrollTo(page, 'toybox.on.counting'));
     await goTo(page, 'toybox');
-    await openGame(page, 'counting', false);
+    await expect(tid(page, 'toybox.game.paint')).toBeVisible();
+    await expect(tid(page, 'toybox.game.counting')).toHaveCount(0);
+  });
+
+  test('FR-TOY-02: Counting Garden — she counts the buds and picks how many', async ({ page }) => {
+    await openGame(page, 'counting');
     const n = await tids(page, 'counting.bud.').count();
     for (let i = 0; i < n; i++) {
       await tap(tid(page, `counting.bud.${i}`));

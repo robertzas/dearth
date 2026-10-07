@@ -2,8 +2,8 @@ import { expect, Page, test } from '@playwright/test';
 import { drag, expectCheered, expectText, idsUnder, openToyboxGame, tap, textOf, tid } from './helpers';
 
 // The Toybox's expansion set (SPEC FR-TOY-03), played the way a child would:
-// from what the screen shows (labels), not from the game's state. Ava is 2½
-// in the demo, so games for older kids are opened early from Settings first.
+// from what the screen shows (labels), not from the game's state. Every
+// game is on by default, so Ava (2½ in the demo) has them all.
 
 const openGame = openToyboxGame;
 const ids = idsUnder;
@@ -11,7 +11,7 @@ const label = async (page: Page, id: string): Promise<string> => (await textOf(t
 
 test.describe('Toybox expansion', () => {
   test('FR-TOY-03: Patterns — she reads the row and picks what comes next', async ({ page }) => {
-    await openGame(page, 'patterns', true);
+    await openGame(page, 'patterns');
     const items = await ids(page, 'patterns.item.');
     const shown = await Promise.all(items.map((id) => label(page, id)));
     // AB at the first level: the next one is the one two back.
@@ -26,7 +26,7 @@ test.describe('Toybox expansion', () => {
   });
 
   test('FR-TOY-03: Odd One Out — tapping around until the different one is found', async ({ page }) => {
-    await openGame(page, 'oddone', true);
+    await openGame(page, 'oddone');
     // Guessing counts as slips, and a round with many isn't cheered: the
     // prompt says when it's found.
     for (const id of await ids(page, 'oddone.item.')) {
@@ -72,7 +72,7 @@ test.describe('Toybox expansion', () => {
   });
 
   test('FR-TOY-03: Picture Sudoku — each empty place gets the fruit its row is missing', async ({ page }) => {
-    await openGame(page, 'sudoku', true);
+    await openGame(page, 'sudoku');
     const fruitIds = await ids(page, 'sudoku.fruit.');
     const fruits = await Promise.all(fruitIds.map((id) => label(page, id)));
     const tried = new Map<number, Set<string>>();
@@ -96,7 +96,7 @@ test.describe('Toybox expansion', () => {
   });
 
   test('FR-TOY-03: What Happens Next — the story goes into the line card by card', async ({ page }) => {
-    await openGame(page, 'stories', true);
+    await openGame(page, 'stories');
     const cards = await ids(page, 'stories.card.');
     for (let place = 1; place <= cards.length; place++) {
       for (const c of cards) {
@@ -111,7 +111,7 @@ test.describe('Toybox expansion', () => {
   });
 
   test('FR-TOY-03: Spot the Difference — every difference found', async ({ page }) => {
-    await openGame(page, 'differences', true);
+    await openGame(page, 'differences');
     const spots = await ids(page, 'differences.spot.');
     for (const s of spots) await tap(tid(page, s));
     await expectText(tid(page, 'differences.count'), `Found ${spots.length} of ${spots.length}`);
@@ -119,7 +119,7 @@ test.describe('Toybox expansion', () => {
   });
 
   test('FR-TOY-03: Finger Mazes — the buddy finds the way home', async ({ page }) => {
-    await openGame(page, 'mazes', true);
+    await openGame(page, 'mazes');
     const cells = await ids(page, 'mazes.cell.');
     const labels = await Promise.all(cells.map((id) => label(page, id)));
     // The maze's width: a square's "right" neighbour is the next one, "down" is a row on.
