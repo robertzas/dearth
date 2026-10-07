@@ -58,7 +58,11 @@ back.
   the Wikibooks Cookbook and Racion out of the box; RecipeAPI.io, Tasty and
   Spoonacular once you add their free keys in Settings → Recipes) and
   blends the answers into one list, with the same dish from two sources as
-  one card. Monthly allowances are spread over the month.
+  one card. Monthly allowances are spread over the month. The family writes
+  down its own recipes too (or its version of any recipe, with notes):
+  typed ingredients are read into amounts that scale and shop, steps get
+  their cook-mode timers, and the recipe plans, rates and turns up in
+  search and pairings like any other.
 - **Kids.** A chore chart a toddler can run: big picture cards, a
   celebration for every "I did it!", and rewards that fit each kid's stage.
   These are a reward jar with a surprise inside, a star bank with a goal,

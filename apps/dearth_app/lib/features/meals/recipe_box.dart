@@ -8,10 +8,11 @@ import '../../core/sync/hub_api.dart';
 import 'discover_view.dart';
 import 'meal_ops.dart';
 import 'meals_data.dart';
+import 'recipe_editor.dart';
 import 'recipe_sheet.dart';
 
-/// The family recipe box (SPEC FR-RCP-01/02): saved recipes, and on a Hub,
-/// importing any recipe page by its link.
+/// The family recipe box (SPEC FR-RCP-01/02): saved recipes, recipes of the
+/// family's own, and on a Hub, importing any recipe page by its link.
 class RecipeBoxView extends ConsumerWidget {
   const RecipeBoxView({super.key});
 
@@ -22,15 +23,25 @@ class RecipeBoxView extends ConsumerWidget {
     final canImport = ref.watch(hubApiProvider) != null;
     return ListView(
       children: [
-        Row(
+        // A wrap, not a row: two buttons and the count don't fit across a phone.
+        Wrap(
+          spacing: t.space.sm,
+          runSpacing: t.space.sm,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          alignment: WrapAlignment.spaceBetween,
           children: [
-            Expanded(
-              child: Text(
-                box.isEmpty ? 'Recipes you save show up here.' : '${box.length} saved recipe${box.length == 1 ? '' : 's'}',
-                style: t.text.body.copyWith(color: t.colors.inkSecondary),
-              ),
+            Text(
+              box.isEmpty ? 'Recipes you save or write show up here.' : '${box.length} recipe${box.length == 1 ? '' : 's'} in the box',
+              style: t.text.body.copyWith(color: t.colors.inkSecondary),
             ),
-            if (canImport) DButton(label: 'Import from a link', icon: Icons.link_rounded, tone: DButtonTone.tonal, id: 'box.import', onPressed: () => _import(context, ref)),
+            Wrap(
+              spacing: t.space.sm,
+              runSpacing: t.space.sm,
+              children: [
+                DButton(label: 'New recipe', icon: Icons.add_rounded, id: 'box.new', onPressed: () => _create(context, ref)),
+                if (canImport) DButton(label: 'Import from a link', icon: Icons.link_rounded, tone: DButtonTone.tonal, id: 'box.import', onPressed: () => _import(context, ref)),
+              ],
+            ),
           ],
         ),
         SizedBox(height: t.gutter),
@@ -39,12 +50,21 @@ class RecipeBoxView extends ConsumerWidget {
             id: 'box.empty',
             emoji: '📖',
             title: 'Your recipe box is empty',
-            message: 'Open any recipe and tap the bookmark to keep it here, with your notes and ratings.',
+            message: 'Write down a family recipe with “New recipe”, or open any recipe and tap the bookmark to keep it here.',
           )
         else
           RecipeGrid(recipes: [for (final r in box) RecipeData.fromRow(r)], onOpen: (r) => showRecipeSheet(context, r)),
       ],
     );
+  }
+
+  /// A recipe of their own (SPEC FR-RCP-01): once saved it opens like any
+  /// other, ready to plan, shop and cook.
+  Future<void> _create(BuildContext context, WidgetRef ref) async {
+    final r = await showRecipeEditor(context);
+    if (r == null || !context.mounted) return;
+    ref.read(toastProvider).show('Added ${r.title} to the recipe box', emoji: '📖');
+    await showRecipeSheet(context, r);
   }
 
   /// URL import runs on the Hub (schema.org Recipe; SPEC FR-RCP-01).

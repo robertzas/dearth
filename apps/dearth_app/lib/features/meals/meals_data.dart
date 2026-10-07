@@ -21,6 +21,11 @@ final localRecipesProvider = StreamProvider<Map<String, Recipe>>((ref) {
 /// The local row for [r], if it has been planned or saved before.
 Recipe? localRowOf(Map<String, Recipe> local, RecipeData r) => local[r.id] ?? local[localRecipeId(r)];
 
+/// What the family sees of [r]: their local copy when there is one (their
+/// edits win over the source, SPEC FR-RCP-02), with what only a search
+/// result carries (other sources, a summary).
+RecipeData familyVersion(RecipeData r, Recipe? local) => local == null ? r : RecipeData.fromRow(local).copyWith(alsoFrom: r.alsoFrom, summary: r.summary);
+
 /// The family recipe box (SPEC FR-RCP-01), A–Z.
 final recipeBoxProvider = Provider<List<Recipe>>((ref) {
   final all = ref.watch(localRecipesProvider).value ?? const <String, Recipe>{};
@@ -246,9 +251,11 @@ final recipeSearchProvider = FutureProvider.autoDispose.family<List<RecipeData>,
   final q = text.trim().toLowerCase();
   final box = ref.watch(recipeBoxProvider);
   final words = q.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+  // The family's recipes are found by what's in them too, as a source's
+  // are: their tags, diets and ingredients.
   final mine = [
-    for (final r in box)
-      if (words.every('${r.title} ${r.cuisine ?? ''} ${r.category ?? ''}'.toLowerCase().contains)) RecipeData.fromRow(r),
+    for (final r in box.map(RecipeData.fromRow))
+      if (words.every([r.title, ?r.cuisine, ?r.category, ...r.tags, ...r.diets, for (final i in r.ingredients) i.name].join(' ').toLowerCase().contains)) r,
   ];
   final remote = await ref.watch(recipeSourceProvider).search(RecipeQuery(text: q, limit: 24));
   final seen = {for (final r in mine) r.id};

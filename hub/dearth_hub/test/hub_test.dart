@@ -202,6 +202,26 @@ void main() {
     expect((rec.first as Map)['why'], startsWith('Uses your'));
   });
 
+  test('FR-RCP-11: "pairs with your plan" offers the family\'s own recipes from the box', () async {
+    final token = await pairDevice('Phone', role: DeviceRole.personal);
+    final h = {'authorization': 'Bearer $token', 'content-type': 'application/json'};
+    final lines = ['2 limes', '1 bunch cilantro', '1 can black beans', '1 red onion', '8 corn tortillas'];
+    await hub.context.kernel.upsert('recipes', 'fam-1', {
+      'source': 'box',
+      'title': 'Grandma Rose’s Bean Tostadas',
+      'servings': 4,
+      'ingredients': [for (final l in lines) parseIngredientLine(l).toJson()],
+      'steps': ['Warm the beans.', 'Pile everything on the tortillas.'],
+      'saved': true,
+      'deleted': false,
+    });
+    final planned = RecipeData(id: 'p1', source: 'test', title: 'Lime Chicken', ingredients: [for (final l in ['2 limes', '1 bunch cilantro', '1 lb chicken']) parseIngredientLine(l)]);
+    final rec = jsonDecode((await http.post(u('/api/recipes/recommend'), headers: h, body: jsonEncode({'recipes': [planned.toJson()], 'limit': 40}))).body) as List;
+    final mine = rec.map((r) => (r as Map)['recipe'] as Map).where((r) => r['id'] == 'fam-1').toList();
+    expect(mine, hasLength(1));
+    expect(mine.single['title'], 'Grandma Rose’s Bean Tostadas');
+  });
+
   test('every recipe an API returns is kept for good: offline, and after a restart, a search still finds it', () async {
     final fixture = File('../../packages/dearth_integrations/test/fixtures/themealdb_search.json').readAsStringSync();
     var online = true;

@@ -183,4 +183,37 @@ void main() {
     expect(back.ingredients.map((i) => i.key), ['onion', 'carrot']);
     expect(r.toFields()['ingredients'], isA<List<Object?>>());
   });
+
+  group('a family recipe as text (FR-RCP-01: hand-entered or edited)', () {
+    test('ingredients: one a line, bullets dropped, groups from "Heading:" lines, every line parsed', () {
+      final list = parseIngredientsText('• 2 cups flour, sifted\n- 1 tsp salt\n\nFor the glaze:\n1 cup powdered sugar\n2 tbsp milk\n\n');
+      expect(list.map((i) => i.raw), ['2 cups flour, sifted', '1 tsp salt', '1 cup powdered sugar', '2 tbsp milk']);
+      expect(list.map((i) => i.group), [null, null, 'For the glaze', 'For the glaze']);
+      expect(list.first.qty, 2);
+      expect(list.first.unit, 'cup');
+      expect(list.first.key, 'flour');
+      expect(parseIngredientsText('2 cups:').single.raw, '2 cups:', reason: 'an amount is never a heading');
+    });
+
+    test('a recipe opened and saved unchanged keeps the structured ingredients its source gave', () {
+      const sourced = Ingredient(raw: '1 lb ground beef', name: 'ground beef', key: 'beef', qty: 1, unit: 'lb', group: 'Filling', aisle: Aisle.meatSeafood, confidence: 0.95);
+      final other = parseIngredientLine('8 taco shells');
+      final text = ingredientsText([other, sourced]);
+      expect(text, '8 taco shells\n\nFilling:\n1 lb ground beef');
+      final back = parseIngredientsText(text, before: [other, sourced]);
+      expect(back[1], same(sourced));
+      // An edited line is parsed afresh.
+      final edited = parseIngredientsText(text.replaceFirst('1 lb', '2 lb'), before: [other, sourced]);
+      expect(edited[1], isNot(same(sourced)));
+      expect(edited[1].qty, 2);
+      expect(edited[1].group, 'Filling');
+    });
+
+    test('steps: one a line, without the numbers people type; tags: comma-separated, no repeats', () {
+      expect(parseStepsText('1. Heat the oven.\nStep 2: Mix.\n3) Bake 25 minutes.\n\n• Cool.'), ['Heat the oven.', 'Mix.', 'Bake 25 minutes.', 'Cool.']);
+      expect(parseStepsText(stepsText(['Mix\nwell.', 'Bake.'])), ['Mix well.', 'Bake.']);
+      expect(parseStepsText('350 degrees is hot.'), ['350 degrees is hot.'], reason: 'a number that isn\'t a step number stays');
+      expect(parseTagsText(' kid-friendly, quick,, Quick , 🌮'), ['kid-friendly', 'quick', '🌮']);
+    });
+  });
 }

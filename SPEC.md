@@ -870,7 +870,21 @@ already on the list.
   - **Import from any URL** (schema.org `Recipe` JSON-LD or microdata,
     parsed on the Hub; works with most major recipe sites; also the
     companion's "Share to Dearth").
-  - **Family recipe box** (hand-entered or edited).
+  - **Family recipe box** (hand-entered or edited; owner request
+    2026-10-07: "with all of the features of a discovered recipe").
+    "New recipe" in the box, and Edit on any recipe, open one editor:
+    title, where it's from (their own recipes; a source's keeps its
+    credit), a photo from the family library or a link, or an emoji
+    picture, servings, prep and cook minutes, course, cuisine, diets and
+    kid-friendly, ingredients one a line ("For the glaze:" starts a group)
+    read by the FR-RCP-12 parser with a live "what Dearth understood"
+    preview, steps one a line (typed numbers dropped; cook-mode timers
+    counted), tags and notes. A saved recipe is a recipe like any other:
+    it scales, converts, plans, shops, cooks, takes ratings, is found by
+    search (title, cuisine, course, tags, diets, ingredients) and pairs
+    with the plan (FR-RCP-11). Editing a source's recipe makes the
+    family's version: their copy wins wherever the recipe opens, and an
+    unchanged ingredient line keeps the structure its source gave.
   - **[M5]** Mealie/Tandoor connectors and AI suggestions.
 
   Only free sources (owner, 2026-10-05). A source that needs a key starts
@@ -997,7 +1011,8 @@ already on the list.
   your cilantro, limes and black beans · adds 2 items"). Tapping the
   explanation highlights those ingredients.
 - **FR-RCP-11 [M2]** The candidate pool combines every remembered recipe (§13.6), the family
-  box, and provider by-ingredient queries for the plan's top 3 perishables
+  box (on a Hub too, where the family's version of a recipe replaces the
+  source's), and provider by-ingredient queries for the plan's top 3 perishables
   (budgeted per day for Spoonacular).
 
 **Ingredient knowledge base**

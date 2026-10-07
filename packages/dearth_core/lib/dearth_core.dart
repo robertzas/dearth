@@ -20,6 +20,7 @@ export 'src/home/kitchen_timers.dart';
 export 'src/kids/kids.dart';
 export 'src/recipes/ingredients.dart';
 export 'src/recipes/recipe_model.dart';
+export 'src/recipes/recipe_text.dart';
 export 'src/recipes/scoring.dart';
 export 'src/recipes/shopping.dart';
 export 'src/recipes/units.dart';

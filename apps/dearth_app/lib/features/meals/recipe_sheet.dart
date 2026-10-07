@@ -13,6 +13,7 @@ import 'meal_ops.dart';
 import 'meals_data.dart';
 import 'plan_target.dart';
 import 'recipe_card.dart';
+import 'recipe_editor.dart';
 
 /// Opens a recipe (SPEC FR-RCP-06). With [entry] it is that plan entry: the
 /// servings are the entry's, and it can come off the plan.
@@ -21,9 +22,36 @@ Future<void> showRecipeSheet(BuildContext context, RecipeData recipe, {MealEntry
       id: 'recipe.sheet',
       title: recipe.title,
       width: 760 * DTheme.of(context).scale,
-      actions: [_SaveButton(recipe: recipe)],
+      actions: [_EditButton(recipe: recipe, entry: entry), _SaveButton(recipe: recipe)],
       builder: (_) => RecipeDetail(recipe: recipe, entry: entry),
     );
+
+/// Edit (SPEC FR-RCP-01): the family's version of any recipe, kept in the
+/// box.
+class _EditButton extends ConsumerWidget {
+  const _EditButton({required this.recipe, this.entry});
+  final RecipeData recipe;
+  final MealEntry? entry;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => DIconButton(
+        icon: Icons.edit_outlined,
+        label: 'Edit recipe',
+        id: 'recipe.edit',
+        tone: DButtonTone.ghost,
+        onPressed: () async {
+          final nav = Navigator.of(context);
+          final toast = ref.read(toastProvider);
+          final local = localRowOf(ref.read(localRecipesProvider).value ?? const {}, recipe);
+          final updated = await showRecipeEditor(context, recipe: familyVersion(recipe, local), local: local);
+          if (updated == null) return;
+          toast.show('Saved ${updated.title}', emoji: '📖');
+          // The sheet's title is fixed when it opens: open it again.
+          nav.pop();
+          await showRecipeSheet(nav.context, updated, entry: entry);
+        },
+      );
+}
 
 /// The family box toggle in the sheet header.
 class _SaveButton extends ConsumerWidget {
@@ -63,15 +91,16 @@ class _RecipeDetailState extends ConsumerState<RecipeDetail> {
   late int _servings = widget.entry?.servings ?? widget.recipe.servings;
   bool? _metric;
 
-  RecipeData get _r => widget.recipe;
+  /// The family's version when they have one (their edits win).
+  RecipeData get _r => familyVersion(widget.recipe, _local());
 
-  Recipe? _local() => localRowOf(ref.read(localRecipesProvider).value ?? const {}, _r);
+  Recipe? _local() => localRowOf(ref.read(localRecipesProvider).value ?? const {}, widget.recipe);
 
   @override
   Widget build(BuildContext context) {
     final t = DTheme.of(context);
     final metric = _metric ?? !ref.watch(imperialProvider);
-    final local = ref.watch(localRecipesProvider.select((m) => m.value == null ? null : localRowOf(m.value!, _r)));
+    final local = ref.watch(localRecipesProvider.select((m) => m.value == null ? null : localRowOf(m.value!, widget.recipe)));
     final ingredients = _r.scaledIngredients(_servings);
     final entry = widget.entry;
     final gap = SizedBox(height: t.space.lg);
@@ -129,12 +158,23 @@ class _RecipeDetailState extends ConsumerState<RecipeDetail> {
           ],
         ),
         SizedBox(height: t.space.sm),
-        for (final (i, ing) in ingredients.indexed) _IngredientRow(ingredient: ing, metric: metric, index: i),
+        for (final (i, ing) in ingredients.indexed) ...[
+          // A group's name over its ingredients ("For the glaze").
+          if (ing.group case final g? when i == 0 || ingredients[i - 1].group != g)
+            Padding(padding: EdgeInsets.only(top: t.space.sm, bottom: t.space.xxs), child: Text(g, style: t.text.bodyStrong)),
+          _IngredientRow(ingredient: ing, metric: metric, index: i),
+        ],
         gap,
         if (_r.steps.isNotEmpty) ...[
           Text('Steps', style: t.text.title),
           SizedBox(height: t.space.sm),
           for (final (i, s) in _r.steps.indexed) _StepRow(number: i + 1, text: s),
+          gap,
+        ],
+        if (local?.notes case final notes? when notes.trim().isNotEmpty) ...[
+          Text('Notes', style: t.text.title),
+          SizedBox(height: t.space.sm),
+          tid('recipe.notes', Text(notes.trim(), style: t.text.body)),
           gap,
         ],
         Text('How did everyone like it?', style: t.text.title),

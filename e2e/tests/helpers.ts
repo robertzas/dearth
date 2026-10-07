@@ -87,7 +87,11 @@ export async function scrollTo(page: Page, id: string, maxSteps = 12): Promise<L
       // Built but out of view: scroll toward it; otherwise keep searching.
       const dir = box ? (box.y < 0 ? -1 : 1) : direction;
       const step = box ? Math.min(size.height * 0.6, Math.abs(box.y - size.height * 0.3) + 1) : size.height * 0.6;
-      await page.mouse.move(size.width * 0.6, size.height * 0.55);
+      // Over the target's own column when it's built: a side sheet on a
+      // wall starts near the middle, and a wheel over the backdrop would
+      // scroll the page behind it.
+      const x = box ? Math.min(Math.max(box.x + box.width / 2, 10), size.width - 10) : size.width * 0.6;
+      await page.mouse.move(x, size.height * 0.55);
       await page.mouse.wheel(0, dir * step);
       await page.waitForTimeout(250);
     }

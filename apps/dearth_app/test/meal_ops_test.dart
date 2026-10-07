@@ -1,6 +1,7 @@
 import 'package:dearth_app/features/calendar/event_ops.dart' show MakeOp;
 import 'package:dearth_app/features/meals/cook_mode.dart' show ingredientsForStep;
 import 'package:dearth_app/features/meals/meal_ops.dart';
+import 'package:dearth_app/features/meals/meals_data.dart' show familyVersion;
 import 'package:dearth_core/dearth_core.dart';
 import 'package:dearth_integrations/dearth_integrations.dart' show recipeCatalog;
 import 'package:drift/drift.dart' hide isNotNull, isNull;
@@ -134,6 +135,43 @@ void main() {
       expect(keys('Simmer soy sauce, honey, vinegar, ginger and garlic for 3 minutes.'), containsAll(['soy sauce', 'honey', 'rice vinegar', 'garlic']));
       final tacos = catalog('chicken-tacos');
       expect([for (final i in ingredientsForStep('Toss the chicken with taco seasoning and oil.', tacos.ingredients)) i.key], contains(tacos.ingredients.first.key));
+    });
+  });
+
+  group('FR-RCP-01: the family\'s own recipes, and their versions of others\'', () {
+    test('a recipe written by hand goes into the box with its notes, structured like any other', () async {
+      final r = RecipeData(
+        id: 'mine',
+        source: 'box',
+        title: 'Grandma Rose’s tostadas',
+        attribution: 'Grandma Rose',
+        ingredients: parseIngredientsText('8 corn tortillas\n1 can black beans\n\nFor the crema:\n1/2 cup sour cream'),
+        steps: parseStepsText('1. Warm the beans for 5 minutes.\n2. Pile it all on.'),
+      );
+      await m.commit(saveFamilyRecipeOps(op(), r, notes: 'Double the limes.', isNew: true, nowMs: 1000));
+      final row = (await recipes()).single;
+      expect((row.id, row.saved, row.notes, row.createdMs, row.attribution), ('mine', true, 'Double the limes.', 1000, 'Grandma Rose'));
+      final back = RecipeData.fromRow(row);
+      expect(back.ingredients.map((i) => (i.qty, i.key, i.group)), [(8.0, parseIngredientLine('8 corn tortillas').key, null), (1.0, parseIngredientLine('1 can black beans').key, null), (0.5, parseIngredientLine('1/2 cup sour cream').key, 'For the crema')]);
+      expect(back.scaledIngredients(8).first.qty, 16);
+      expect(stepTimers(back.steps.first), hasLength(1), reason: 'cook mode offers the timer');
+      expect(recipeCredit(back), 'From Grandma Rose');
+    });
+
+    test('editing a source\'s recipe: the family\'s version replaces the copy, and planning it again keeps it', () async {
+      final tacos = catalog('chicken-tacos');
+      await m.commit(planRecipeOps(op(), recipe: tacos, date: saturday, slot: 'dinner', servings: 4));
+      final copy = (await recipes()).single;
+      final ours = familyVersion(tacos, copy).copyWith(title: 'Friday tacos', steps: ['Do it our way.']);
+      expect(ours.id, copy.id, reason: 'one recipe, one row');
+      await m.commit(saveFamilyRecipeOps(op(), ours, notes: 'Extra lime.', isNew: false, nowMs: 2000));
+      await m.commit(planRecipeOps(op(), recipe: tacos, existing: (await recipes()).single, date: saturday.addDays(1), slot: 'dinner', servings: 4));
+      final rows = await recipes();
+      expect(rows, hasLength(1));
+      expect((rows.single.title, rows.single.saved, rows.single.notes, rows.single.source, rows.single.createdMs), ('Friday tacos', true, 'Extra lime.', 'catalog', copy.createdMs));
+      final shown = familyVersion(tacos.copyWith(alsoFrom: ['tasty']), rows.single);
+      expect((shown.title, shown.steps, shown.alsoFrom), ('Friday tacos', ['Do it our way.'], ['tasty']));
+      expect(recipeCredit(shown), startsWith('From '), reason: 'the source keeps its credit');
     });
   });
 }

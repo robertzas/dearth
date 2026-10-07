@@ -168,8 +168,8 @@ class RecipeService {
   }
 
   /// "Pairs with your plan" (FR-RCP-09): candidates come from the catalog,
-  /// everything seen recently, and provider ingredient searches for the
-  /// plan's most perishable ingredients.
+  /// everything seen recently, provider ingredient searches for the plan's
+  /// most perishable ingredients, and the family recipe box (FR-RCP-11).
   Future<List<ReuseScore>> recommend(List<RecipeData> planned, {Set<String> excluded = const {}, Map<String, double> ratings = const {}, int limit = 12}) async {
     final plan = PlanContext.fromRecipes(planned);
     final candidates = <String, RecipeData>{for (final r in recipeCatalog) r.id: r, ...await _remembered()};
@@ -186,6 +186,14 @@ class RecipeService {
           }
         }
       }
+    }
+    // The family box: their own recipes, and their versions of others'
+    // (an edited copy replaces the source's).
+    final db = integrations.db;
+    for (final row in await (db.select(db.recipes)..where((r) => r.saved.equals(true) & r.deleted.equals(false))).get()) {
+      final r = RecipeData.fromRow(row);
+      if (r.sourceId != null) candidates.removeWhere((_, c) => c.source == r.source && c.sourceId == r.sourceId);
+      candidates[r.id] = r;
     }
     final plannedTitles = {for (final r in planned) r.title.toLowerCase()};
     final ranked = rankForPlan(

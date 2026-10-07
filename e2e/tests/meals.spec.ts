@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { expectText, goTo, openDemo, scrollTo, tap, tid, typeInto } from './helpers';
+import { button, expectText, goTo, openDemo, replaceText, scrollTo, tap, tid, typeInto } from './helpers';
 
 // Demo week (Sun Sep 27 – Sat Oct 3): dinners Mon–Sat, Teriyaki salmon tonight.
 const TONIGHT = 'meals.cell.2026-10-03.dinner';
@@ -57,6 +57,57 @@ test.describe('Meals', () => {
     await tap(tid(page, 'sheet.close'));
     await tap(tid(page, 'meals.tab.recipes'));
     await expect(tid(page, 'recipe.quesadillas')).toBeVisible();
+  });
+
+  test('FR-RCP-01: a family recipe written by hand scales and cooks like any other', async ({ page }) => {
+    await openDemo(page, '/meals');
+    await tap(tid(page, 'meals.tab.recipes'));
+    await tap(tid(page, 'box.new'));
+    await expect(tid(page, 'recipe.editor')).toBeVisible();
+    await typeInto(page, 'recipe.editor.title', "Grandma Rose's tostadas");
+    await scrollTo(page, 'recipe.editor.ingredients');
+    await typeInto(page, 'recipe.editor.ingredients', '8 corn tortillas\n1 can black beans\n2 limes');
+    // What Dearth understood: amounts it can scale.
+    await expectText(await scrollTo(page, 'recipe.editor.understood'), '3 ingredients · 3 with amounts that scale');
+    await scrollTo(page, 'recipe.editor.steps');
+    await typeInto(page, 'recipe.editor.steps', '1. Warm the beans for 5 minutes.\n2. Pile everything on the tortillas.');
+    await expectText(await scrollTo(page, 'recipe.editor.stepcount'), '2 steps · 1 timer for cook mode');
+    await tap(await scrollTo(page, 'recipe.editor.save'));
+    await expectText(tid(page, 'toast'), "Added Grandma Rose's tostadas to the recipe box");
+    // It opens like any recipe: the servings stepper rescales it…
+    await expectText(tid(page, 'recipe.ingredient.0'), '8 corn tortillas');
+    await tap(tid(page, 'recipe.servings.plus'));
+    await tap(tid(page, 'recipe.servings.plus'));
+    await expectText(tid(page, 'recipe.ingredient.0'), '12 corn tortillas');
+    // …and cook mode steps through it with the timer it found.
+    await tap(tid(page, 'recipe.cook'));
+    await expectText(tid(page, 'cook.progress'), 'Step 1 of 2');
+    await expectText(tid(page, 'cook.step'), 'Warm the beans for 5 minutes.');
+    await expect(tid(page, 'cook.timer.0')).toBeVisible();
+    await tap(tid(page, 'cook.close'));
+    await tap(tid(page, 'sheet.close'));
+    // Search finds it by what's in it, as it finds a source's recipes.
+    await tap(tid(page, 'meals.tab.discover'));
+    await typeInto(page, 'meals.search', 'black beans');
+    await expect(button(page, /Grandma Rose's tostadas/).first()).toBeVisible();
+  });
+
+  test('FR-RCP-01: editing a planned recipe makes it the family\'s version, with notes', async ({ page }) => {
+    await openDemo(page, '/meals');
+    await tap(await scrollTo(page, TONIGHT));
+    await tap(tid(page, 'recipe.edit'));
+    await expect(tid(page, 'recipe.editor')).toBeVisible();
+    await replaceText(page, 'recipe.editor.title', "Grandpa's teriyaki salmon");
+    await scrollTo(page, 'recipe.editor.notes');
+    await typeInto(page, 'recipe.editor.notes', 'Less soy sauce for the kids.');
+    await tap(await scrollTo(page, 'recipe.editor.save'));
+    await expectText(tid(page, 'toast'), "Saved Grandpa's teriyaki salmon");
+    await expectText(tid(page, 'recipe.planned'), 'Planned for Today');
+    // The source's ingredients came through the edit untouched.
+    await expectText(tid(page, 'recipe.ingredient.0'), '4 salmon fillets');
+    await expectText(await scrollTo(page, 'recipe.notes'), 'Less soy sauce for the kids.');
+    await tap(tid(page, 'sheet.close'));
+    await expectText(await scrollTo(page, TONIGHT), "Grandpa's teriyaki salmon");
   });
 
   test('FR-RCP-09/10: discover pairs recipes with the plan and says why', async ({ page }) => {

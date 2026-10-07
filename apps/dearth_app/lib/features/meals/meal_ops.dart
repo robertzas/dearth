@@ -70,6 +70,14 @@ List<Op> saveRecipeOps(MakeOp op, RecipeData r, {Recipe? existing, required bool
     ? copyRecipeOps(op, r, saved: saved, nowMs: nowMs)
     : [op('recipes', existing.id, {'saved': saved})];
 
+/// Saves a recipe from the editor (SPEC FR-RCP-01): their own, or the
+/// family's version of a source's recipe, kept in the box with its notes.
+/// The whole row is written, so the family's version replaces what the
+/// source said.
+List<Op> saveFamilyRecipeOps(MakeOp op, RecipeData r, {String? notes, required bool isNew, int? nowMs}) => [
+      op('recipes', r.id, {...r.toFields(), 'notes': notes, if (isNew) 'created_ms': nowMs, 'deleted': false}),
+    ];
+
 /// The family's rating faces (SPEC FR-RCP-06), best first. Scores are
 /// centered on "it's OK" so they add straight into plan scoring.
 const List<(int score, String emoji, String label)> kRatingFaces = [
