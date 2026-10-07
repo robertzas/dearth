@@ -3,6 +3,7 @@ import 'package:dearth_app/core/data/household.dart';
 import 'package:dearth_app/core/sound.dart';
 import 'package:dearth_app/features/toybox/games/bubbles.dart';
 import 'package:dearth_app/features/toybox/toybox_data.dart';
+import 'package:dearth_app/features/toybox/toybox_screen.dart';
 import 'package:dearth_core/dearth_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -93,5 +94,16 @@ void main() {
     expect(byId('toybox.sleeping'), findsOneWidget);
     await h.shutdown();
     handle.dispose();
+  });
+
+  test('FR-TOY-01: every game has its own tile hue — kids find games by color', () {
+    for (final g in kGames) {
+      expect(kGameHues[g.id], isNotNull, reason: '${g.id} has no tile hue and would fall back to the accent');
+    }
+    expect(
+      {for (final g in kGames) kGameHues[g.id]!.toARGB32()}.length,
+      kGames.length,
+      reason: 'two games share a tile color; the launcher is read by picture and color',
+    );
   });
 }

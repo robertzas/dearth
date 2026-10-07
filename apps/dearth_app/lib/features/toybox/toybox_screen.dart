@@ -15,7 +15,9 @@ import 'games/dots_pictures.dart';
 import 'games/registry.dart';
 import 'toybox_data.dart';
 
-/// Each game's tile color: the launcher is read by picture and color.
+/// Each game's tile color: the launcher is read by picture and color, so no
+/// two games share a hue — a kid finds "the sunshine one" before she can read
+/// "Counting Garden". A test keeps one entry per catalog game.
 const Map<String, Color> kGameHues = {
   'bubbles': Color(0xFF4FB3F6),
   'paint': Color(0xFFF06BA8),
@@ -25,8 +27,30 @@ const Map<String, Color> kGameHues = {
   'music': Color(0xFF2EC4B6),
   'jigsaw': Color(0xFF4C7BF4),
   'memory': Color(0xFF7067E8),
-  'monster': Color(0xFF8BC34A),
-  'counting': Color(0xFFF5B82E),
+  'monster': Color(0xFFEF6B5C),
+  'counting': Color(0xFFF5B800),
+  'patterns': Color(0xFF19A7CE),
+  'oddone': Color(0xFFEC6A96),
+  'shadows': Color(0xFF7D8CA3),
+  'sizes': Color(0xFF58A55C),
+  'mazes': Color(0xFFE08632),
+  'stories': Color(0xFFB23A68),
+  'sudoku': Color(0xFF5058A8),
+  'differences': Color(0xFF97B43C),
+  'letters': Color(0xFFE8445C),
+  'rhymes': Color(0xFFA64AC9),
+  'ispy': Color(0xFF2D9BF0),
+  'tracing': Color(0xFFFFAE42),
+  'numbers': Color(0xFF2F6FE0),
+  'breathe': Color(0xFF57C4AD),
+  'creature': Color(0xFF0E9594),
+  'dots': Color(0xFF4441A9),
+  'biglittle': Color(0xFFC63A6B),
+  'hop': Color(0xFF43A94C),
+  'spell': Color(0xFF845EC2),
+  'hear': Color(0xFFEE7B30),
+  'sight': Color(0xFFDE4B33),
+  'balance': Color(0xFFFFD23F),
 };
 
 /// The Toybox (SPEC §10.8, FR-TOY-01): big picture tiles of the games that
