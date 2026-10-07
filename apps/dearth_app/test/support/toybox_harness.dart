@@ -26,7 +26,9 @@ Future<AppHarness> openToyboxGame(WidgetTester tester, String game, {RecordingSo
   // lazy, so drag it until the tile is built and visible, then scroll it
   // fully into view.
   final tile = byId('toybox.game.$game');
-  await tester.dragUntilVisible(tile, find.byType(Scrollable), const Offset(0, -180), maxIteration: 40);
+  // The launcher's grid, not the page around it (every game is on, so the
+  // grid is long, and other scrollables share the screen).
+  await tester.dragUntilVisible(tile, find.descendant(of: find.byType(GridView), matching: find.byType(Scrollable)).first, const Offset(0, -180), maxIteration: 60);
   await tester.ensureVisible(tile);
   await h.settle();
   await tester.tap(tile);
