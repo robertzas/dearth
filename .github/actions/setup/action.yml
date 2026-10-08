@@ -11,7 +11,7 @@ inputs:
     description: Pull the LFS objects (voice clips, sounds, fonts, icons). Analyze and codegen don't read them.
     default: 'true'
   hooks-key:
-    description: Extra build-hook cache key part, for matrix legs that build different native assets under one job id.
+    description: Extra build-hook cache key part, for matrix legs that build different native assets under one job id (no commas).
     default: ''
 runs:
   using: composite

@@ -56,8 +56,10 @@ jobs:
             done
 
   # tool/check.sh, one group per runner: on one runner the app's widget
-  # tests alone took ~7 minutes. Their files split four ways (balanced by
-  # size); the pure Dart suites and dearth_ui share a runner.
+  # tests alone took ~7 minutes. They split four ways by test (by file, the
+  # shard holding toybox_letters_numbers_test took twice the others and held
+  # a runner E2E was waiting for); the pure Dart suites and dearth_ui share
+  # a runner.
   check:
     name: Gate (${{ matrix.name }})
     runs-on: ubuntu-26.04
@@ -78,7 +80,7 @@ jobs:
       - uses: ./.github/actions/setup
         with:
           lfs: ${{ matrix.lfs }}
-          hooks-key: -${{ matrix.only }}
+          hooks-key: -${{ startsWith(matrix.name, 'app') && 'app' || matrix.name }}
       - name: tool/check.sh --only=${{ matrix.only }} ${{ matrix.shard && format('--shard={0}', matrix.shard) || '' }}
         run: tool/check.sh --only=${{ matrix.only }} ${{ matrix.shard && format('--shard={0}', matrix.shard) || '' }}
       - name: Generated code is committed and current

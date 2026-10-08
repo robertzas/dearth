@@ -108,7 +108,7 @@ commands it uses, for reproducing a failure it reports.
 - `tool/check.sh` runs analyze and every suite at once after codegen
   (`--serial` for one at a time). CI runs it in groups on separate runners
   (`--only=codegen`, `--only=analyze`, `--only=core,integrations,hub,ui`,
-  and `--only=app --shard=N/4`, which splits the app's test files four ways);
+  and `--only=app --shard=N/4`, which splits the app's tests four ways);
   the failing job's name gives the command that reproduces it.
 - E2E specs drive the app through `e2e/tests/helpers.ts`:
   - `openDemo(page, route)` starts a seeded local household at a fixed

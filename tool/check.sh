@@ -11,8 +11,9 @@
 #   tool/check.sh --only=analyze,app   # just these steps: codegen, analyze,
 #                            # core, integrations, hub, ui, app (CI runs each
 #                            # group on its own runner)
-#   tool/check.sh --only=app --shard=2/4   # the app's test files split four
-#                            # ways (balanced by size); this runs the second
+#   tool/check.sh --only=app --shard=2/4   # the app's tests split four ways
+#                            # (by test, not file: one file holds a fifth of
+#                            # the suite's time); this runs the second
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
@@ -41,18 +42,6 @@ ok "dependencies"
 # With --only, a step runs when it's named; otherwise everything runs.
 wanted() { [[ -z "$ONLY" || "$ONLY" == *",$1,"* ]]; }
 
-# The app's test files for --shard=I/N: largest first, each to the lightest
-# shard so far (a file's fixed cost, compiling the app, counts as ~8 KB).
-app_test_files() {
-  local index=${SHARD%/*} total=${SHARD#*/}
-  (cd apps/dearth_app && for f in $(find test -name '*_test.dart' | sort); do echo "$(wc -c <"$f") $f"; done) |
-    sort -k1,1nr -k2,2 |
-    awk -v n="$total" -v want="$index" '{
-      best = 1; for (s = 2; s <= n; s++) if (load[s] < load[best]) best = s
-      load[best] += $1 + 8000; if (best == want) print $2
-    }' | tr '\n' ' '
-}
-
 if [[ $FAST -eq 0 ]] && { [[ -z "$ONLY" ]] || wanted codegen; }; then
   step "Generating code"
   "$ROOT/tool/codegen.sh" >/dev/null
@@ -72,11 +61,9 @@ if wanted ui && find packages/dearth_ui/test -name '*_test.dart' 2>/dev/null | g
   JOBS+=("ui|packages/dearth_ui|flutter test --no-pub --reporter compact")
 fi
 if wanted app; then
-  files=""
-  [[ -n "$SHARD" ]] && files=$(app_test_files)
-  if [[ -z "$SHARD" || -n "$files" ]]; then
-    JOBS+=("app${SHARD:+ $SHARD}|apps/dearth_app|flutter test --no-pub --reporter compact $files")
-  fi
+  shard=""
+  [[ -n "$SHARD" ]] && shard="--total-shards ${SHARD#*/} --shard-index $(( ${SHARD%/*} - 1 ))"
+  JOBS+=("app${SHARD:+ $SHARD}|apps/dearth_app|flutter test --no-pub --reporter compact $shard")
 fi
 
 FAILED=()
