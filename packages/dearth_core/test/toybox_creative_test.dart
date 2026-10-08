@@ -204,4 +204,55 @@ void main() {
       expect([for (final s in [0, 1, 2, 3, 4]) whoResult(four, s)], [GameResult.win, GameResult.win, GameResult.helped, GameResult.helped, GameResult.miss]);
     });
   });
+
+  group('Story Time', () {
+    test('FR-TOY-03 Story Time: three books a shelf, four pages → six → eight; every thing in a picture is a word she can tap and hear', () {
+      expect({for (final b in kStoryBooks) b.id}, hasLength(kStoryBooks.length), reason: 'ids are clip names');
+      for (var level = 1; level <= 3; level++) {
+        final books = kStoryBooks.where((b) => b.level == level);
+        expect(books, hasLength(3));
+        expect(books.map((b) => b.pages.length).toSet(), {[4, 6, 8][level - 1]});
+      }
+      for (final b in kStoryBooks) {
+        expect(b.id, matches(RegExp(r'^[a-z]+$')));
+        expect(b.coverPicture.word, b.cover);
+        for (final (i, page) in b.pages.indexed) {
+          final where = '${b.id} page ${i + 1}';
+          expect(page.text.split(' ').length, lessThanOrEqualTo(12), reason: '$where: one short idea a page');
+          expect(page.text, isNot(contains('[[')), reason: '$where: printed for her to see; phonemes are the voice\'s business');
+          expect(page.things, isNotEmpty, reason: where);
+          for (final t in page.things) {
+            expect(t.picture.word, t.word, reason: '$where: ${t.word} is a picture word with a clip');
+            // Inside the picture, which is at least 4:3 (wider than tall).
+            expect(t.size, inInclusiveRange(0.06, 0.6), reason: '$where ${t.word}');
+            expect(t.y - t.size / 2, greaterThanOrEqualTo(0), reason: '$where ${t.word}');
+            expect(t.y + t.size / 2, lessThanOrEqualTo(1), reason: '$where ${t.word}');
+            expect(t.x - t.size * 0.375, greaterThanOrEqualTo(0), reason: '$where ${t.word}');
+            expect(t.x + t.size * 0.375, lessThanOrEqualTo(1), reason: '$where ${t.word}');
+          }
+        }
+      }
+    });
+
+    test('the shelf: the newest books she has unlocked first, then the level below; a favorite keeps its place', () {
+      List<String> ids(int level) => [for (final b in storyShelf(level)) b.id];
+      expect(ids(1), ['rabbit', 'duck', 'bear']);
+      expect(ids(2), ['balloon', 'rain', 'panda', 'rabbit', 'duck', 'bear']);
+      expect(ids(3), ['rocket', 'turtle', 'snowman', 'balloon', 'rain', 'panda']);
+      expect(ids(9), ids(3));
+      expect(storyBookById('turtle')!.pageClip(0), 'story_turtle_1');
+      expect(storyBookById('turtle')!.titleClip, 'story_turtle_title');
+      expect(storyBookById('nope'), isNull);
+    });
+
+    test('every page is read aloud, and titles are said as titles', () {
+      for (final b in kStoryBooks) {
+        expect(kVoiceLines[b.titleClip], '${b.title}.');
+        for (var i = 0; i < b.pages.length; i++) {
+          expect(kVoiceLines[b.pageClip(i)], isNotNull, reason: b.pageClip(i));
+        }
+      }
+      expect(kVoiceLines[VoiceLine.storyEnd], 'The end!');
+    });
+  });
 }

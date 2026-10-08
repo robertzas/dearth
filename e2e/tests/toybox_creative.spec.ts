@@ -1,5 +1,5 @@
 import { expect, Page, test } from '@playwright/test';
-import { expectCheered, expectText, openToyboxGame, tap, textOf, tid, tids } from './helpers';
+import { expectCheered, expectRoundFinished, expectText, openToyboxGame, tap, textOf, tid, tids } from './helpers';
 
 // The Toybox's make-and-move games (SPEC FR-TOY-03), played from what the
 // screen shows (labels). The voice can't be heard here; the widget tests
@@ -77,5 +77,20 @@ test.describe('Toybox make-and-move games', () => {
     await tap(tid(page, `who.face.${who}`));
     // The next round comes in three seconds: the lasting cheer count, not the "found" labels.
     await expectCheered(page);
+  });
+
+  test('FR-TOY-03: Story Time — she picks a book, turns every page, and it ends', async ({ page }) => {
+    await openToyboxGame(page, 'storytime');
+    await expectText(tid(page, 'story.ask'), 'Pick a story');
+    await tap(tid(page, 'story.book.duck'));
+    await expectText(tid(page, 'story.page'), 'Page 1 of 4: Duck goes for a walk.');
+    for (const n of [2, 3, 4]) {
+      await tap(tid(page, 'story.next'));
+      await expectText(tid(page, 'story.page'), new RegExp(`^Page ${n} of 4: `));
+    }
+    // Read to the end, quietly: no cheer, but the round is recorded.
+    await expectRoundFinished(page);
+    await tap(tid(page, 'story.shelf'));
+    await expectText(tid(page, 'story.ask'), 'Pick a story');
   });
 });

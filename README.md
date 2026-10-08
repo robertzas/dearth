@@ -88,7 +88,7 @@ back.
   Hear the Sound (a parrot says a sound; she finds the letter, up to sh, ch and th),
   Sight Words (she finds the word on a street sign and the bus stops there),
   Banana Balance (the side of the see-saw with more bananas goes down)
-  Who's That? ("Where's Grandma?": she finds the face among the family's own photos), Weather Dress-Up (dress Buddy for today's real forecast, a part at a time), Music Sequencer (rows of animals, steps of a loop: she lights squares and the dog, cat, frog
+  Who's That? ("Where's Grandma?": she finds the face among the family's own photos), Story Time (picture books read aloud a page at a time; she taps things to hear their names), Weather Dress-Up (dress Buddy for today's real forecast, a part at a time), Music Sequencer (rows of animals, steps of a loop: she lights squares and the dog, cat, frog
   and chicken play her beat), Freeze Dance (a buddy dances to the app's own music and freezes in ice when it stops;
   then animal dances), Hundred Square (a ladybug flies to the number she finds and its row of ten lights; at the top,
   hidden numbers to place), Tallies (a chalk mark for each bunny that hops up, the fifth crossing the four, then

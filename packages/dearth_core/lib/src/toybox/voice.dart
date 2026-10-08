@@ -9,6 +9,7 @@ import 'hear.dart';
 import 'hop.dart';
 import 'sight.dart';
 import 'spell.dart';
+import 'storytime.dart';
 import 'tally.dart';
 import 'voice_lengths.g.dart';
 import 'whosthat.dart';
@@ -174,6 +175,8 @@ abstract final class VoiceLine {
   static const freezeDone = 'freeze_done';
   static const seqStart = 'seq_start';
   static const dressDone = 'dress_done';
+  static const storyPick = 'story_pick';
+  static const storyEnd = 'story_end';
   static const whoYes = 'who_yes';
   static const whoYesYou = 'who_yes_you';
 }
@@ -385,6 +388,14 @@ Map<String, String> _lines() {
   lines['who_you'] = 'Where are you?';
   lines['who_doggy'] = "Where's the doggy?";
   lines['who_kitty'] = "Where's the kitty?";
+  for (final story in kStoryBooks) {
+    lines[story.titleClip] = '${story.title}.';
+    for (final (i, page) in story.pages.indexed) {
+      lines[story.pageClip(i)] = page.text;
+    }
+  }
+  lines[VoiceLine.storyPick] = 'Pick a story!';
+  lines[VoiceLine.storyEnd] = 'The end!';
   lines[VoiceLine.whoYes] = 'Yes! You found them!';
   lines[VoiceLine.whoYesYou] = "That's you!";
   lines[VoiceLine.spellMissing] = 'Which sound is missing?';

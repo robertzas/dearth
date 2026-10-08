@@ -75,6 +75,8 @@ const List<GameInfo> kExpansionGames = [
   GameInfo('freeze', 'Freeze Dance', '🕺', minMonths: 24, skills: ['Movement', 'Self-control', 'Listening'], levels: 3, freePlay: true),
   // Shown once two people have face photos (Settings → People).
   GameInfo('whosthat', "Who's That?", '👪', minMonths: 24, skills: ['Family', 'Recognizing faces'], levels: 3),
+  // Nothing to win: books are read, not solved. Visits unlock longer ones.
+  GameInfo('storytime', 'Story Time', '📖', minMonths: 24, skills: ['Listening', 'Language', 'Print awareness'], levels: 3, freePlay: true),
   GameInfo('dressup', 'Weather Dress-Up', '🧥', minMonths: 30, skills: ['Reasoning', 'Weather', 'Getting dressed'], levels: 3),
   GameInfo('hundred', 'Hundred Square', '💯', minMonths: 60, skills: ['Counting past twenty', 'Place value'], levels: 4),
   GameInfo('tally', 'Tallies', '🐇', minMonths: 42, skills: ['Keeping count', 'Counting on', 'Tally marks'], levels: 3),

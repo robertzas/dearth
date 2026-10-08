@@ -4,6 +4,7 @@ import 'package:dearth_app/features/toybox/games/creature.dart';
 import 'package:dearth_app/features/toybox/games/dressup.dart';
 import 'package:dearth_app/features/toybox/games/freeze.dart';
 import 'package:dearth_app/features/toybox/games/sequencer.dart';
+import 'package:dearth_app/features/toybox/games/storytime.dart';
 import 'package:dearth_app/features/toybox/games/whosthat.dart';
 import 'package:dearth_app/features/toybox/toybox_data.dart';
 import 'package:dearth_core/dearth_core.dart';
@@ -18,7 +19,7 @@ import 'support/toybox_harness.dart';
 void main() {
   for (final size in const [Size(390, 844), Size(844, 390), Size(1080, 1920), Size(1920, 1080)]) {
     testWidgets('every make-and-move game lays out on a ${size.width.toInt()}×${size.height.toInt()} screen at its busiest level', (tester) async {
-      await expectGamesLayOut(tester, const [('creature', 1), ('creature', 3), ('freeze', 1), ('freeze', 3), ('sequencer', 1), ('sequencer', 4), ('dressup', 1), ('dressup', 3), ('whosthat', 1), ('whosthat', 3)], size: size);
+      await expectGamesLayOut(tester, const [('creature', 1), ('creature', 3), ('freeze', 1), ('freeze', 3), ('sequencer', 1), ('sequencer', 4), ('dressup', 1), ('dressup', 3), ('whosthat', 1), ('whosthat', 3), ('storytime', 1), ('storytime', 3)], size: size);
     });
   }
 
@@ -320,5 +321,99 @@ void main() {
       games.close();
       await h.shutdown();
     });
+  });
+
+  group('Story Time', () {
+    StoryGameState game(WidgetTester tester) => tester.state<StoryGameState>(find.byType(StoryGame));
+
+    testWidgets('FR-TOY-03: she picks a book; the title and every page are read; things say their names; "The end!" and back to the shelf', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'storytime', sound: sound, level: 1);
+      expect([for (final b in game(tester).debugShelf) b.id], ['rabbit', 'duck', 'bear']);
+      expectNoFallbackText(byId('screen.game'));
+      expect(labelOf(tester, 'story.ask'), 'Pick a story');
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(sound.said, [VoiceLine.storyPick]);
+      final book = storyBookById('rabbit')!;
+      await tester.tap(byId('story.book.rabbit'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(sound.said.last, book.titleClip);
+      expect(labelOf(tester, 'story.ask'), 'Goodnight, Little Rabbit');
+      expect(labelOf(tester, 'story.page'), 'Page 1 of 4: The sun goes down, down, down.');
+      expectNoFallbackText(byId('screen.game'));
+      await tester.pump(afterVoice(book.titleClip));
+      expect(sound.said.last, book.pageClip(0));
+      // A thing in the picture says its name.
+      await tester.tap(byId('story.thing.0'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(sound.said.last, 'word_sun');
+      for (var p = 1; p < 4; p++) {
+        await tester.tap(byId('story.next'));
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(sound.said.last, book.pageClip(p));
+        expect(labelOf(tester, 'story.page'), startsWith('Page ${p + 1} of 4: '));
+      }
+      expect(byId('story.next'), findsNothing, reason: 'the last page leads to the shelf');
+      await tester.pump(afterVoice(book.pageClip(3)) + const Duration(milliseconds: 100));
+      expect(sound.said.last, VoiceLine.storyEnd);
+      await h.settle();
+      expect(await toyboxRounds(h), [('storytime', 1, 'played')]);
+      await tester.tap(byId('story.shelf'));
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(game(tester).debugBook, isNull);
+      expect(byId('story.book.duck'), findsOneWidget);
+      expect(sound.said.last, VoiceLine.storyPick);
+      await tester.pump(const Duration(seconds: 2));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('longer books join the shelf first; back turns a page and reads it again; say-again rereads; the first page\'s back is the shelf', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'storytime', sound: sound, level: 3);
+      expect([for (final b in game(tester).debugShelf) b.id], ['rocket', 'turtle', 'snowman', 'balloon', 'rain', 'panda']);
+      final book = storyBookById('rocket')!;
+      await tester.tap(byId('story.book.rocket'));
+      await tester.pump(afterVoice(book.titleClip));
+      await tester.tap(byId('story.next'));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(game(tester).debugPage, 1);
+      await tester.tap(byId('story.back'));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect((game(tester).debugPage, sound.said.last), (0, book.pageClip(0)));
+      await tester.tap(byId('story.ask.again'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(sound.said.where((c) => c == book.pageClip(0)), hasLength(3), reason: 'read, read again on the way back, and once more');
+      await tester.tap(byId('story.shelf'));
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(game(tester).debugBook, isNull);
+      await h.settle();
+      expect(await toyboxRounds(h), isEmpty, reason: 'a book left early is not a round (the host records the visit on leaving)');
+      await tester.pump(const Duration(seconds: 2));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    for (final size in const [Size(390, 844), Size(844, 390), Size(1080, 1920), Size(1920, 1080)]) {
+      testWidgets('a book\'s pages lay out on a ${size.width.toInt()}×${size.height.toInt()} screen', (tester) async {
+        final h = await openToyboxGame(tester, 'storytime', level: 3, size: size);
+        for (final b in storyShelf(3).take(3)) {
+          await tester.tap(byId('story.book.${b.id}'));
+          await tester.pump(const Duration(milliseconds: 300));
+          for (var p = 1; p < b.pages.length; p++) {
+            await tester.tap(byId('story.next'));
+            await tester.pump(const Duration(milliseconds: 300));
+          }
+          expectNoFallbackText(byId('screen.game'));
+          await tester.tap(byId('story.shelf'));
+          await tester.pump(const Duration(milliseconds: 300));
+        }
+        // An overflow would have been thrown as a layout error.
+        await tester.pump(const Duration(seconds: 2));
+        await h.shutdown();
+      });
+    }
   });
 }

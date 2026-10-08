@@ -47,6 +47,7 @@ export 'src/toybox/rounds.dart';
 export 'src/toybox/sequencer.dart';
 export 'src/toybox/sight.dart';
 export 'src/toybox/spell.dart';
+export 'src/toybox/storytime.dart';
 export 'src/toybox/tally.dart';
 export 'src/toybox/tracing.dart';
 export 'src/toybox/voice.dart';

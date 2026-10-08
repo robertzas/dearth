@@ -33,6 +33,7 @@ import 'sight.dart';
 import 'sizes.dart';
 import 'spell.dart';
 import 'stories.dart';
+import 'storytime.dart';
 import 'sudoku.dart';
 import 'tally.dart';
 import 'tracing.dart';
@@ -82,4 +83,5 @@ final Map<String, GameBuilder> kGameBuilders = {
   'sequencer': SequencerGame.new,
   'dressup': DressGame.new,
   'whosthat': WhoGame.new,
+  'storytime': StoryGame.new,
 };
