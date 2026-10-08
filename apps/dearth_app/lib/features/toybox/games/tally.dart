@@ -49,9 +49,10 @@ class TallyGameState extends State<TallyGame> {
   @visibleForTesting
   int get debugMarks => _round!.start + _marked;
 
-  /// Whether a bunny is waiting for its mark.
+  /// Whether a bunny is waiting for its mark (not the one just marked,
+  /// which waits a moment before it hops off).
   @visibleForTesting
-  bool get debugWaiting => _bunny == _Bunny.waiting;
+  bool get debugWaiting => _bunny == _Bunny.waiting && _bunnyIndex == _marked;
 
   @override
   void initState() {

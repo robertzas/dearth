@@ -140,12 +140,14 @@ class SequencerGameState extends State<SequencerGame> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    tid(
-                      'seq.board',
-                      Semantics(
-                        label: _step < 0 ? 'Ready' : 'Step ${_step + 1} of $n',
-                        container: true,
-                        child: Column(
+                    // The playhead's place is a leaf behind the squares: a container's
+                    // label isn't text a test (or a screen reader) can read past its children.
+                    Stack(
+                      children: [
+                        Positioned.fill(
+                          child: tid('seq.board', Semantics(label: _step < 0 ? 'Ready' : 'Step ${_step + 1} of $n', excludeSemantics: true, child: const SizedBox.expand())),
+                        ),
+                        Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             for (final (r, track) in _size.tracks.indexed)
@@ -182,7 +184,7 @@ class SequencerGameState extends State<SequencerGame> {
                               ),
                           ],
                         ),
-                      ),
+                      ],
                     ),
                     DPressable(
                       id: 'seq.dice',

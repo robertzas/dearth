@@ -68,7 +68,8 @@ const Map<DressWeather, Map<DressSlot, Set<DressItem>>> kDressSuits = {
   },
   DressWeather.warm: {
     DressSlot.top: {DressItem.tshirt},
-    DressSlot.legs: {DressItem.shorts, DressItem.jeans},
+    // Shorts only: legs have two items, so with both suiting there would be nothing to choose.
+    DressSlot.legs: {DressItem.shorts},
     DressSlot.feet: {DressItem.sneakers, DressItem.sandals},
     DressSlot.extra: {DressItem.sunglasses, DressItem.sunhat},
   },
