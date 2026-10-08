@@ -168,7 +168,7 @@ class GoogleCalendarApi {
   /// Push notifications to [address] (the Hub's HTTPS webhook).
   Future<WatchChannel> watch(String calendarId, {required String address, required String channelId, required String channelToken}) async {
     final j = asObject(
-      await fetcher.postJson(provider, _u('/calendars/${_cal(calendarId)}/events/watch'), headers: await _auth(), body: {
+      await fetcher.postJson(provider, _u('/calendars/${_cal(calendarId)}/events/watch'), headers: await _auth(), body: <String, Object?>{
         'id': channelId,
         'type': 'web_hook',
         'address': address,
@@ -187,7 +187,7 @@ class GoogleCalendarApi {
   /// Google adds it to the account's calendar list.
   Future<String> createCalendar(String summary, {required String timeZone, String? description}) async {
     final j = asObject(
-      await fetcher.postJson(provider, _u('/calendars'), headers: await _auth(), body: {'summary': summary, 'timeZone': timeZone, 'description': ?description}),
+      await fetcher.postJson(provider, _u('/calendars'), headers: await _auth(), body: <String, Object?>{'summary': summary, 'timeZone': timeZone, 'description': ?description}),
       provider,
     );
     final id = j.str('id');
@@ -197,14 +197,14 @@ class GoogleCalendarApi {
 
   /// Shares [calendarId] with [email]; Google emails them a link to add it.
   Future<void> share(String calendarId, String email, {String role = 'writer'}) async {
-    await fetcher.postJson(provider, _u('/calendars/${_cal(calendarId)}/acl', {'sendNotifications': 'true'}), headers: await _auth(), body: {
+    await fetcher.postJson(provider, _u('/calendars/${_cal(calendarId)}/acl', {'sendNotifications': 'true'}), headers: await _auth(), body: <String, Object?>{
       'role': role,
       'scope': {'type': 'user', 'value': email},
     });
   }
 
   Future<void> stopChannel(String channelId, String resourceId) async {
-    await fetcher.postJson(provider, _u('/channels/stop'), headers: await _auth(), body: {'id': channelId, 'resourceId': resourceId});
+    await fetcher.postJson(provider, _u('/channels/stop'), headers: await _auth(), body: <String, Object?>{'id': channelId, 'resourceId': resourceId});
   }
 }
 

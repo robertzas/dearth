@@ -103,6 +103,9 @@ class Fetcher {
   Future<Object?> getJson(String provider, Uri uri, {Map<String, String>? headers}) async =>
       _decode(provider, await send(provider, 'GET', uri, headers: headers));
 
+  /// POSTs [body]: a `Map<String, String>` goes as a form (OAuth token
+  /// endpoints), any other map as JSON, so type JSON literals whose values
+  /// are all strings as `<String, Object?>{…}`.
   Future<Object?> postJson(String provider, Uri uri, {Map<String, String>? headers, Object? body}) async =>
       _decode(provider, await send(provider, 'POST', uri, headers: headers, body: body));
 
