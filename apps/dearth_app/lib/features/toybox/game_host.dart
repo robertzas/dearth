@@ -116,6 +116,10 @@ class GameScreenState extends ConsumerState<GameScreen> {
   /// this count stays, for screen readers and for tests on slow machines.
   int _cheers = 0;
 
+  /// Rounds finished, cheered or not: lasting proof for tests that a round
+  /// ended (a game's own "found it" passes in seconds; a miss isn't cheered).
+  int _rounds = 0;
+
   @visibleForTesting
   int get debugLevel => _level;
 
@@ -169,6 +173,7 @@ class GameScreenState extends ConsumerState<GameScreen> {
 
   Future<void> _finishRound(String result, {String? emoji, int? level, bool calm = false}) async {
     _history.add((level: level ?? _level, result: result));
+    if (mounted) setState(() => _rounds++);
     if (result != GameResult.miss && !calm && mounted) {
       celebrate(context, emoji: emoji ?? widget.game.emoji, message: randomPraise(_random));
       _sound(Sfx.cheer);
@@ -230,6 +235,13 @@ class GameScreenState extends ConsumerState<GameScreen> {
                 width: 1,
                 height: 1,
                 child: tid('game.cheers', Semantics(label: _cheers == 1 ? '1 round cheered' : '$_cheers rounds cheered', excludeSemantics: true, child: const SizedBox.expand())),
+              ),
+              Positioned(
+                left: 1,
+                top: 0,
+                width: 1,
+                height: 1,
+                child: tid('game.rounds', Semantics(label: _rounds == 1 ? '1 round finished' : '$_rounds rounds finished', excludeSemantics: true, child: const SizedBox.expand())),
               ),
               tid('game.${widget.game.id}', builder == null ? Center(child: Text(widget.game.title, style: t.text.kidTitle)) : builder(_controller)),
               Positioned(

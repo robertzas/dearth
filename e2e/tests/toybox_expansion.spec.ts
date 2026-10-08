@@ -1,5 +1,5 @@
 import { expect, Page, test } from '@playwright/test';
-import { drag, expectCheered, expectText, idsUnder, openToyboxGame, tap, textOf, tid } from './helpers';
+import { drag, expectCheered, expectRoundFinished, expectText, idsUnder, openToyboxGame, tap, textOf, tid } from './helpers';
 
 // The Toybox's expansion set (SPEC FR-TOY-03), played the way a child would:
 // from what the screen shows (labels), not from the game's state. Every
@@ -27,14 +27,15 @@ test.describe('Toybox expansion', () => {
 
   test('FR-TOY-03: Odd One Out — tapping around until the different one is found', async ({ page }) => {
     await openGame(page, 'oddone');
-    // Guessing counts as slips, and a round with many isn't cheered: the
-    // prompt says when it's found.
+    // Guessing counts as slips, and a round with many isn't cheered. "You
+    // found it!" lasts 2.4 s, which a slow runner can miss: the host's
+    // lasting round count says it ended.
     for (const id of await ids(page, 'oddone.item.')) {
-      if ((await label(page, 'oddone.ask')).includes('found')) break;
+      if ((await label(page, 'oddone.ask')).includes('found') || (await textOf(tid(page, 'game.rounds'))).startsWith('1 ')) break;
       await tap(tid(page, id));
       await page.waitForTimeout(300);
     }
-    await expectText(tid(page, 'oddone.ask'), 'You found it!');
+    await expectRoundFinished(page);
   });
 
   test('FR-TOY-03: Shadow Match — each picture onto its own shadow', async ({ page }) => {

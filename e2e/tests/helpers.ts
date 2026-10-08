@@ -188,6 +188,14 @@ export async function expectCheered(page: Page, timeout = 20_000): Promise<void>
   await expectText(tid(page, 'game.cheers'), /^[1-9]\d* rounds? cheered$/, timeout);
 }
 
+/**
+ * A Toybox round ended, cheered or not (a round with many slips isn't). The
+ * host's lasting count: a game's own "found it" is gone in seconds.
+ */
+export async function expectRoundFinished(page: Page, timeout = 20_000): Promise<void> {
+  await expectText(tid(page, 'game.rounds'), /^[1-9]\d* rounds? finished$/, timeout);
+}
+
 /** Whether the open Toybox game has cheered a round yet. */
 export async function cheered(page: Page): Promise<boolean> {
   return /^[1-9]/.test(await textOf(tid(page, 'game.cheers')).catch(() => ''));
