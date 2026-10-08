@@ -14,6 +14,7 @@ import '../core/providers.dart';
 import '../core/sound.dart';
 import '../features/calendar/event_sheet.dart';
 import '../features/calendar/event_visuals.dart';
+import '../shared/face_photo.dart';
 import 'display_state.dart';
 import 'router.dart';
 
@@ -233,7 +234,7 @@ class _ReminderBanner extends ConsumerWidget {
               clipBehavior: Clip.none,
               children: [
                 if (kids.length == 1)
-                  DAvatar(colorIndex: kids.single.color, emoji: kids.single.emoji, name: kids.single.name, size: size)
+                  ProfileAvatar(kids.single, size: size)
                 else
                   Container(
                     width: size,

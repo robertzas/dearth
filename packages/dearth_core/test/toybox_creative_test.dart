@@ -151,4 +151,57 @@ void main() {
       }
     });
   });
+
+  group("Who's That?", () {
+    test("FR-TOY-03 Who's That?: a person is asked for by the family word they go by; the child is \"you\", a dog \"the doggy\"", () {
+      expect(whoAskFor(name: 'Mom'), 'who_mom');
+      expect(whoAskFor(name: 'Sarah', nickname: 'Mommy'), 'who_mommy', reason: 'the nickname the family uses');
+      expect(whoAskFor(name: 'Grandma', nickname: 'Gigi'), 'who_grandma', reason: 'an unknown nickname falls back to the name');
+      expect(whoAskFor(name: 'GRAND-PA'), 'who_grandpa');
+      expect(whoAskFor(name: 'Ava', you: true), 'who_you');
+      expect(whoAskFor(name: 'Biscuit', emoji: '🐶', pet: true), 'who_doggy');
+      expect(whoAskFor(name: 'Tom', emoji: '🐈', pet: true), 'who_kitty');
+      expect(whoAskFor(name: 'Goldie', emoji: '🐠', pet: true), isNull, reason: 'no clip for a fish');
+      expect(whoAskFor(name: 'Sarah'), isNull);
+      for (final key in kWhoWords.keys) {
+        expect(key, matches(RegExp(r'^[a-z]+$')), reason: 'keys are what a name folds to');
+      }
+    });
+
+    test('playable with two faces, one the voice can ask for', () {
+      expect(whoPlayable(const [WhoFace('a', 'who_mom')]), isFalse);
+      expect(whoPlayable(const [WhoFace('a', null), WhoFace('b', null)]), isFalse);
+      expect(whoPlayable(const [WhoFace('a', 'who_you'), WhoFace('b', null)]), isTrue);
+    });
+
+    test('two faces → four → six (as many as there are); the one asked for is on the board, askable, and not the last', () {
+      final family = [
+        for (final (i, ask) in ['who_you', 'who_mom', 'who_dad', null, 'who_doggy', null, 'who_nana', 'who_papa'].indexed) WhoFace('p$i', ask),
+      ];
+      for (var seed = 0; seed < 200; seed++) {
+        final rng = Random(seed);
+        String? last;
+        for (var level = 1; level <= 3; level++) {
+          final r = whoRound(level, rng, faces: family, last: last);
+          expect(r.faces, hasLength([2, 4, 6][level - 1]));
+          expect(r.faces.map((f) => f.id).toSet(), hasLength(r.faces.length), reason: 'each face once');
+          expect(r.faces, contains(r.target));
+          expect(r.target.ask, isNotNull);
+          expect(r.target.id, isNot(last), reason: 'seed $seed');
+          last = r.target.id;
+        }
+        expect(whoRound(3, rng, faces: family.take(3).toList()).faces, hasLength(3), reason: 'a small family shows everyone');
+      }
+      // Only one face can be asked for: it is asked again rather than never.
+      final one = whoRound(1, Random(1), faces: const [WhoFace('kid', 'who_you'), WhoFace('x', null)], last: 'kid');
+      expect(one.target.id, 'kid');
+    });
+
+    test('slips: two faces allow none; four or six allow one, then helped', () {
+      final two = whoRound(1, Random(0), faces: const [WhoFace('a', 'who_mom'), WhoFace('b', 'who_dad')]);
+      expect([for (final s in [0, 1, 2]) whoResult(two, s)], [GameResult.win, GameResult.helped, GameResult.miss]);
+      final four = whoRound(2, Random(0), faces: [for (var i = 0; i < 4; i++) WhoFace('p$i', 'who_mom')]);
+      expect([for (final s in [0, 1, 2, 3, 4]) whoResult(four, s)], [GameResult.win, GameResult.win, GameResult.helped, GameResult.helped, GameResult.miss]);
+    });
+  });
 }

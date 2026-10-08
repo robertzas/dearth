@@ -11,6 +11,7 @@ import 'sight.dart';
 import 'spell.dart';
 import 'tally.dart';
 import 'voice_lengths.g.dart';
+import 'whosthat.dart';
 import 'words.dart';
 import 'zoo.dart';
 
@@ -173,6 +174,8 @@ abstract final class VoiceLine {
   static const freezeDone = 'freeze_done';
   static const seqStart = 'seq_start';
   static const dressDone = 'dress_done';
+  static const whoYes = 'who_yes';
+  static const whoYesYou = 'who_yes_you';
 }
 
 const List<String> _numbers = [
@@ -376,6 +379,14 @@ Map<String, String> _lines() {
     lines[dressItemClip(i)] = i.line;
   }
   lines[VoiceLine.dressDone] = 'Ready to go outside!';
+  for (final MapEntry(key: key, value: word) in kWhoWords.entries) {
+    lines['who_$key'] = "Where's $word?";
+  }
+  lines['who_you'] = 'Where are you?';
+  lines['who_doggy'] = "Where's the doggy?";
+  lines['who_kitty'] = "Where's the kitty?";
+  lines[VoiceLine.whoYes] = 'Yes! You found them!';
+  lines[VoiceLine.whoYesYou] = "That's you!";
   lines[VoiceLine.spellMissing] = 'Which sound is missing?';
   lines[VoiceLine.spellBuild] = "Let's build it, sound by sound!";
   for (var n = 0; n <= 10; n++) {

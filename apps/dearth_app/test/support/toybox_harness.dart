@@ -5,6 +5,7 @@ import 'package:dearth_app/core/data/household.dart';
 import 'package:dearth_app/features/toybox/game_host.dart';
 import 'package:dearth_app/features/toybox/toybox_data.dart';
 import 'package:dearth_app/features/toybox/toybox_screen.dart';
+import 'package:dearth_app/shared/face_photo.dart';
 import 'package:dearth_core/dearth_core.dart';
 import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:flutter_test/flutter_test.dart';
@@ -15,10 +16,14 @@ import 'app_harness.dart';
 /// Opens [game] from Ava's Toybox on the demo household (she is 2½), at a
 /// pinned [level] when given (every game is on by default).
 /// Fails unless the game opened.
-Future<AppHarness> openToyboxGame(WidgetTester tester, String game, {RecordingSound? sound, int? level, Size size = const Size(1920, 1080)}) async {
+Future<AppHarness> openToyboxGame(WidgetTester tester, String game, {RecordingSound? sound, int? level, Size size = const Size(1920, 1080), List<String> faces = const []}) async {
   final h = await AppHarness.demo(tester, sound: sound ?? RecordingSound(), size: size);
   final settings = ToyboxSettings(pins: {'p-ava.$game': ?level});
-  await h.write((w) => [settingOp(w, SettingKeys.toybox, settings.toJson())]);
+  await h.write((w) => [
+        settingOp(w, SettingKeys.toybox, settings.toJson()),
+        // Face photos for these profiles (Who's That?); no Hub, so they draw as emoji.
+        for (final id in faces) w.op('profiles', id, {'avatar_blob': testFace(id)}),
+      ]);
   h.container.read(routerProvider).go('/toybox');
   await h.settle();
   // On small screens the tile can be below the fold, where a tap misses
@@ -68,3 +73,6 @@ Future<List<(String, int, String)>> toyboxRounds(AppHarness h) async {
   final events = (await h.tester.runAsync(() => (h.db.select(h.db.gameEvents)..orderBy([(e) => OrderingTerm.asc(e.atMs)])).get()))!;
   return [for (final e in events) (e.game, e.level, e.result)];
 }
+
+/// A face crop for profile [id] with no photo behind it.
+String testFace(String id) => FaceCrop('face-$id', aspect: 1, x: 0, y: 0, w: 1).encode();

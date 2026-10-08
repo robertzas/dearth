@@ -10,6 +10,8 @@ import 'package:flutter/foundation.dart';
 /// * `?demo=1` / `DEARTH_DEMO=true` — start straight in demo mode.
 /// * `?hub=http://…` / `DEARTH_HUB` — preset Hub URL for onboarding.
 /// * `?reset=1` — wipe local data on start (E2E isolation).
+/// * `?faces=1` — the demo family gets face photos (E2E: Who's That? shows
+///   only with faces; without a Hub they draw as the person's emoji).
 @immutable
 class AppEnv {
   const AppEnv({
@@ -18,6 +20,7 @@ class AppEnv {
     this.forceDemo = false,
     this.hubUrl,
     this.reset = false,
+    this.demoFaces = false,
     this.role,
     this.appVersion = 'dev',
   });
@@ -33,6 +36,7 @@ class AppEnv {
       forceDemo: flag('demo', const bool.fromEnvironment('DEARTH_DEMO')),
       hubUrl: str('hub', const String.fromEnvironment('DEARTH_HUB')),
       reset: flag('reset', false),
+      demoFaces: flag('faces', false),
       role: str('role', const String.fromEnvironment('DEARTH_ROLE')),
       appVersion: const String.fromEnvironment('DEARTH_VERSION', defaultValue: '0.1.0'),
     );
@@ -45,6 +49,7 @@ class AppEnv {
   final bool forceDemo;
   final String? hubUrl;
   final bool reset;
+  final bool demoFaces;
 
   /// Device role override for demo mode (`kitchen`, `personal`…).
   final String? role;

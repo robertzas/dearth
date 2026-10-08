@@ -1,5 +1,5 @@
 import { expect, Page, test } from '@playwright/test';
-import { expectText, openToyboxGame, tap, textOf, tid, tids } from './helpers';
+import { expectCheered, expectText, openToyboxGame, tap, textOf, tid, tids } from './helpers';
 
 // The Toybox's make-and-move games (SPEC FR-TOY-03), played from what the
 // screen shows (labels). The voice can't be heard here; the widget tests
@@ -66,5 +66,16 @@ test.describe('Toybox make-and-move games', () => {
     }
     await expectText(tid(page, 'dress.buddy'), /^Buddy: 1 of 1 dressed, \w+/);
     await expectText(tid(page, 'dress.ask'), 'Ready to go outside');
+  });
+
+  test("FR-TOY-03: Who's That? — the voice asks for someone and she finds their face", async ({ page }) => {
+    // The demo family with face photos (no Hub: they draw as their emoji).
+    await openToyboxGame(page, 'whosthat', 'faces=1');
+    const ask = await label(page, 'who.ask');
+    expect(ask).toMatch(/^Where (are you|is (Mom|Dad|Biscuit))\?$/);
+    const who = ask === 'Where are you?' ? 'p-ava' : { 'Where is Mom?': 'p-mom', 'Where is Dad?': 'p-dad', 'Where is Biscuit?': 'p-biscuit' }[ask]!;
+    await tap(tid(page, `who.face.${who}`));
+    // The next round comes in three seconds: the lasting cheer count, not the "found" labels.
+    await expectCheered(page);
   });
 });

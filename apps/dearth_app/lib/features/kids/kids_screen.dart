@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/data/household.dart';
+import '../../shared/face_photo.dart';
 import '../calendar/views/kid_timeline.dart';
 import 'grown_ups.dart';
 import 'kid_widgets.dart';
@@ -31,7 +32,7 @@ class KidsScreen extends ConsumerWidget {
     final header = DPageHeader(
       title: kid == null ? 'Grown-ups' : '${kid.name}’s day',
       subtitle: kid == null ? 'Approvals, rewards and household chores' : '${KidStage.label(kid.kidStage)} · ${buddyEmoji(kid.buddy)} ${_buddyName(kid.buddy)}',
-      leading: kid == null ? null : DAvatar(colorIndex: kid.color, emoji: kid.emoji, name: kid.name, size: 56 * t.scale),
+      leading: kid == null ? null : ProfileAvatar(kid, size: 56 * t.scale),
       actions: t.isPhone ? const [] : [tabs],
     );
     return screenTid(

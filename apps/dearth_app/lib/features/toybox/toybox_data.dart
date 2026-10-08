@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/data/household.dart';
 import '../../core/providers.dart';
+import '../../shared/face_photo.dart';
 import '../kids/kids_data.dart';
 
 /// The grown-ups' Toybox rules (SPEC FR-TOY-05), one household setting.
@@ -117,8 +118,20 @@ final kidMonthsProvider = Provider.family<int, String>((ref, kidId) {
 /// The games this kid sees, launcher order.
 final kidGamesProvider = Provider.family<List<GameInfo>, String>((ref, kidId) {
   final s = ref.watch(toyboxSettingsProvider);
-  return gamesFor(ref.watch(kidMonthsProvider(kidId)), off: s.offFor(kidId));
+  final games = gamesFor(ref.watch(kidMonthsProvider(kidId)), off: s.offFor(kidId));
+  // Who's That? needs faces: two people with photos, one the voice can ask for.
+  if (!whoPlayable(whoFaces(ref.watch(familyProvider), kidId))) return [for (final g in games) if (g.id != 'whosthat') g];
+  return games;
 });
+
+/// The household's faces for Who's That? (SPEC FR-TOY-03): everyone with a
+/// face photo (or, with [photosOnly] off, everyone), and the clip that asks
+/// for them (the child playing is "you").
+List<WhoFace> whoFaces(List<Profile> people, String kidId, {bool photosOnly = true}) => [
+      for (final p in people)
+        if (!photosOnly || FaceCrop.parse(p.avatarBlob) != null)
+          WhoFace(p.id, whoAskFor(name: p.name, nickname: p.nickname, emoji: p.emoji, you: p.id == kidId, pet: p.role == ProfileRole.pet)),
+    ];
 
 // ─────────────────────────────── Rounds & levels ────────────────────────────
 

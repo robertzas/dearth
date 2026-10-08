@@ -272,7 +272,7 @@ class DEmoji extends StatelessWidget {
 /// A circular person avatar: emoji (or initial) on the person's tint, with
 /// an optional progress ring (chores done; SPEC §11.8 `DAvatar`).
 class DAvatar extends StatelessWidget {
-  const DAvatar({super.key, required this.colorIndex, this.emoji, this.name, required this.size, this.progress, this.ring = true, this.semanticLabel});
+  const DAvatar({super.key, required this.colorIndex, this.emoji, this.name, required this.size, this.progress, this.ring = true, this.semanticLabel, this.photo});
 
   final int colorIndex;
   final String? emoji;
@@ -284,21 +284,26 @@ class DAvatar extends StatelessWidget {
   final bool ring;
   final String? semanticLabel;
 
+  /// A face photo instead of the emoji, built at the circle's size (the app
+  /// knows where photos live); the ring is drawn over it.
+  final Widget Function(double size)? photo;
+
   @override
   Widget build(BuildContext context) {
     final t = DTheme.of(context);
     final pc = t.person(colorIndex);
     final stroke = (size * 0.07).clamp(2.0, 6.0);
+    final border = ring && progress == null ? Border.all(color: pc.solid, width: stroke) : null;
+    final photo = this.photo;
     final inner = Container(
       width: size,
       height: size,
       alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: pc.tint,
-        shape: BoxShape.circle,
-        border: ring && progress == null ? Border.all(color: pc.solid, width: stroke) : null,
-      ),
-      child: emoji != null && emoji!.isNotEmpty
+      decoration: BoxDecoration(color: pc.tint, shape: BoxShape.circle, border: photo == null ? border : null),
+      foregroundDecoration: photo != null && border != null ? BoxDecoration(shape: BoxShape.circle, border: border) : null,
+      child: photo != null
+          ? photo(size)
+          : emoji != null && emoji!.isNotEmpty
           ? DEmoji(emoji!, size: size * 0.58)
           : Text(
               (name ?? '?').characters.firstOrNull?.toUpperCase() ?? '?',

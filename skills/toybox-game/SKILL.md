@@ -224,9 +224,10 @@ phone-size layout tests had been looking at the launcher, not the game.
     to the "lays out on a W×H screen" loop, which runs 390×844, 844×390,
     1080×1920 and 1920×1080 and fails on any overflow.
 - **E2E** (`e2e/tests/toybox_<family>.spec.ts`): one journey that plays a
-  round from the labels on screen, on all four projects. The demo kid,
-  Ava, is 2½: pass `early = true` to `openToyboxGame(page, '<id>', true)`
-  for games aimed older than 30 months.
+  round from the labels on screen, on all four projects. Every game is on
+  for the demo kid (Ava, 2½). Extra URL flags go in the third argument:
+  Who's That? needs faces, `openToyboxGame(page, 'whosthat', 'faces=1')`
+  (widget tests: `openToyboxGame(tester, 'whosthat', faces: [...])`).
 - The voice guards in both packages must pass (`references/voice.md`).
 
 ## Step 7: Docs

@@ -2,12 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:dearth_core/dearth_core.dart';
-import 'package:dearth_integrations/dearth_integrations.dart' show demoSeedOps;
+import 'package:dearth_integrations/dearth_integrations.dart' show DemoIds, demoSeedOps;
 import 'package:dearth_ui/dearth_ui.dart';
 import 'package:drift/drift.dart' show TableOrViewStatements;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 
+import '../shared/face_photo.dart';
 import 'env.dart';
 import 'session.dart';
 import 'sync/hub_api.dart';
@@ -57,6 +58,10 @@ class SessionController extends Notifier<Session> {
       ...householdDefaultOps(m, timezone: tz),
       ...await demoSeedOps(m, time),
       m.makeOp('devices', Session.demoDeviceId, {'name': 'This display', 'role': r, 'platform': AppEnv.platformName}),
+      // Faces with no photo behind them (no Hub): each shows its emoji.
+      if (ref.read(envProvider).demoFaces)
+        for (final id in [DemoIds.mom, DemoIds.dad, DemoIds.ava, DemoIds.dog])
+          m.makeOp('profiles', id, {'avatar_blob': FaceCrop('demo-$id', aspect: 1, x: 0, y: 0, w: 1).encode()}),
     ]);
     await db.kvSet('demo.seeded', time.today().iso);
     await set(Session(mode: SessionMode.demo, role: r, admin: true, deviceName: 'This display'));

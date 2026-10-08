@@ -1391,7 +1391,9 @@ the Hub)
   Weather · Photos & Screensaver · Meals · Kids · Toybox · Music · Smart
   Home · Notifications · Integrations & Accounts · Backups · Updates ·
   Diagnostics · About & Licenses. Settings are searchable and every one has
-  inline help.
+  inline help. People: a person's face can come from the family photo
+  library (pick a photo, drag and pinch the face into a circle); it is
+  their avatar on every display and their face in Who's That?.
 - **FR-SET-04 [M1]** Accessibility settings: text size, high contrast,
   reduced motion, color-blind-safe palette, sounds and haptics.
 
@@ -2811,7 +2813,7 @@ points, not limits.
 | Picture Sudoku | 4+ | Logic | 4×4 grid with fruit pictures | 1 blank → 6 blanks | M4 |
 | Spot the Difference | 4+ | Attention | Find 3–7 differences | Big → subtle | M4 |
 | I Spy | 3+ | Vocabulary, attention | "I spy something yellow" in a scene | Colors → shapes → letters | M4 |
-| Who's That? | 2+ | Family recognition | Tap Grandma among family faces | 2 → 6 faces | M4 |
+| Who's That? | 2+ | Family recognition | The family's **own faces** in big circles (photos picked from the family library in Settings → People and fitted to a circle, FR-SET-03; they show as each person's avatar everywhere). The voice asks for one by the family word their name or nickname is ("Where's Grandma?", Mommy, Daddy, Nana, Papa…), the child by "Where are you?", a dog or cat as "the doggy"/"the kitty"; faces the voice can't name are there to tell apart. The right face hops ("Yes! You found them!", "That's you!"); a wrong one wiggles and sits back; two slips light the right one; a long pause asks again. Shown once two people have faces and one can be asked for | 2 → 4 → 6 faces (as many as have photos) | M4 |
 | Build-a-Creature | 2.5+ | Creativity, language | Mix body parts; it dances and says its silly name | More parts and colors | M4 |
 | Music Sequencer | 4+ | Patterns, rhythm, music | A row per animal (dog, cat, frog, chicken), a column per step; a playhead loops across (330 ms a step) and every lit square makes its animal's short call (one call each, cut from the farm's CC0 recordings) while the animal hops. A plain beat plays from the start; she lights and darkens squares (a lit one calls at once), taps an animal to hear it, and rolls the dice for a new pattern. Free play | 4 steps × dog and cat → 8 steps → + frog → + chicken | M4 |
 | Weather Dress-Up | 2.5+ | Reasoning, self-care | Dress a paper-doll buddy for **today's real forecast**: the sky takes the day's look and the voice says it ("It's snowy today! What should Buddy wear?"; the kind of day by What to wear's rules, FR-WX-07, through the same `wearInputs`); one part at a time from up to three things, one that suits the day and the others the opposite kind of day's. A pick that suits goes on the buddy and is named ("Boots!"); one that doesn't wiggles, says its name and fades; two slips light one that suits. "Ready to go outside!" Without a forecast it pretends ("Let's pretend it's rainy!") | the top → the top and the shoes → the whole outfit (top, legs, feet and one more thing: a sun hat, sunglasses, an umbrella, mittens or a scarf) | M4 |

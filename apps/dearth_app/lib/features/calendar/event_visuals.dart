@@ -7,6 +7,7 @@ import '../../core/data/calendar.dart';
 import '../../core/data/household.dart';
 import '../../core/format.dart';
 import '../../core/providers.dart';
+import '../../shared/face_photo.dart';
 
 /// Colors for an event: its people are the color (SPEC §11.1 #2); events
 /// without people use their calendar's color.
@@ -79,7 +80,7 @@ class AvatarStack extends StatelessWidget {
                 left: i * step,
                 child: Container(
                   decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: t.colors.surfaceRaised, width: 2)),
-                  child: DAvatar(colorIndex: p.color, emoji: p.emoji, name: p.name, size: size - 4, ring: false),
+                  child: ProfileAvatar(p, size: size - 4, ring: false),
                 ),
               ),
             if (people.length > max)

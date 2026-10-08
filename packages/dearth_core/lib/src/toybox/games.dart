@@ -73,6 +73,8 @@ const List<GameInfo> kExpansionGames = [
   GameInfo('sequencer', 'Music Sequencer', '🥁', minMonths: 48, skills: ['Patterns', 'Rhythm', 'Music'], levels: 4, freePlay: true),
   // Nothing to win: the screen can't see her freeze. Visits unlock levels.
   GameInfo('freeze', 'Freeze Dance', '🕺', minMonths: 24, skills: ['Movement', 'Self-control', 'Listening'], levels: 3, freePlay: true),
+  // Shown once two people have face photos (Settings → People).
+  GameInfo('whosthat', "Who's That?", '👪', minMonths: 24, skills: ['Family', 'Recognizing faces'], levels: 3),
   GameInfo('dressup', 'Weather Dress-Up', '🧥', minMonths: 30, skills: ['Reasoning', 'Weather', 'Getting dressed'], levels: 3),
   GameInfo('hundred', 'Hundred Square', '💯', minMonths: 60, skills: ['Counting past twenty', 'Place value'], levels: 4),
   GameInfo('tally', 'Tallies', '🐇', minMonths: 42, skills: ['Keeping count', 'Counting on', 'Tally marks'], levels: 3),

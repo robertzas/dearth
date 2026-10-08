@@ -8,6 +8,7 @@ import '../../app/grown_up.dart';
 import '../../core/data/household.dart';
 import '../../core/data/household_data.dart';
 import '../../core/providers.dart';
+import '../../shared/face_photo.dart';
 
 /// Lists (SPEC FR-LIST-01): master–detail on wide screens, list → detail on
 /// phones. Shopping lists group by aisle (FR-SHOP-04).
@@ -373,7 +374,7 @@ class _ItemRow extends StatelessWidget {
               ),
             ),
             if (item.note != null) Padding(padding: EdgeInsets.only(left: t.space.xs), child: Text(item.note!, style: t.text.caption)),
-            if (who != null) ...[SizedBox(width: t.space.xs), DAvatar(colorIndex: who.color, emoji: who.emoji, name: who.name, size: 32 * t.scale)],
+            if (who != null) ...[SizedBox(width: t.space.xs), ProfileAvatar(who, size: 32 * t.scale)],
             SizedBox(width: t.space.xs),
           ],
         ),

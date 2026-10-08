@@ -23,11 +23,12 @@ void main() {
     final handle = tester.ensureSemantics();
     final h = await AppHarness.demo(tester);
     await toybox(h);
-    for (final g in kGames.where((g) => g.minMonths <= 30)) {
+    // Who's That? waits for face photos, which the demo family hasn't got.
+    for (final g in kGames.where((g) => g.minMonths <= 30 && g.id != 'whosthat')) {
       expect(byId('toybox.game.${g.id}'), findsOneWidget, reason: g.id);
     }
     final shown = [for (final g in h.container.read(kidGamesProvider('p-ava'))) g.id];
-    expect(shown, hasLength(kGames.length), reason: 'every game is on by default');
+    expect(shown, unorderedEquals([for (final g in kGames) if (g.id != 'whosthat') g.id]), reason: 'every game is on by default');
     expect(shown.indexOf('counting'), greaterThan(shown.indexOf('memory')), reason: 'counting is for 3+, so it comes after hers');
     expect(byId('toybox.new.bubbles'), findsOneWidget);
 

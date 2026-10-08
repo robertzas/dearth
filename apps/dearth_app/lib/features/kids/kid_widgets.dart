@@ -9,6 +9,7 @@ import '../../app/display_state.dart';
 import '../../app/grown_up.dart';
 import '../../core/data/household_data.dart';
 import '../../core/providers.dart';
+import '../../shared/face_photo.dart';
 import 'celebration.dart';
 import 'kids_data.dart';
 import 'kids_ops.dart';
@@ -354,7 +355,7 @@ class StarsCard extends ConsumerWidget {
         children: [
           Row(
             children: [
-              DAvatar(colorIndex: kid.color, emoji: kid.emoji, name: kid.name, size: 64 * t.scale, progress: progress),
+              ProfileAvatar(kid, size: 64 * t.scale, progress: progress),
               SizedBox(width: t.space.md),
               Expanded(
                 child: Column(

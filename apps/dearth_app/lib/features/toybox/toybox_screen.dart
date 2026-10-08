@@ -9,6 +9,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../app/grown_up.dart';
 import '../../app/router.dart';
 import '../../core/data/household.dart';
+import '../../shared/face_photo.dart';
 import 'game_host.dart';
 import 'games/compare.dart';
 import 'games/creature.dart';
@@ -59,6 +60,7 @@ const Map<String, Color> kGameHues = {
   'freeze': Color(0xFFE040FB),
   'sequencer': Color(0xFF3A0CA3),
   'dressup': Color(0xFF6D597A),
+  'whosthat': Color(0xFFFF8FAB),
 };
 
 /// The Toybox (SPEC §10.8, FR-TOY-01): big picture tiles of the games that
@@ -91,7 +93,7 @@ class ToyboxScreen extends ConsumerWidget {
           children: [
             Row(
               children: [
-                DAvatar(colorIndex: kid.color, emoji: kid.emoji, name: kid.name, size: 56 * t.scale),
+                ProfileAvatar(kid, size: 56 * t.scale),
                 SizedBox(width: t.space.md),
                 Expanded(child: tid('toybox.title', Text('${kid.name}’s Toybox', style: t.text.h2, maxLines: 1, overflow: TextOverflow.ellipsis))),
                 if (time.minutesLeft != null && time.open) ...[

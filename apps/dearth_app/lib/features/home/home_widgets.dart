@@ -8,6 +8,7 @@ import '../../core/data/calendar.dart';
 import '../../core/data/household.dart';
 import '../../core/data/household_data.dart';
 import '../../core/format.dart';
+import '../../shared/face_photo.dart';
 import '../../shared/recipe_visual.dart';
 import '../calendar/calendar_state.dart';
 import '../calendar/event_sheet.dart';
@@ -257,7 +258,7 @@ class KidsCard extends ConsumerWidget {
                 padding: EdgeInsets.only(bottom: t.space.xs),
                 child: Row(
                   children: [
-                    DAvatar(colorIndex: kid.color, emoji: kid.emoji, name: kid.name, size: 56 * t.scale, progress: mine.isEmpty ? null : done / mine.length),
+                    ProfileAvatar(kid, size: 56 * t.scale, progress: mine.isEmpty ? null : done / mine.length),
                     SizedBox(width: t.space.sm),
                     Expanded(
                       child: Column(

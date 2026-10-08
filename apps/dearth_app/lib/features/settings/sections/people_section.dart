@@ -8,6 +8,8 @@ import '../../../app/grown_up.dart';
 import '../../../core/data/household.dart';
 import '../../../core/format.dart';
 import '../../../core/providers.dart';
+import '../../../shared/face_photo.dart';
+import '../../../shared/face_picker.dart';
 import '../../../shared/pickers.dart';
 import '../settings_screen.dart';
 
@@ -35,7 +37,7 @@ class PeopleSection extends ConsumerWidget {
                   if (p.role == ProfileRole.child) KidStage.label(p.kidStage),
                   if (_isAdult(p)) p.pinHash == null ? 'no PIN' : 'PIN set',
                 ].join(' · '),
-                leading: DAvatar(colorIndex: p.color, emoji: p.emoji, name: p.name, size: 48 * t.scale),
+                leading: ProfileAvatar(p, size: 48 * t.scale),
                 chevron: true,
                 onTap: () => editProfile(context, ref, p),
               ),
@@ -97,6 +99,7 @@ class _ProfileEditorState extends ConsumerState<_ProfileEditor> {
   late LocalDate? _birthday = LocalDate.tryParse(widget.profile?.birthday);
   late String? _stage = widget.profile?.kidStage;
   late String? _buddy = widget.profile?.buddy;
+  late String? _photo = widget.profile?.avatarBlob;
   String? _newPinHash;
   bool _clearPin = false;
 
@@ -148,6 +151,7 @@ class _ProfileEditorState extends ConsumerState<_ProfileEditor> {
       'role': _role,
       'color': _color,
       'emoji': _emoji,
+      'avatar_blob': _photo,
       'birthday': _birthday?.iso,
       'kid_stage': _role == ProfileRole.child ? (_stage ?? KidStage.little) : null,
       'buddy': _role == ProfileRole.child ? (_buddy ?? 'bunny') : null,
@@ -182,7 +186,13 @@ class _ProfileEditorState extends ConsumerState<_ProfileEditor> {
       children: [
         Row(
           children: [
-            DAvatar(colorIndex: _color, emoji: _emoji, name: _name.text, size: 72 * t.scale),
+            DAvatar(
+              colorIndex: _color,
+              emoji: _emoji,
+              name: _name.text,
+              size: 72 * t.scale,
+              photo: FaceCrop.parse(_photo) == null ? null : (double s) => FacePhoto(FaceCrop.parse(_photo)!, size: s, fallback: DEmoji(_emoji ?? '🙂', size: s * 0.58)),
+            ),
             SizedBox(width: t.space.md),
             Expanded(child: DTextField(id: 'profile.name', controller: _name, hint: 'Name', big: true, autofocus: widget.profile == null, onChanged: (_) => setState(() {}))),
           ],
@@ -222,6 +232,30 @@ class _ProfileEditorState extends ConsumerState<_ProfileEditor> {
           ],
         ),
         label('Picture'),
+        // A face photo from the family library (it shows as their avatar,
+        // and lets the Toybox's Who's That? use their face).
+        Wrap(
+          spacing: t.space.sm,
+          runSpacing: t.space.xs,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            DButton(
+              id: 'profile.photo',
+              label: _photo == null ? 'Use a photo' : 'Change the photo',
+              icon: Icons.face_retouching_natural_rounded,
+              tone: DButtonTone.tonal,
+              onPressed: ref.watch(hubApiProvider) == null
+                  ? null
+                  : () async {
+                      final face = await pickFace(context, ref);
+                      if (face != null) setState(() => _photo = face.encode());
+                    },
+            ),
+            if (_photo != null) DButton(id: 'profile.nophoto', label: 'No photo', tone: DButtonTone.ghost, onPressed: () => setState(() => _photo = null)),
+            if (ref.watch(hubApiProvider) == null) Text('Photos come from the family photo library on a Hub.', style: t.text.caption.copyWith(color: t.colors.inkTertiary)),
+          ],
+        ),
+        SizedBox(height: t.space.sm),
         Wrap(
           spacing: t.space.xs,
           runSpacing: t.space.xs,

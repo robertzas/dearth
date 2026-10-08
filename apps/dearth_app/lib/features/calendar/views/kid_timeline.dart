@@ -10,6 +10,7 @@ import '../../../core/data/calendar.dart';
 import '../../../core/data/household.dart';
 import '../../../core/format.dart';
 import '../../../core/providers.dart';
+import '../../../shared/face_photo.dart';
 import '../../kids/routine_run.dart';
 import '../event_visuals.dart';
 import '../kid_day.dart';
@@ -43,7 +44,7 @@ class KidTimelineView extends ConsumerWidget {
             children: [
               Row(
                 children: [
-                  if (p != null) ...[DAvatar(colorIndex: p.color, emoji: p.emoji, name: p.name, size: 40 * t.scale), SizedBox(width: t.space.sm)],
+                  if (p != null) ...[ProfileAvatar(p, size: 40 * t.scale), SizedBox(width: t.space.sm)],
                   Expanded(child: Text(p == null ? 'Our day' : '${p.name}’s day', style: t.text.title, maxLines: 1, overflow: TextOverflow.ellipsis)),
                 ],
               ),

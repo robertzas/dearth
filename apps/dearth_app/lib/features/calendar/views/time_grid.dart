@@ -13,6 +13,7 @@ import '../../../core/data/calendar.dart';
 import '../../../core/data/household.dart';
 import '../../../core/format.dart';
 import '../../../core/providers.dart';
+import '../../../shared/face_photo.dart';
 import '../calendar_state.dart';
 import '../event_editor.dart';
 import '../event_ops.dart';
@@ -516,7 +517,7 @@ class _PeopleHeaders extends ConsumerWidget {
                     child: Column(
                       children: [
                         if (c.person != null)
-                          DAvatar(colorIndex: c.person!.color, emoji: c.person!.emoji, name: c.person!.name, size: avatar)
+                          ProfileAvatar(c.person!, size: avatar)
                         else
                           Container(
                             width: avatar,

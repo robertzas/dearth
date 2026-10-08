@@ -228,6 +228,8 @@ void main() {
         for (final s in DressSlot.values) dressSlotClip(s),
         for (final i in DressItem.values) dressItemClip(i),
         VoiceLine.dressDone,
+        for (final key in kWhoWords.keys) 'who_$key',
+        'who_you', 'who_doggy', 'who_kitty', VoiceLine.whoYes, VoiceLine.whoYesYou,
         VoiceLine.traceName, VoiceLine.traceNameDone, VoiceLine.breatheStart, VoiceLine.breatheIn, VoiceLine.breatheOut, VoiceLine.breatheDone,
         VoiceLine.makeCreature, VoiceLine.dotsNumbers, VoiceLine.dotsLetters,
         for (final p in kDotPictures) dotsDoneClip(p),

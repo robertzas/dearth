@@ -18,8 +18,8 @@ const screenFor = (route: string): string => {
 };
 
 /** Starts the app in local demo mode at [NOW] and waits for [route]. */
-export async function openDemo(page: Page, route = '/'): Promise<void> {
-  await page.goto(`/?demo=1&e2e=1&now=${NOW}#${route}`);
+export async function openDemo(page: Page, route = '/', flags = ''): Promise<void> {
+  await page.goto(`/?demo=1&e2e=1&now=${NOW}${flags ? `&${flags}` : ''}#${route}`);
   // Prefix: phones show a settings section as its own screen.settings.<id>.
   await expect(tids(page, screenFor(route)).first()).toBeVisible({ timeout: 90_000 });
 }
@@ -166,8 +166,8 @@ export async function hold(page: Page, target: Locator, ms = 3300): Promise<void
 
 
 /** Opens [game] from Ava's Toybox (every game is on by default). */
-export async function openToyboxGame(page: Page, game: string): Promise<void> {
-  await openDemo(page, '/toybox');
+export async function openToyboxGame(page: Page, game: string, flags = ''): Promise<void> {
+  await openDemo(page, '/toybox', flags);
   await tap(await scrollTo(page, `toybox.game.${game}`));
   await expect(tid(page, `game.${game}`)).toBeVisible();
 }

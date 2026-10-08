@@ -25,6 +25,13 @@ final _allPhotoItemsProvider = StreamProvider<List<PhotoItem>>((ref) {
 /// the same blob: it shows once.
 final photoItemsProvider = Provider<AsyncValue<List<PhotoItem>>>((ref) => ref.watch(_allPhotoItemsProvider).whenData(uniquePhotos));
 
+/// Every photo once, newest first, read straight from the database: for
+/// event handlers, where a provider nothing watches has no value yet.
+Future<List<PhotoItem>> photoItemsOnce(DearthDb db) async => uniquePhotos(await (db.select(db.photoItems)
+      ..where((p) => p.deleted.equals(false) & p.blobRef.isNotNull())
+      ..orderBy([(p) => OrderingTerm.desc(p.takenMs), (p) => OrderingTerm.desc(p.addedMs)]))
+    .get());
+
 /// [items] without repeats of one image, the first of each kept.
 List<PhotoItem> uniquePhotos(List<PhotoItem> items) {
   final seen = <String>{};

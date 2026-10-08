@@ -7,6 +7,7 @@ import '../../core/data/household.dart';
 import '../../core/data/household_data.dart';
 import '../../core/format.dart';
 import '../../core/providers.dart';
+import '../../shared/face_photo.dart';
 import '../../shared/recipe_visual.dart';
 import 'cook_mode.dart';
 import 'meal_ops.dart';
@@ -349,7 +350,7 @@ class _Ratings extends ConsumerWidget {
             padding: EdgeInsets.only(bottom: t.space.xs),
             child: Row(
               children: [
-                DAvatar(colorIndex: p.color, emoji: p.emoji, name: p.name, size: 36 * t.scale, ring: false),
+                ProfileAvatar(p, size: 36 * t.scale, ring: false),
                 SizedBox(width: t.space.sm),
                 Expanded(child: Text(p.nickname ?? p.name, style: t.text.bodyStrong, maxLines: 1, overflow: TextOverflow.ellipsis)),
                 for (final (score, emoji, label) in kRatingFaces)

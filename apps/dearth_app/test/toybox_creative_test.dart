@@ -1,8 +1,11 @@
+import 'package:dearth_app/core/data/household.dart';
 import 'package:dearth_app/core/sound.dart';
 import 'package:dearth_app/features/toybox/games/creature.dart';
 import 'package:dearth_app/features/toybox/games/dressup.dart';
 import 'package:dearth_app/features/toybox/games/freeze.dart';
 import 'package:dearth_app/features/toybox/games/sequencer.dart';
+import 'package:dearth_app/features/toybox/games/whosthat.dart';
+import 'package:dearth_app/features/toybox/toybox_data.dart';
 import 'package:dearth_core/dearth_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -15,7 +18,7 @@ import 'support/toybox_harness.dart';
 void main() {
   for (final size in const [Size(390, 844), Size(844, 390), Size(1080, 1920), Size(1920, 1080)]) {
     testWidgets('every make-and-move game lays out on a ${size.width.toInt()}×${size.height.toInt()} screen at its busiest level', (tester) async {
-      await expectGamesLayOut(tester, const [('creature', 1), ('creature', 3), ('freeze', 1), ('freeze', 3), ('sequencer', 1), ('sequencer', 4), ('dressup', 1), ('dressup', 3)], size: size);
+      await expectGamesLayOut(tester, const [('creature', 1), ('creature', 3), ('freeze', 1), ('freeze', 3), ('sequencer', 1), ('sequencer', 4), ('dressup', 1), ('dressup', 3), ('whosthat', 1), ('whosthat', 3)], size: size);
     });
   }
 
@@ -242,6 +245,80 @@ void main() {
       await tester.pump(const Duration(seconds: 5));
       await h.shutdown();
       handle.dispose();
+    });
+  });
+
+  group("Who's That?", () {
+    WhoGameState game(WidgetTester tester) => tester.state<WhoGameState>(find.byType(WhoGame));
+    const family = ['p-mom', 'p-dad', 'p-ava', 'p-biscuit'];
+    const names = {'p-mom': 'Mom', 'p-dad': 'Dad', 'p-ava': 'Ava', 'p-biscuit': 'Biscuit'};
+
+    testWidgets('FR-TOY-03: the voice asks for someone; their face hops and "Yes!"; then someone else', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'whosthat', sound: sound, level: 1, faces: family);
+      final r = game(tester).debugRound;
+      expect(r.faces, hasLength(2));
+      expectNoFallbackText(byId('screen.game'));
+      final you = r.target.id == 'p-ava';
+      expect(labelOf(tester, 'who.ask'), you ? 'Where are you?' : 'Where is ${names[r.target.id]}?');
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(sound.said, [r.target.ask]);
+      expect(r.target.ask, switch (r.target.id) { 'p-ava' => 'who_you', 'p-biscuit' => 'who_doggy', 'p-mom' => 'who_mom', _ => 'who_dad' });
+      await tester.tap(byId('who.face.${r.target.id}'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(sound.said.last, you ? VoiceLine.whoYesYou : VoiceLine.whoYes);
+      expect(labelOf(tester, 'who.face.${r.target.id}'), '${names[r.target.id]}, found');
+      expect(labelOf(tester, 'who.ask'), you ? "That's you!" : 'You found ${names[r.target.id]}');
+      await h.settle();
+      expect(await toyboxRounds(h), [('whosthat', 1, 'win')]);
+      await tester.pump(const Duration(seconds: 4));
+      expect(game(tester).debugRound.target.id, isNot(r.target.id), reason: 'someone else next');
+      await tester.pump(const Duration(seconds: 2));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('a wrong face wiggles and sits back (once each); a long pause asks again; two slips over four faces is helped', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'whosthat', sound: sound, level: 3, faces: family);
+      final r = game(tester).debugRound;
+      expect(r.faces, hasLength(4), reason: 'the whole demo family: six would need more faces');
+      await tester.pump(const Duration(milliseconds: 700));
+      await tester.pump(const Duration(seconds: 12));
+      expect(sound.said, [r.target.ask, r.target.ask], reason: 'asked again, not a slip');
+      final wrong = [for (final f in r.faces) if (f.id != r.target.id) f.id];
+      await tester.tap(byId('who.face.${wrong[0]}'));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(labelOf(tester, 'who.face.${wrong[0]}'), '${names[wrong[0]]}, tried');
+      await tester.tap(byId('who.face.${wrong[0]}'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(byId('who.face.${wrong[1]}'));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(sound.played.where((p) => p.$1 == Sfx.nope), hasLength(2), reason: 'a face tried again is not another slip');
+      await tester.tap(byId('who.face.${r.target.id}'));
+      await tester.pump(const Duration(milliseconds: 100));
+      await h.settle();
+      expect(await toyboxRounds(h), [('whosthat', 3, 'helped')]);
+      await tester.pump(const Duration(seconds: 6));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('the Toybox offers it once two people have faces and one can be asked for', (tester) async {
+      final h = await AppHarness.demo(tester);
+      // Listened to, as the launcher would: Riverpod pauses what nothing watches.
+      final games = h.container.listen(kidGamesProvider('p-ava'), (_, _) {});
+      bool offered() => games.read().any((g) => g.id == 'whosthat');
+      expect(offered(), isFalse, reason: 'no faces yet');
+      await h.write((w) => [w.op('profiles', 'p-mom', {'avatar_blob': testFace('p-mom')})]);
+      expect(offered(), isFalse, reason: 'one face is not a game');
+      await h.write((w) => [w.op('profiles', 'p-dad', {'avatar_blob': testFace('p-dad')})]);
+      expect(offered(), isTrue);
+      expect(whoFaces(h.container.read(familyProvider), 'p-ava').map((f) => (f.id, f.ask)), unorderedEquals([('p-mom', 'who_mom'), ('p-dad', 'who_dad')]));
+      games.close();
+      await h.shutdown();
     });
   });
 }

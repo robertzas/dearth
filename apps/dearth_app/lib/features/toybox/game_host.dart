@@ -26,6 +26,9 @@ class GameController {
   /// them (a nickname when there is one): Name Zoo's cards.
   List<String> get family => [for (final p in _state.ref.read(familyProvider)) if (p.id != kid.id) p.nickname ?? p.name];
 
+  /// Everyone in the household, the kid playing too (Who's That?'s faces).
+  List<Profile> get people => _state.ref.read(familyProvider);
+
   /// Today's kind of day from the household's real forecast (Weather
   /// Dress-Up), by the rules What to wear uses; null without a forecast.
   DressWeather? get weather {
