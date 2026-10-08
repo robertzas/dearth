@@ -5,6 +5,16 @@
 # macOS, iOS unsigned), Hub binaries, the multi-arch Hub image on GHCR, and a
 # GitHub release with all of it. Pull requests run the same checks and builds
 # without publishing.
+#
+# Shaped for speed under the free plan's 20 concurrent jobs (5 macOS): nothing
+# waits on a job it doesn't need (each job derives the version itself), the
+# gate is split across runners, and the Hub binaries compile while the web app
+# builds. At the start 18 jobs run at once: gate (7), web, Hub (4) and the
+# five platform builds. When web lands the gate, Hub and Linux jobs are done,
+# so the 16 E2E shards and the two image builds take those slots while the
+# long platform builds (Android, Windows, macOS, iOS) finish. More shards than
+# free slots would only queue, paying ~30 s of setup each. macOS (~6 min) is
+# the floor of the run.
 name: Build & release
 
 on:
@@ -45,52 +55,54 @@ jobs:
               gh run cancel "$id" || true
             done
 
-  version:
-    name: Version
-    runs-on: ubuntu-26.04
-    outputs:
-      version: ${{ steps.v.outputs.version }}
-      build: ${{ steps.v.outputs.build }}
-      tag: ${{ steps.v.outputs.tag }}
-      full: ${{ steps.v.outputs.full }}
-    steps:
-      - uses: actions/checkout@v7
-      - id: v
-        run: |
-          base=$(sed -n 's/^version: *\([0-9.]*\).*/\1/p' apps/dearth_app/pubspec.yaml)
-          build=${{ github.run_number }}
-          echo "version=$base" >> "$GITHUB_OUTPUT"
-          echo "build=$build" >> "$GITHUB_OUTPUT"
-          echo "full=$base-build.$build" >> "$GITHUB_OUTPUT"
-          echo "tag=v$base-build.$build" >> "$GITHUB_OUTPUT"
-
+  # tool/check.sh, one group per runner: on one runner the app's widget
+  # tests alone took ~7 minutes. Their files split four ways (balanced by
+  # size); the pure Dart suites and dearth_ui share a runner.
   check:
-    name: Analyze & unit tests
+    name: Gate (${{ matrix.name }})
     runs-on: ubuntu-26.04
-    timeout-minutes: 40
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: codegen, only: codegen, lfs: 'false' }
+          - { name: analyze, only: analyze, lfs: 'false' }
+          - { name: packages, only: 'core,integrations,hub,ui', lfs: 'true' }
+          - { name: app 1/4, only: app, shard: 1/4, lfs: 'true' }
+          - { name: app 2/4, only: app, shard: 2/4, lfs: 'true' }
+          - { name: app 3/4, only: app, shard: 3/4, lfs: 'true' }
+          - { name: app 4/4, only: app, shard: 4/4, lfs: 'true' }
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
-      - name: Quality gate (codegen, analyze, all unit tests)
-        run: tool/check.sh
+        with:
+          lfs: ${{ matrix.lfs }}
+          hooks-key: -${{ matrix.only }}
+      - name: tool/check.sh --only=${{ matrix.only }} ${{ matrix.shard && format('--shard={0}', matrix.shard) || '' }}
+        run: tool/check.sh --only=${{ matrix.only }} ${{ matrix.shard && format('--shard={0}', matrix.shard) || '' }}
       - name: Generated code is committed and current
+        if: matrix.only == 'codegen'
         run: git diff --exit-code -- '*.g.dart'
 
+  # The head of the critical path: E2E, the Hub packages and the image all
+  # need the web build.
   web:
     name: Web
-    needs: version
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
+      - uses: ./.github/actions/version
+        id: v
       - uses: ./.github/actions/setup
       - run: tool/web_assets.sh
       - name: Build
         working-directory: apps/dearth_app
         run: >
           flutter build web --release --no-wasm-dry-run
-          --dart-define=DEARTH_VERSION=${{ needs.version.outputs.full }}
-          --build-name=${{ needs.version.outputs.version }} --build-number=${{ needs.version.outputs.build }}
+          --dart-define=DEARTH_VERSION=${{ steps.v.outputs.full }}
+          --build-name=${{ steps.v.outputs.version }} --build-number=${{ steps.v.outputs.build }}
       - uses: actions/upload-artifact@v7
         with:
           name: web
@@ -99,39 +111,27 @@ jobs:
 
   e2e:
     # The suite renders Flutter in software Chrome, so it's split as wide as
-    # the account can run at once: a free plan runs 20 jobs concurrently,
-    # and more shards would only queue behind them. A shard spends ~30 s on
-    # setup, so the split is close to linear. When E2E starts the platform
-    # builds still hold a few runners; the last shards start as they finish.
-    name: Web E2E (Playwright ${{ matrix.shard }}/20)
-    needs: web
+    # there are free runners when the web build lands (see the top): 16. A
+    # shard spends ~20 s on setup. The test Hub is the linux-x64 binary from
+    # the Hub job, so no Dart SDK, pub get or JIT start-up here.
+    name: Web E2E (Playwright ${{ matrix.shard }}/16)
+    needs: [web, hub]
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
     steps:
       - uses: actions/checkout@v7
-      # The test Hub is pure Dart and the web build is downloaded, so no
-      # Flutter SDK or LFS files: Dart and the Hub's workspace subset, as
-      # in the Hub job.
-      - uses: dart-lang/setup-dart@v1
-        with:
-          sdk: ${{ env.DART_VERSION }}
-      - uses: actions/cache@v6
-        with:
-          path: ~/.pub-cache
-          key: pub-hub-${{ runner.os }}-${{ hashFiles('packages/dearth_core/pubspec.yaml', 'packages/dearth_integrations/pubspec.yaml', 'hub/dearth_hub/pubspec.yaml') }}
-          restore-keys: pub-hub-${{ runner.os }}-
-      - name: Hub-only workspace
-        run: |
-          printf 'name: dearth_hub_build\npublish_to: none\nenvironment:\n  sdk: ^3.13.0\nworkspace:\n  - packages/dearth_core\n  - packages/dearth_integrations\n  - hub/dearth_hub\n' > pubspec.yaml
-          dart pub get
       - uses: actions/download-artifact@v8
         with:
           name: web
           path: apps/dearth_app/build/web
+      - uses: actions/download-artifact@v8
+        with:
+          name: hub-linux-x64
+          path: ${{ runner.temp }}/hub
       - uses: actions/setup-node@v7
         with:
           node-version: 24
@@ -142,10 +142,13 @@ jobs:
       - name: Install
         working-directory: e2e
         run: npm ci --no-audit --no-fund && npx playwright install ffmpeg
-      - name: Run shard ${{ matrix.shard }} of 20 (Wall-L, Wall-P, Tablet, Phone)
+      - name: Run shard ${{ matrix.shard }} of 16 (Wall-L, Wall-P, Tablet, Phone)
         env:
           CHROME_PATH: /usr/bin/google-chrome
-        run: SKIP_BUILD=1 tool/e2e.sh --shard=${{ matrix.shard }}/20
+        run: |
+          # Artifacts don't keep the executable bit.
+          chmod +x "$RUNNER_TEMP/hub/bin/dearth_hub"
+          DEARTH_HUB_BIN="$RUNNER_TEMP/hub/bin/dearth_hub" SKIP_BUILD=1 tool/e2e.sh --shard=${{ matrix.shard }}/16
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
@@ -157,11 +160,12 @@ jobs:
 
   android:
     name: Android APKs
-    needs: version
     runs-on: ubuntu-26.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
+      - uses: ./.github/actions/version
+        id: v
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
@@ -192,13 +196,13 @@ jobs:
         run: >
           flutter build apk --release --split-per-abi
           --target-platform android-arm,android-arm64,android-x64
-          --dart-define=DEARTH_VERSION=${{ needs.version.outputs.full }}
-          --build-name=${{ needs.version.outputs.version }} --build-number=${{ needs.version.outputs.build }}
+          --dart-define=DEARTH_VERSION=${{ steps.v.outputs.full }}
+          --build-name=${{ steps.v.outputs.version }} --build-number=${{ steps.v.outputs.build }}
       - name: Name artifacts
         run: |
           mkdir -p out
           for abi in armeabi-v7a arm64-v8a x86_64; do
-            cp "apps/dearth_app/build/app/outputs/flutter-apk/app-$abi-release.apk" "out/dearth-${{ needs.version.outputs.full }}-android-$abi.apk"
+            cp "apps/dearth_app/build/app/outputs/flutter-apk/app-$abi-release.apk" "out/dearth-${{ steps.v.outputs.full }}-android-$abi.apk"
           done
       - uses: actions/upload-artifact@v7
         with:
@@ -207,24 +211,33 @@ jobs:
 
   linux:
     name: Linux desktop
-    needs: version
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
-      - name: Toolchain
-        run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libsecret-1-dev g++
+      - uses: ./.github/actions/version
+        id: v
+      # apt takes ~30 s: it runs in the background while Flutter is set up.
+      - name: Toolchain (started)
+        run: |
+          ( sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libsecret-1-dev g++
+            echo $? > "$RUNNER_TEMP/apt.rc" ) > "$RUNNER_TEMP/apt.log" 2>&1 < /dev/null &
       - uses: ./.github/actions/setup
+      - name: Toolchain (finished)
+        run: |
+          while [ ! -f "$RUNNER_TEMP/apt.rc" ]; do sleep 1; done
+          cat "$RUNNER_TEMP/apt.log"
+          exit "$(cat "$RUNNER_TEMP/apt.rc")"
       - name: Build
         working-directory: apps/dearth_app
         run: >
           flutter build linux --release
-          --dart-define=DEARTH_VERSION=${{ needs.version.outputs.full }}
-          --build-name=${{ needs.version.outputs.version }} --build-number=${{ needs.version.outputs.build }}
+          --dart-define=DEARTH_VERSION=${{ steps.v.outputs.full }}
+          --build-name=${{ steps.v.outputs.version }} --build-number=${{ steps.v.outputs.build }}
       - name: Package
         run: |
           mkdir -p out
-          tar -czf "out/dearth-${{ needs.version.outputs.full }}-linux-x64.tar.gz" -C apps/dearth_app/build/linux/x64/release/bundle .
+          tar -czf "out/dearth-${{ steps.v.outputs.full }}-linux-x64.tar.gz" -C apps/dearth_app/build/linux/x64/release/bundle .
       - uses: actions/upload-artifact@v7
         with:
           name: linux
@@ -232,7 +245,6 @@ jobs:
 
   windows:
     name: Windows desktop
-    needs: version
     runs-on: windows-latest
     timeout-minutes: 40
     defaults:
@@ -240,18 +252,20 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v7
+      - uses: ./.github/actions/version
+        id: v
       - uses: ./.github/actions/setup
       - name: Build
         working-directory: apps/dearth_app
         run: >
           flutter build windows --release
-          --dart-define=DEARTH_VERSION=${{ needs.version.outputs.full }}
-          --build-name=${{ needs.version.outputs.version }} --build-number=${{ needs.version.outputs.build }}
+          --dart-define=DEARTH_VERSION=${{ steps.v.outputs.full }}
+          --build-name=${{ steps.v.outputs.version }} --build-number=${{ steps.v.outputs.build }}
       - name: Package
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force out | Out-Null
-          Compress-Archive -Path apps/dearth_app/build/windows/x64/runner/Release/* -DestinationPath "out/dearth-${{ needs.version.outputs.full }}-windows-x64.zip"
+          Compress-Archive -Path apps/dearth_app/build/windows/x64/runner/Release/* -DestinationPath "out/dearth-${{ steps.v.outputs.full }}-windows-x64.zip"
       - uses: actions/upload-artifact@v7
         with:
           name: windows
@@ -259,22 +273,23 @@ jobs:
 
   macos:
     name: macOS desktop
-    needs: version
     runs-on: macos-latest
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v7
+      - uses: ./.github/actions/version
+        id: v
       - uses: ./.github/actions/setup
       - name: Build
         working-directory: apps/dearth_app
         run: >
           flutter build macos --release
-          --dart-define=DEARTH_VERSION=${{ needs.version.outputs.full }}
-          --build-name=${{ needs.version.outputs.version }} --build-number=${{ needs.version.outputs.build }}
+          --dart-define=DEARTH_VERSION=${{ steps.v.outputs.full }}
+          --build-name=${{ steps.v.outputs.version }} --build-number=${{ steps.v.outputs.build }}
       - name: Package
         run: |
           mkdir -p out
-          ditto -c -k --keepParent apps/dearth_app/build/macos/Build/Products/Release/Dearth.app "out/dearth-${{ needs.version.outputs.full }}-macos.zip"
+          ditto -c -k --keepParent apps/dearth_app/build/macos/Build/Products/Release/Dearth.app "out/dearth-${{ steps.v.outputs.full }}-macos.zip"
       - uses: actions/upload-artifact@v7
         with:
           name: macos
@@ -282,31 +297,33 @@ jobs:
 
   ios:
     name: iOS (unsigned)
-    needs: version
     runs-on: macos-latest
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v7
+      - uses: ./.github/actions/version
+        id: v
       - uses: ./.github/actions/setup
       - name: Build
         working-directory: apps/dearth_app
         run: >
           flutter build ios --release --no-codesign
-          --dart-define=DEARTH_VERSION=${{ needs.version.outputs.full }}
-          --build-name=${{ needs.version.outputs.version }} --build-number=${{ needs.version.outputs.build }}
+          --dart-define=DEARTH_VERSION=${{ steps.v.outputs.full }}
+          --build-name=${{ steps.v.outputs.version }} --build-number=${{ steps.v.outputs.build }}
       - name: Package unsigned IPA
         run: |
           mkdir -p out/Payload
           cp -R apps/dearth_app/build/ios/iphoneos/Runner.app out/Payload/
-          (cd out && zip -qr "dearth-${{ needs.version.outputs.full }}-ios-unsigned.ipa" Payload && rm -rf Payload)
+          (cd out && zip -qr "dearth-${{ steps.v.outputs.full }}-ios-unsigned.ipa" Payload && rm -rf Payload)
       - uses: actions/upload-artifact@v7
         with:
           name: ios
           path: out/*
 
+  # Compiled from the start, not after web: E2E runs the linux-x64 binary,
+  # and the release job packages each bundle with the web app.
   hub:
     name: Hub (${{ matrix.target }})
-    needs: [version, web]
     strategy:
       fail-fast: false
       matrix:
@@ -334,29 +351,19 @@ jobs:
           dart pub get
       - name: Compile (dart build cli bundles the SQLite native asset)
         working-directory: hub/dearth_hub
-        run: dart build cli -o "$RUNNER_TEMP/hub"
-      - uses: actions/download-artifact@v8
-        with:
-          name: web
-          path: ${{ runner.temp }}/hub/bundle/web
-      - name: Package (Hub + web app)
         run: |
-          mkdir -p out
-          name="dearth-hub-${{ needs.version.outputs.full }}-${{ matrix.target }}"
-          cp LICENSE compose.yml .env.example "$RUNNER_TEMP/hub/bundle/"
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            (cd "$RUNNER_TEMP/hub/bundle" && 7z a -tzip "$GITHUB_WORKSPACE/out/$name.zip" . >/dev/null)
-          else
-            tar -czf "out/$name.tar.gz" -C "$RUNNER_TEMP/hub/bundle" .
-          fi
+          dart build cli -o "$RUNNER_TEMP/hub"
+          cp ../../LICENSE ../../compose.yml ../../.env.example "$RUNNER_TEMP/hub/bundle/"
       - uses: actions/upload-artifact@v7
         with:
           name: hub-${{ matrix.target }}
-          path: out/*
+          path: ${{ runner.temp }}/hub/bundle
+          include-hidden-files: true
+          retention-days: 7
 
   docker:
     name: Hub image (${{ matrix.arch }})
-    needs: [version, web]
+    needs: web
     strategy:
       fail-fast: false
       matrix:
@@ -370,6 +377,8 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v7
+      - uses: ./.github/actions/version
+        id: v
       - uses: actions/download-artifact@v8
         with:
           name: web
@@ -397,7 +406,7 @@ jobs:
         with:
           context: .
           platforms: linux/${{ matrix.arch }}
-          build-args: VERSION=${{ needs.version.outputs.full }}
+          build-args: VERSION=${{ steps.v.outputs.full }}
           outputs: type=image,name=${{ steps.img.outputs.name }},push-by-digest=true,name-canonical=true,push=${{ github.event_name == 'push' }}
           cache-from: type=gha,scope=hub-${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=hub-${{ matrix.arch }}
@@ -418,12 +427,15 @@ jobs:
   docker-manifest:
     name: Hub image (multi-arch tags)
     if: github.event_name == 'push'
-    needs: [version, docker]
+    needs: docker
     runs-on: ubuntu-26.04
     permissions:
       contents: read
       packages: write
     steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/version
+        id: v
       - uses: actions/download-artifact@v8
         with:
           path: ${{ runner.temp }}/digests
@@ -439,52 +451,46 @@ jobs:
         working-directory: ${{ runner.temp }}/digests
         run: |
           name="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/dearth-hub"
-          docker buildx imagetools create -t "$name:latest" -t "$name:${{ needs.version.outputs.full }}" $(printf "$name@sha256:%s " *)
-          docker buildx imagetools inspect "$name:${{ needs.version.outputs.full }}"
+          docker buildx imagetools create -t "$name:latest" -t "$name:${{ steps.v.outputs.full }}" $(printf "$name@sha256:%s " *)
+          docker buildx imagetools inspect "$name:${{ steps.v.outputs.full }}"
 
   release:
     name: GitHub release
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [version, check, e2e, web, android, linux, windows, macos, ios, hub, docker-manifest]
+    needs: [check, e2e, web, android, linux, windows, macos, ios, hub, docker-manifest]
     runs-on: ubuntu-26.04
     permissions:
       contents: write
     steps:
-      # By name: other jobs' artifacts (e.g. buildx build records) aren't
-      # release files, and some can't be extracted by download-artifact.
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/version
+        id: v
+      # By name: other jobs' artifacts (image digests, failed E2E reports)
+      # aren't release files. One step downloads them all in parallel.
       - uses: actions/download-artifact@v8
         with:
-          name: web
-          path: artifacts/web
-      - uses: actions/download-artifact@v8
-        with:
-          name: android
-          path: artifacts/android
-      - uses: actions/download-artifact@v8
-        with:
-          name: linux
-          path: artifacts/linux
-      - uses: actions/download-artifact@v8
-        with:
-          name: windows
-          path: artifacts/windows
-      - uses: actions/download-artifact@v8
-        with:
-          name: macos
-          path: artifacts/macos
-      - uses: actions/download-artifact@v8
-        with:
-          name: ios
-          path: artifacts/ios
-      - uses: actions/download-artifact@v8
-        with:
-          pattern: hub-*
+          pattern: '{web,android,linux,windows,macos,ios,hub-*}'
           path: artifacts
+      # Each Hub bundle gets the web app here, so the Hub jobs didn't have to
+      # wait for it.
       - name: Collect files
         run: |
+          full="${{ steps.v.outputs.full }}"
           mkdir -p release
-          (cd artifacts/web && zip -qr "../../release/dearth-${{ needs.version.outputs.full }}-web.zip" .)
-          find artifacts -type f \( -name '*.apk' -o -name '*.tar.gz' -o -name '*.zip' -o -name '*.ipa' \) -not -path 'artifacts/web/*' -exec cp {} release/ \;
+          (cd artifacts/web && zip -qr "../../release/dearth-$full-web.zip" .)
+          for dir in artifacts/hub-*; do
+            target=${dir#artifacts/hub-}
+            name="dearth-hub-$full-$target"
+            cp -r artifacts/web "$dir/web"
+            if [ "$target" = windows-x64 ]; then
+              (cd "$dir" && zip -qr "$GITHUB_WORKSPACE/release/$name.zip" .)
+            else
+              # Artifacts don't keep the executable bit.
+              chmod +x "$dir"/bin/*
+              tar -czf "release/$name.tar.gz" -C "$dir" .
+            fi
+          done
+          cp artifacts/{android,linux,windows,macos,ios}/* release/
           (cd release && sha256sum * > SHA256SUMS.txt)
           ls -la release
       - name: Release notes
@@ -498,7 +504,7 @@ jobs:
           > $(printf '%s' "$COMMIT_MSG" | head -n 1)
 
           ### Install
-          - **Hub (Docker):** \`docker pull ghcr.io/$owner/dearth-hub:${{ needs.version.outputs.full }}\` — see \`compose.yml\`.
+          - **Hub (Docker):** \`docker pull ghcr.io/$owner/dearth-hub:${{ steps.v.outputs.full }}\` — see \`compose.yml\`.
           - **Hub (no Docker):** \`dearth-hub-*\` archives contain the Hub and the web app; run \`bin/dearth_hub serve\`.
           - **Android displays and phones:** \`android-armeabi-v7a\` for 32-bit frames (JT215M), \`arm64-v8a\` for most phones and tablets.
           - **Desktop:** Linux \`tar.gz\`, Windows \`zip\`, macOS \`zip\` (unsigned: right-click → Open the first time).
@@ -509,9 +515,9 @@ jobs:
           EOF
       - uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ needs.version.outputs.tag }}
+          tag_name: ${{ steps.v.outputs.tag }}
           target_commitish: ${{ github.sha }}
-          name: Dearth ${{ needs.version.outputs.version }} (build ${{ needs.version.outputs.build }})
+          name: Dearth ${{ steps.v.outputs.version }} (build ${{ steps.v.outputs.build }})
           body_path: notes.md
           generate_release_notes: true
           make_latest: 'true'

@@ -1,0 +1,27 @@
+name: Dearth version
+description: This run's release version (the app pubspec's version + the run number), from the checked-out tree. Every job computes it itself rather than waiting on a version job.
+outputs:
+  version:
+    description: The pubspec version, e.g. 0.9.0.
+    value: ${{ steps.v.outputs.version }}
+  build:
+    description: The run number.
+    value: ${{ steps.v.outputs.build }}
+  full:
+    description: version-build.N, as shown in the app and the artifact names.
+    value: ${{ steps.v.outputs.full }}
+  tag:
+    description: The release tag, v<full>.
+    value: ${{ steps.v.outputs.tag }}
+runs:
+  using: composite
+  steps:
+    - id: v
+      shell: bash
+      run: |
+        base=$(sed -n 's/^version: *\([0-9.]*\).*/\1/p' apps/dearth_app/pubspec.yaml)
+        build=${{ github.run_number }}
+        echo "version=$base" >> "$GITHUB_OUTPUT"
+        echo "build=$build" >> "$GITHUB_OUTPUT"
+        echo "full=$base-build.$build" >> "$GITHUB_OUTPUT"
+        echo "tag=v$base-build.$build" >> "$GITHUB_OUTPUT"

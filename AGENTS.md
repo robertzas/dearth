@@ -98,13 +98,18 @@ commands it uses, for reproducing a failure it reports.
   last web build. `CHROME_PATH=/usr/bin/google-chrome-stable` uses a system
   Chrome instead of downloading one. Extra arguments go to
   `playwright test`, e.g. `tool/e2e.sh tests/calendar.spec.ts`. CI splits
-  the suite across twenty runners (`--shard=N/20`, the free plan's
-  concurrent-job limit); locally it runs three
+  the suite across sixteen runners (`--shard=N/16`: the runners free under
+  the free plan's 20-job limit when the web build lands, see the top of
+  `build.yml`) against the Hub job's compiled binary
+  (`DEARTH_HUB_BIN`); locally it runs three
   browsers (more starve each other and journeys time out). Playwright's
   runner needs Node: under Bun it can't load its TypeScript config, and
   the time is all in the browser anyway.
 - `tool/check.sh` runs analyze and every suite at once after codegen
-  (`--serial` for one at a time).
+  (`--serial` for one at a time). CI runs it in groups on separate runners
+  (`--only=codegen`, `--only=analyze`, `--only=core,integrations,hub,ui`,
+  and `--only=app --shard=N/4`, which splits the app's test files four ways);
+  the failing job's name gives the command that reproduces it.
 - E2E specs drive the app through `e2e/tests/helpers.ts`:
   - `openDemo(page, route)` starts a seeded local household at a fixed
     clock (`?demo=1&e2e=1&now=…`).

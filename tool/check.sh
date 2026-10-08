@@ -8,17 +8,24 @@
 #   tool/check.sh --fast     # skip codegen
 #   tool/check.sh --e2e      # also run the Playwright web E2E suite (slow)
 #   tool/check.sh --serial   # one step at a time, output as it goes
+#   tool/check.sh --only=analyze,app   # just these steps: codegen, analyze,
+#                            # core, integrations, hub, ui, app (CI runs each
+#                            # group on its own runner)
+#   tool/check.sh --only=app --shard=2/4   # the app's test files split four
+#                            # ways (balanced by size); this runs the second
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-FAST=0; E2E=0; SERIAL=0
+FAST=0; E2E=0; SERIAL=0; ONLY=""; SHARD=""
 for arg in "$@"; do
   case "$arg" in
     --fast) FAST=1 ;;
     --e2e) E2E=1 ;;
     --serial) SERIAL=1 ;;
-    -h|--help) sed -n '2,10p' "$0"; exit 0 ;;
+    --only=*) ONLY=",${arg#--only=}," ;;
+    --shard=*) SHARD="${arg#--shard=}" ;;
+    -h|--help) sed -n '2,15p' "$0"; exit 0 ;;
     *) echo "unknown option: $arg" >&2; exit 2 ;;
   esac
 done
@@ -31,24 +38,46 @@ step "Resolving workspace dependencies"
 flutter pub get >/dev/null
 ok "dependencies"
 
-if [[ $FAST -eq 0 ]]; then
+# With --only, a step runs when it's named; otherwise everything runs.
+wanted() { [[ -z "$ONLY" || "$ONLY" == *",$1,"* ]]; }
+
+# The app's test files for --shard=I/N: largest first, each to the lightest
+# shard so far (a file's fixed cost, compiling the app, counts as ~8 KB).
+app_test_files() {
+  local index=${SHARD%/*} total=${SHARD#*/}
+  (cd apps/dearth_app && for f in $(find test -name '*_test.dart' | sort); do echo "$(wc -c <"$f") $f"; done) |
+    sort -k1,1nr -k2,2 |
+    awk -v n="$total" -v want="$index" '{
+      best = 1; for (s = 2; s <= n; s++) if (load[s] < load[best]) best = s
+      load[best] += $1 + 8000; if (best == want) print $2
+    }' | tr '\n' ' '
+}
+
+if [[ $FAST -eq 0 ]] && { [[ -z "$ONLY" ]] || wanted codegen; }; then
   step "Generating code"
   "$ROOT/tool/codegen.sh" >/dev/null
   ok "codegen"
 fi
 
 # name|directory|command
-JOBS=("analyze|.|flutter analyze --no-pub")
-for pkg in packages/dearth_core packages/dearth_integrations hub/dearth_hub; do
-  if find "$pkg/test" -name '*_test.dart' 2>/dev/null | grep -q .; then
-    JOBS+=("$pkg|$pkg|dart test --reporter compact")
+JOBS=()
+wanted analyze && JOBS+=("analyze|.|flutter analyze --no-pub")
+for entry in core:packages/dearth_core integrations:packages/dearth_integrations hub:hub/dearth_hub; do
+  name=${entry%%:*}; pkg=${entry#*:}
+  if wanted "$name" && find "$pkg/test" -name '*_test.dart' 2>/dev/null | grep -q .; then
+    JOBS+=("$name|$pkg|dart test --reporter compact")
   fi
 done
-for pkg in packages/dearth_ui apps/dearth_app; do
-  if find "$pkg/test" -name '*_test.dart' 2>/dev/null | grep -q .; then
-    JOBS+=("$pkg|$pkg|flutter test --no-pub --reporter compact")
+if wanted ui && find packages/dearth_ui/test -name '*_test.dart' 2>/dev/null | grep -q .; then
+  JOBS+=("ui|packages/dearth_ui|flutter test --no-pub --reporter compact")
+fi
+if wanted app; then
+  files=""
+  [[ -n "$SHARD" ]] && files=$(app_test_files)
+  if [[ -z "$SHARD" || -n "$files" ]]; then
+    JOBS+=("app${SHARD:+ $SHARD}|apps/dearth_app|flutter test --no-pub --reporter compact $files")
   fi
-done
+fi
 
 FAILED=()
 if [[ $SERIAL -eq 1 ]]; then
@@ -60,11 +89,11 @@ if [[ $SERIAL -eq 1 ]]; then
 else
   LOGS="$(mktemp -d "${TMPDIR:-/tmp}/dearth-check.XXXXXX")"
   trap 'kill $(jobs -p) 2>/dev/null || true' INT TERM
-  step "Analyzing and testing ${#JOBS[@]} things at once (logs in $LOGS)"
+  [[ ${#JOBS[@]} -gt 0 ]] && step "Analyzing and testing ${#JOBS[@]} things at once (logs in $LOGS)"
   declare -A NAME_OF
   for job in "${JOBS[@]}"; do
     IFS='|' read -r name dir cmd <<<"$job"
-    log="$LOGS/${name//\//_}.log"
+    log="$LOGS/${name//[\/ ]/_}.log"
     ( set +e; start=$SECONDS; cd "$dir" && $cmd >"$log" 2>&1; rc=$?; echo "$((SECONDS - start))" >"$log.time"; exit $rc ) &
     NAME_OF[$!]=$name
   done
@@ -76,13 +105,13 @@ else
     rc=$?
     set -e
     name=${NAME_OF[$done_pid]}
-    secs=$(cat "$LOGS/${name//\//_}.log.time" 2>/dev/null || echo '?')
+    secs=$(cat "$LOGS/${name//[\/ ]/_}.log.time" 2>/dev/null || echo '?')
     if [[ $rc -eq 0 ]]; then ok "$name (${secs}s)"; else bad "$name (${secs}s)"; FAILED+=("$name"); fi
     left=$((left - 1))
   done
   for name in "${FAILED[@]}"; do
     printf '\n\033[1;31m── %s ──\033[0m\n' "$name"
-    cat "$LOGS/${name//\//_}.log"
+    cat "$LOGS/${name//[\/ ]/_}.log"
   done
   [[ ${#FAILED[@]} -gt 0 ]] || rm -rf "$LOGS"
 fi
