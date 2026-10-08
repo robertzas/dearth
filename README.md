@@ -45,7 +45,11 @@ back.
   For kids who can't read yet, a picture timeline lays out their day in
   morning, afternoon and evening, with the sun showing where "now" is.
   It adds automatic event emoji and learns from your edits. It subscribes
-  to ICS calendars and connects to Google Calendar.
+  to ICS calendars and connects to Google Calendar, two ways, reminders
+  included. Once Google is connected, Settings → Calendars offers to make a
+  shared "Family" calendar in Google, so events added on the wall show up
+  on both parents' phones (your Google project's consent screen needs the
+  `calendar.app.created` and `calendar.acls` scopes for it).
 - **Meals.** A week planner of days and meal slots, holding recipes or a
   free-text entry like "Leftovers". Recipes scale with the servings
   stepper, using friendly fractions, and switch between US and metric

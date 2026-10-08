@@ -133,6 +133,8 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
     final t = DTheme.of(context);
     final c = t.colors;
     final h24 = ref.watch(clock24Provider);
+    // An event that follows its calendar shows the calendar's reminders.
+    final reminders = _d.followsCalendar ? (ref.watch(calendarRemindersProvider)[_d.sourceId] ?? const <int>[]) : _d.reminders;
     final family = ref.watch(familyProvider);
     final calendars = [for (final s in ref.watch(calendarSourcesProvider).value ?? const <CalendarSource>[]) if (s.writable) s];
     final learned = ref.watch(learnedIconsProvider);
@@ -278,27 +280,34 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
               id: 'editor.remind.none',
               label: 'None',
               dense: true,
-              selected: _d.reminders.isEmpty,
+              selected: reminders.isEmpty,
               onTap: () => setState(() {
                 _remindersPicked = true;
                 _d = _d.copyWith(reminders: const []);
               }),
             ),
-            for (final m in _d.allDay ? kAllDayReminderChoices : kTimedReminderChoices)
+            // The editor's choices, and any other lead the event came with
+            // (a Google reminder like "20 min before").
+            for (final m in {...(_d.allDay ? kAllDayReminderChoices : kTimedReminderChoices), ...reminders}.toList()..sort())
               DChip(
                 id: 'editor.remind.$m',
-                label: describeReminder(m, allDay: _d.allDay),
+                label: describeReminder(m, allDay: _d.allDay, h24: h24),
                 dense: true,
-                selected: _d.reminders.contains(m),
+                selected: reminders.contains(m),
                 onTap: () => setState(() {
                   _remindersPicked = true;
-                  final next = {..._d.reminders};
+                  final next = {...reminders};
                   next.contains(m) ? next.remove(m) : next.add(m);
                   _d = _d.copyWith(reminders: next.toList()..sort());
                 }),
               ),
           ],
         ),
+        if (_d.followsCalendar)
+          Padding(
+            padding: EdgeInsets.only(top: t.space.xs),
+            child: Text('Same as the calendar’s reminders (Settings → Calendars)', style: t.text.caption),
+          ),
         if (family.isNotEmpty) ...[
           label('Who'),
           Wrap(

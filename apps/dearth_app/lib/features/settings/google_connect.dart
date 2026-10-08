@@ -12,22 +12,29 @@ import '../../core/sync/hub_api.dart';
 Future<void> connectGoogle(BuildContext context, WidgetRef ref, HubApi api, {String? purpose}) async {
   try {
     final r = await api.get('/api/admin/oauth/google/start', {'purpose': ?purpose});
-    final url = Uri.parse(r['url']! as String);
-    if (r['mode'] == 'callback') {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-      ref.read(toastProvider).show('Finish signing in in the browser', emoji: '🌐');
-      return;
-    }
     if (!context.mounted) return;
-    await _pasteBack(context, ref, api, url);
+    await continueGoogleSignIn(context, ref, api, r);
   } on HubApiException catch (e) {
     ref.read(toastProvider).show(e.friendly, emoji: '⚠️', tone: DBannerTone.warning);
   }
 }
 
+/// Finishes a Google consent the Hub started ([start] holds its `url` and
+/// `mode`). [onDone] gets the Hub's reply when it comes back here (the
+/// paste-back flow); a browser callback ends on the Hub's own page.
+Future<void> continueGoogleSignIn(BuildContext context, WidgetRef ref, HubApi api, Map<String, Object?> start, {void Function(Map<String, Object?> reply)? onDone}) async {
+  final url = Uri.parse(start['url']! as String);
+  if (start['mode'] == 'callback') {
+    await launchUrl(url, mode: LaunchMode.externalApplication);
+    ref.read(toastProvider).show('Finish signing in in the browser', emoji: '🌐');
+    return;
+  }
+  await _pasteBack(context, ref, api, url, onDone: onDone);
+}
+
 /// Without an HTTPS domain the admin pastes the final redirect URL back
 /// (SPEC §13.2 paste-back flow).
-Future<void> _pasteBack(BuildContext context, WidgetRef ref, HubApi api, Uri url) async {
+Future<void> _pasteBack(BuildContext context, WidgetRef ref, HubApi api, Uri url, {void Function(Map<String, Object?> reply)? onDone}) async {
   final pasted = TextEditingController();
   final ok = await showDSheet<bool>(
     context,
@@ -55,7 +62,7 @@ Future<void> _pasteBack(BuildContext context, WidgetRef ref, HubApi api, Uri url
   if (ok != true || text.isEmpty) return;
   try {
     final r = await api.post('/api/admin/oauth/google/complete', {'url': text});
-    ref.read(toastProvider).show('Connected ${r['email']}', emoji: '✅');
+    onDone == null ? ref.read(toastProvider).show('Connected ${r['email']}', emoji: '✅') : onDone(r);
   } on HubApiException catch (e) {
     ref.read(toastProvider).show(e.friendly, emoji: '⚠️', tone: DBannerTone.warning);
   }

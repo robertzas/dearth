@@ -109,16 +109,21 @@ Future<int> importDrafts(HubKernel kernel, String sourceId, List<EventDraft> dra
     final row = byRemote[d.remoteId];
     final id = row?.id ?? EventDraft.localId(sourceId, d.remoteId);
     seen.add(id);
-    if (row != null && !row.deleted && row.updatedMs != null && row.updatedMs == d.updatedMs && row.etag == d.etag) continue;
+    if (row != null && !row.deleted && row.updatedMs != null && row.updatedMs == d.updatedMs && row.etag == d.etag && (d.reminders == null || d.reminders == row.reminders)) continue;
     if (d.isCancelled && d.recurringRemoteId == null) {
       if (row != null && !row.deleted) ops.add(kernel.mutator.makeOp('events', id, const {}, kind: OpKind.delete));
       continue;
     }
-    ops.add(kernel.mutator.makeOp('events', id, d.toFields(sourceId)));
+    ops.add(kernel.mutator.makeOp('events', id, {
+      ...d.toFields(sourceId),
+      // A series made on a display keeps its own row id: link to that.
+      if (d.recurringRemoteId case final parent?) 'recurring_parent_id': byRemote[parent]?.id ?? EventDraft.localId(sourceId, parent),
+    }));
   }
   if (tombstoneMissing) {
     for (final e in existing) {
-      if (!e.deleted && !seen.contains(e.id)) ops.add(kernel.mutator.makeOp('events', e.id, const {}, kind: OpKind.delete));
+      // A row without a remote id was made here and hasn't gone up yet.
+      if (!e.deleted && !seen.contains(e.id) && e.remoteId != null) ops.add(kernel.mutator.makeOp('events', e.id, const {}, kind: OpKind.delete));
     }
   }
   for (var i = 0; i < ops.length; i += 500) {

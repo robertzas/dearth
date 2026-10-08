@@ -22,6 +22,7 @@ class EventDraft {
     this.notes,
     this.countdown = false,
     this.reminders = const [],
+    this.followsCalendar = false,
   });
 
   factory EventDraft.fromOccurrence(Occurrence o, HouseholdTime time, {Event? master}) {
@@ -42,6 +43,7 @@ class EventDraft {
       notes: e.notes,
       countdown: e.countdown,
       reminders: decodeReminders(e.reminders),
+      followsCalendar: followsCalendarReminders(e.reminders),
     );
   }
 
@@ -64,6 +66,10 @@ class EventDraft {
   /// Minutes before the start (FR-CAL-20); empty = no reminder.
   final List<int> reminders;
 
+  /// The event reminds with its calendar's default instead of [reminders]
+  /// (a Google event on "use default"), until the reminders are changed.
+  final bool followsCalendar;
+
   EventDraft copyWith({
     String? title,
     String? icon,
@@ -82,6 +88,7 @@ class EventDraft {
     String? notes,
     bool? countdown,
     List<int>? reminders,
+    bool? followsCalendar,
   }) =>
       EventDraft(
         title: title ?? this.title,
@@ -98,6 +105,8 @@ class EventDraft {
         notes: notes ?? this.notes,
         countdown: countdown ?? this.countdown,
         reminders: reminders ?? this.reminders,
+        // Picking reminders makes them the event's own.
+        followsCalendar: followsCalendar ?? (reminders == null && this.followsCalendar),
       );
 
   /// Column values for `events` (SPEC §8.2), computed in household time.
@@ -118,7 +127,7 @@ class EventDraft {
       'location': (location?.trim().isEmpty ?? true) ? null : location!.trim(),
       'notes': (notes?.trim().isEmpty ?? true) ? null : notes!.trim(),
       'countdown': countdown,
-      'reminders': ([...reminders]..sort()),
+      'reminders': followsCalendar ? kCalendarReminders : ([...reminders]..sort()),
       'source_id': sourceId,
     };
   }

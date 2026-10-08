@@ -294,17 +294,34 @@ void mountAdminRoutes(Router r, HubContext ctx) {
   // ── OAuth (SPEC §13.2, §13.7) ────────────────────────────────────────────
   r.get('/api/admin/oauth/google/start', (Request req) async {
     await requireAdmin(req, ctx.auth);
-    final oauth = await ctx.integrations.googleOAuth();
-    if (oauth == null) throw HttpError(424, 'google_client_required', 'Add your Google OAuth client ID and secret first');
-    final purpose = req.url.queryParameters['purpose'] ?? 'calendar';
-    final state = randomToken(bytes: 16);
-    final verifier = pkceVerifier();
-    final redirect = _googleRedirect(ctx);
-    ctx.oauthStates[state] = {'provider': 'google', 'verifier': verifier, 'purpose': purpose, 'redirect': redirect, 'createdMs': DateTime.now().millisecondsSinceEpoch};
-    // Incremental consent: a purpose adds its scope to the calendar ones.
-    final scopes = [...GoogleOAuth.calendarScopes, if (purpose == 'photos') GoogleOAuth.photosPickerScope, if (purpose == 'tasks') GoogleTasksApi.scope];
-    final url = oauth.authorizationUrl(redirectUri: redirect, state: state, scopes: scopes, codeChallenge: pkceChallenge(verifier));
-    return jsonOk({'url': url.toString(), 'mode': ctx.config.hasHttpsPublicUrl ? 'callback' : 'paste', 'redirectUri': redirect});
+    return jsonOk(await _startGoogle(ctx, req.url.queryParameters['purpose'] ?? 'calendar'));
+  });
+
+  // FR-CAL-04: the shared "Family" Google calendar. Made at once when the
+  // account already allowed it, else after one more Google consent (the
+  // reply carries its URL, like /oauth/google/start).
+  r.post('/api/admin/calendars/google/family', (Request req) async {
+    await requireAdmin(req, ctx.auth);
+    final b = await readJson(req);
+    final accounts = await ctx.integrations.googleAccounts();
+    final account = b['account'] is String && accounts.contains(b['account']) ? b['account']! as String : accounts.firstOrNull;
+    if (account == null) throw HttpError(424, 'google_required', 'Connect a Google account first');
+    final share = [for (final e in b['share'] is List ? b['share']! as List : const []) if (e is String && e.contains('@')) e.trim()];
+    final move = b['move'] == true;
+    final stored = await ctx.vault.getJson('${SecretIds.googleAccountPrefix}$account');
+    final granted = '${(stored?['tokens'] as Map?)?['scope'] ?? ''}';
+    if (granted.contains(GoogleOAuth.appCalendarsScope) && (share.isEmpty || granted.contains(GoogleOAuth.sharingScope))) {
+      try {
+        return jsonOk({'created': true, ...await ctx.google.createFamilyCalendar(account: account, share: share, move: move)});
+      } on ProviderException catch (e) {
+        if (!e.isAuth) throw HttpError(502, 'google_failed', e.message);
+        // A revoked permission: ask again.
+      }
+    }
+    return jsonOk({
+      'created': false,
+      ...await _startGoogle(ctx, 'family', loginHint: account, extra: {'share': share, 'move': move}, sharing: share.isNotEmpty),
+    });
   });
 
   r.post('/api/admin/oauth/google/complete', (Request req) async {
@@ -320,6 +337,10 @@ void mountAdminRoutes(Router r, HubContext ctx) {
     if (q['error'] != null) return htmlPage('Google sign-in cancelled', q['error']!, ok: false);
     try {
       final res = await _finishGoogle(ctx, q['code'], q['state']);
+      if (res['family'] case {'shared': final List<Object?> shared}) {
+        final who = shared.isEmpty ? '' : ' and shared it with ${shared.join(' and ')}';
+        return htmlPage('Family calendar made', 'Dearth made a “Family” calendar in ${res['email']}’s Google Calendar$who. Events added on the wall land there. You can close this tab.');
+      }
       return htmlPage('Google connected', 'Signed in as ${res['email']}. You can close this tab — your calendars and lists sync with Dearth in a moment.');
     } on HttpError catch (e) {
       return htmlPage('Google connection failed', e.message ?? e.code, ok: false);
@@ -386,6 +407,27 @@ String _defaultName(String kind) => switch (kind) {
       _ => 'Photos',
     };
 
+/// A Google consent URL for [purpose] (SPEC §13.2). [extra] rides along in
+/// the OAuth state to the finish.
+Future<Map<String, Object?>> _startGoogle(HubContext ctx, String purpose, {String? loginHint, Map<String, Object?> extra = const {}, bool sharing = false}) async {
+  final oauth = await ctx.integrations.googleOAuth();
+  if (oauth == null) throw HttpError(424, 'google_client_required', 'Add your Google OAuth client ID and secret first');
+  final state = randomToken(bytes: 16);
+  final verifier = pkceVerifier();
+  final redirect = _googleRedirect(ctx);
+  ctx.oauthStates[state] = {...extra, 'provider': 'google', 'verifier': verifier, 'purpose': purpose, 'redirect': redirect, 'createdMs': DateTime.now().millisecondsSinceEpoch};
+  // Incremental consent: a purpose adds its scope to the calendar ones.
+  final scopes = [
+    ...GoogleOAuth.calendarScopes,
+    if (purpose == 'photos') GoogleOAuth.photosPickerScope,
+    if (purpose == 'tasks') GoogleTasksApi.scope,
+    if (purpose == 'family') GoogleOAuth.appCalendarsScope,
+    if (purpose == 'family' && sharing) GoogleOAuth.sharingScope,
+  ];
+  final url = oauth.authorizationUrl(redirectUri: redirect, state: state, scopes: scopes, codeChallenge: pkceChallenge(verifier), loginHint: loginHint);
+  return {'url': url.toString(), 'mode': ctx.config.hasHttpsPublicUrl ? 'callback' : 'paste', 'redirectUri': redirect};
+}
+
 String _googleRedirect(HubContext ctx) =>
     ctx.config.hasHttpsPublicUrl ? '${ctx.config.publicUrl}/api/oauth/google/callback' : 'http://localhost/dearth-oauth';
 
@@ -423,15 +465,28 @@ Future<Map<String, Object?>> _finishGoogle(HubContext ctx, String? code, String?
       'name': c.summary,
       'color': _hexColor(c.colorHex),
       'writable': c.writable,
+      // Reconnecting (to allow Tasks, say) keeps the family's choices.
       if (existing == null) 'enabled': c.primary,
-      'is_default': false,
+      if (existing == null) 'is_default': false,
       'deleted': false,
     });
+  }
+  Map<String, Object?>? family;
+  if (s['purpose'] == 'family') {
+    try {
+      family = await ctx.google.createFamilyCalendar(
+        account: accountId,
+        share: [for (final e in s['share'] is List ? s['share']! as List : const []) if (e is String) e],
+        move: s['move'] == true,
+      );
+    } on ProviderException catch (e) {
+      throw HttpError(502, 'google_failed', 'Signed in, but Google wouldn’t make the Family calendar: ${e.message}');
+    }
   }
   ctx.scheduler
     ..runNow('google-calendar')
     ..runNow('google-tasks');
-  return {'ok': true, 'email': accountId, 'calendars': calendars.length};
+  return {'ok': true, 'email': accountId, 'calendars': calendars.length, 'family': ?family};
 }
 
 Future<void> _finishSpotify(HubContext ctx, String? code, String? state) async {

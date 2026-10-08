@@ -9,6 +9,7 @@ import '../../../core/providers.dart';
 import '../../../core/sync/hub_api.dart';
 import '../google_connect.dart';
 import '../settings_screen.dart';
+import 'family_calendar.dart';
 
 /// Calendar sources (SPEC FR-CAL-01/02): toggle, default target, ICS
 /// subscriptions and Google accounts (both run on the Hub).
@@ -60,6 +61,7 @@ class CalendarsSection extends ConsumerWidget {
               ),
           ],
         ),
+        const FamilyCalendarOffer(),
         const _BirthdaysAndHolidays(),
         SettingsGroup(
           title: 'Add calendars',
@@ -83,6 +85,16 @@ class CalendarsSection extends ConsumerWidget {
               chevron: true,
               onTap: api == null || !session.admin ? null : () => connectGoogle(context, ref, api),
             ),
+            // After "Not now" on the offer (FR-CAL-04), it waits here.
+            if (ref.watch(settingMapProvider(SettingKeys.calendarGoogleFamily))['dismissed'] == true && googleCalendarAccounts(sources).isNotEmpty)
+              DListRow(
+                id: 'calendars.add.family',
+                title: 'Make a shared Family calendar',
+                subtitle: 'In Google Calendar, for both parents',
+                leading: const DEmoji('👪', size: 30),
+                chevron: true,
+                onTap: api == null || !session.admin ? null : () => makeFamilyCalendar(context, ref, api, googleCalendarAccounts(sources)),
+              ),
           ],
         ),
       ],

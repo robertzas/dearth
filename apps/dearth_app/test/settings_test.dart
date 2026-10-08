@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:ui' show Tristate;
 
 import 'package:dearth_app/app/router.dart';
+import 'package:dearth_app/core/data/calendar.dart';
 import 'package:dearth_app/core/data/household.dart';
 import 'package:dearth_app/core/providers.dart';
 import 'package:dearth_app/core/sync/hub_api.dart';
@@ -124,6 +125,73 @@ void main() {
     expect(puts.last, {'source': 'recipeapi', 'apiKey': 'sk_live_test'});
     expect(labelOf(tester, 'recipes.source.recipeapi'), contains('3 of 500 used this month'));
     expect(labelOf(tester, 'recipes.key.recipeapi'), 'Change the RecipeAPI.io key');
+    await h.shutdown();
+    handle.dispose();
+  });
+
+  testWidgets('FR-CAL-04: with Google connected, Settings → Calendars offers a shared Family calendar the Hub makes', (tester) async {
+    final handle = tester.ensureSemantics();
+    final posts = <Map<String, Object?>>[];
+    final api = HubApi(Uri.parse('http://hub.test'), token: 't', client: MockClient((req) async {
+      if (req.method == 'POST' && req.url.path == '/api/admin/calendars/google/family') {
+        posts.add(jsonDecode(req.body) as Map<String, Object?>);
+        return http.Response(jsonEncode({'created': true, 'source': 'gcal-a', 'shared': ['b@example.com', 'grandma@example.com'], 'failed': <String>[], 'moved': 2}), 200,
+            headers: {'content-type': 'application/json'});
+      }
+      return http.Response('{}', 404);
+    }));
+    final h = await AppHarness.demo(tester, overrides: [hubApiProvider.overrideWithValue(api)]);
+    h.container.read(routerProvider).go('/settings/calendars');
+    await h.settle();
+    expect(byId('calendars.family.create'), findsNothing, reason: 'no Google account yet');
+
+    // Both parents connected their Google accounts on the Hub.
+    await h.write((w) => [
+          w.op('calendar_sources', 'gcal-a', {'kind': 'google', 'account_id': 'a@example.com', 'remote_id': 'primary', 'name': 'Alex', 'writable': true}),
+          w.op('calendar_sources', 'gcal-b', {'kind': 'google', 'account_id': 'b@example.com', 'remote_id': 'primary', 'name': 'Bea', 'writable': true}),
+        ]);
+    await tester.ensureVisible(byId('calendars.family.create'));
+    await tester.tap(byId('calendars.family.create'));
+    await h.settle();
+    expect(tester.getSemantics(byId('family.share.b@example.com')).flagsCollection.isSelected, Tristate.isTrue, reason: 'the other grown-up is shared by default');
+    expect(byId('family.move'), findsOneWidget, reason: 'the demo has events on the Hub’s own Family calendar');
+    await tester.enterText(find.descendant(of: byId('family.share.email'), matching: find.byType(EditableText)), 'Grandma@Example.com');
+    await tester.ensureVisible(byId('family.create'));
+    await tester.tap(byId('family.create'));
+    await h.settle();
+    expect(posts.single, {'account': 'a@example.com', 'share': ['b@example.com', 'grandma@example.com'], 'move': true});
+
+    // The Hub made it and says so through the synced setting.
+    await h.write((w) => [settingOp(w, SettingKeys.calendarGoogleFamily, {'source': 'gcal-a', 'account': 'a@example.com', 'shared': ['b@example.com']})]);
+    expect(byId('calendars.family.create'), findsNothing);
+    expect(labelOf(tester, 'calendars.family.made'), contains('shared with b@example.com'));
+    expectNoFallbackText();
+    await h.shutdown();
+    handle.dispose();
+  });
+
+  testWidgets('FR-CAL-04: “Not now” tucks the offer away under Add calendars; a Google calendar called Family is offered as is', (tester) async {
+    final handle = tester.ensureSemantics();
+    final h = await AppHarness.demo(tester, overrides: [hubApiProvider.overrideWithValue(HubApi(Uri.parse('http://hub.invalid')))]);
+    h.container.read(routerProvider).go('/settings/calendars');
+    await h.write((w) => [w.op('calendar_sources', 'gcal-a', {'kind': 'google', 'account_id': 'a@example.com', 'remote_id': 'primary', 'name': 'Alex', 'writable': true})]);
+    await tester.ensureVisible(byId('calendars.family.dismiss'));
+    await tester.tap(byId('calendars.family.dismiss'));
+    await h.settle();
+    expect(byId('calendars.family.create'), findsNothing);
+    expect(byId('calendars.add.family'), findsOneWidget);
+
+    await h.write((w) => [
+          settingOp(w, SettingKeys.calendarGoogleFamily, const <String, Object?>{}),
+          w.op('calendar_sources', 'gcal-fam', {'kind': 'google', 'account_id': 'a@example.com', 'remote_id': 'fam', 'name': 'Family', 'writable': true, 'enabled': false}),
+        ]);
+    await tester.ensureVisible(byId('calendars.family.use'));
+    await tester.tap(byId('calendars.family.use'));
+    await h.settle();
+    final sources = {for (final s in h.container.read(calendarSourcesProvider).value!) s.id: s};
+    expect((sources['gcal-fam']!.isDefault, sources['gcal-fam']!.enabled), (true, true));
+    expect(sources.values.where((s) => s.isDefault).length, 1);
+    expect(h.container.read(settingMapProvider(SettingKeys.calendarGoogleFamily))['source'], 'gcal-fam');
     await h.shutdown();
     handle.dispose();
   });

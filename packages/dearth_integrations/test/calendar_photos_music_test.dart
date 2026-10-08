@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dearth_core/dearth_core.dart';
 import 'package:dearth_integrations/dearth_integrations.dart';
 import 'package:http/http.dart' as http;
@@ -191,6 +193,70 @@ void main() {
       expect(OAuthTokens.fromJson(tokens.toJson()).accessToken, 'a');
       // RFC 7636 appendix B vector.
       expect(pkceChallenge('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'), 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM');
+    });
+
+    test('FR-CAL-20: Google reminders map to wall leads and back', () {
+      Map<String, Object?> popup(int m) => {'method': 'popup', 'minutes': m};
+      // Timed: popups are leads; email stays on Google; useDefault follows the calendar.
+      final r = {'useDefault': false, 'overrides': [popup(30), {'method': 'email', 'minutes': 1440}, popup(10)]};
+      expect(remindersFromGoogle(r, allDay: false), '[10,30]');
+      expect(keptRemindersFromGoogle(r), [{'method': 'email', 'minutes': 1440}]);
+      expect(remindersFromGoogle({'useDefault': true}, allDay: false), kCalendarReminders);
+      expect(remindersFromGoogle(null, allDay: false), isNull, reason: 'none listed: leave the row alone');
+      expect(remindersFromGoogle({'useDefault': false}, allDay: false), '[]');
+      // All-day: Google counts from midnight, the wall from 8:00 that morning.
+      expect(remindersFromGoogle({'useDefault': false, 'overrides': [popup(900), popup(360)]}, allDay: true), '[840,1380]');
+      expect(remindersFromGoogle({'useDefault': false, 'overrides': [popup(-540)]}, allDay: true), '[0]', reason: '"on the day at 9 am" → morning of');
+
+      expect(googleReminders('[10,30]', allDay: false, kept: [{'method': 'email', 'minutes': 1440}]), {
+        'useDefault': false,
+        'overrides': [popup(10), popup(30), {'method': 'email', 'minutes': 1440}],
+      });
+      expect(googleReminders(kCalendarReminders, allDay: false), {'useDefault': true});
+      expect(googleReminders('[]', allDay: false), {'useDefault': false, 'overrides': <Object?>[]});
+      // "Morning of" has no Google form: it stays on the wall only.
+      expect(googleReminders('[0,840,1440]', allDay: true), {'useDefault': false, 'overrides': [popup(360), popup(960)]});
+      expect(wallOnlyReminders('[0,840]', allDay: true), [0]);
+      expect(wallOnlyReminders('[0,5]', allDay: false), isEmpty);
+      expect((googleReminders('[0,5,10,15,30,60,120]', allDay: false)['overrides']! as List).length, 5, reason: 'Google allows five');
+
+      final ev = eventFromGoogle({
+        'id': 'r',
+        'summary': 'Swim',
+        'start': {'dateTime': '2026-10-06T15:30:00-06:00'},
+        'end': {'dateTime': '2026-10-06T16:30:00-06:00'},
+        'reminders': r,
+      }, defaultTz: 'America/Denver');
+      expect(ev.toFields('g')['reminders'], '[10,30]');
+      expect(eventFromGoogle({'id': 'n', 'start': {'date': '2026-10-06'}, 'end': {'date': '2026-10-07'}}, defaultTz: 'UTC').toFields('g').containsKey('reminders'), isFalse);
+    });
+
+    test('instance ids follow Google: the series id and the original start', () {
+      expect(googleInstanceId('m', originalStartMs: DateTime.parse('2026-10-17T15:00:00Z').millisecondsSinceEpoch), 'm_20261017T150000Z');
+      expect(googleInstanceId('m', originalStartMs: 0, allDayDate: '2026-10-17'), 'm_20261017');
+    });
+
+    test('FR-CAL-04: makes a calendar and shares it', () async {
+      final log = <http.Request>[];
+      final f = fakeFetcher(log: log, {
+        (r) => r.method == 'POST' && r.url.path.endsWith('/calendars'): (r) {
+          expect(jsonDecode(r.body), {'summary': 'Family', 'timeZone': 'America/Denver'});
+          return json({'id': 'fam@group.calendar.google.com', 'summary': 'Family'});
+        },
+        (r) => r.url.path.endsWith('/acl'): (r) {
+          expect(r.url.queryParameters['sendNotifications'], 'true');
+          expect(jsonDecode(r.body), {'role': 'writer', 'scope': {'type': 'user', 'value': 'b@example.com'}});
+          return json({'id': 'user:b@example.com', 'role': 'writer'});
+        },
+      });
+      final api = GoogleCalendarApi(f, () async => 'tok');
+      final id = await api.createCalendar('Family', timeZone: 'America/Denver');
+      expect(id, 'fam@group.calendar.google.com');
+      await api.share(id, 'b@example.com');
+      expect(log.map((r) => '${r.method} ${Uri.decodeComponent(r.url.path)}'), [
+        'POST /calendar/v3/calendars',
+        'POST /calendar/v3/calendars/fam@group.calendar.google.com/acl',
+      ]);
     });
 
     test('outbound body round-trips through the importer', () {

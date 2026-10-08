@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:dearth_core/dearth_core.dart';
 import 'package:dearth_integrations/dearth_integrations.dart';
@@ -29,7 +30,16 @@ class GoogleCalendarJob implements HubJob {
   /// Asks the scheduler to run this job soon.
   final void Function()? onTrigger;
   final Set<String> _dirty = {};
+
+  /// Events whose reminders a device changed: only these send reminders to
+  /// Google, so a title edit on the wall leaves a parent's own phone
+  /// reminders (and "use default") alone.
+  final Set<String> _remindersTouched = {};
   final Map<String, int> _attempts = {};
+
+  /// Bumped when inbound mapping gains a field, so every calendar does one
+  /// full resync and existing rows pick it up (2: reminders).
+  static const _mappingVersion = 2;
 
   HubKernel get kernel => integrations.kernel;
 
@@ -45,6 +55,7 @@ class GoogleCalendarJob implements HubJob {
     for (final o in ops) {
       if (o.op.table == 'events') {
         _dirty.add(o.op.rowId);
+        if (o.op.fields.containsKey('reminders')) _remindersTouched.add(o.op.rowId);
         touched = true;
       } else if (o.op.table == 'calendar_sources' && o.op.fields.containsKey('enabled')) {
         touched = true;
@@ -103,7 +114,7 @@ class GoogleCalendarJob implements HubJob {
     final api = _api(s.accountId!, tz);
     final stateId = 'gcal:${s.id}';
     final state = await jobs.data(stateId);
-    var syncToken = state['syncToken'] as String?;
+    var syncToken = state['mapping'] == _mappingVersion ? state['syncToken'] as String? : null;
     final drafts = <EventDraft>[];
     String? next;
     var full = syncToken == null;
@@ -130,16 +141,29 @@ class GoogleCalendarJob implements HubJob {
       }
     }
     final pending = Set.of(_dirty);
-    final apply = drafts.where((d) {
-      final localId = EventDraft.localId(s.id, d.remoteId);
-      return !pending.contains(localId);
-    }).toList();
+    final db = kernel.db;
+    final rows = {
+      for (final e in await (db.select(db.events)..where((t) => t.sourceId.equals(s.id) & t.remoteId.isNotNull())).get()) e.remoteId!: e,
+    };
+    final apply = [
+      for (final d in drafts)
+        if (!pending.contains(rows[d.remoteId]?.id ?? EventDraft.localId(s.id, d.remoteId))) _keepWallOnly(d, rows[d.remoteId]),
+    ];
     final n = await importDrafts(kernel, s.id, apply, tombstoneMissing: full);
-    await jobs.write(stateId, data: {...state, 'syncToken': next ?? syncToken});
+    await jobs.write(stateId, data: {...state, 'syncToken': next ?? syncToken, 'mapping': _mappingVersion});
     await kernel.upsert('calendar_sources', s.id, {
       'status': full ? 'ok · $n events' : 'ok',
       'last_sync_ms': DateTime.now().millisecondsSinceEpoch,
     });
+  }
+
+  /// All-day "Morning of" has no Google form, so it never went up; keep it
+  /// on the row when Google's copy comes back.
+  EventDraft _keepWallOnly(EventDraft d, Event? row) {
+    if (row == null || !d.allDay || d.reminders == null || followsCalendarReminders(d.reminders)) return d;
+    final local = wallOnlyReminders(row.reminders, allDay: true);
+    if (local.isEmpty) return d;
+    return d.withReminders(jsonEncode(({...decodeReminders(d.reminders), ...local}.toList()..sort())));
   }
 
   // ─────────────────────────────── Outbound ────────────────────────────────
@@ -150,26 +174,36 @@ class GoogleCalendarJob implements HubJob {
     final ids = _dirty.toList();
     _dirty.clear();
     final sources = {for (final s in await _googleSources()) s.id: s};
-    for (final id in ids) {
-      final row = await (db.select(db.events)..where((t) => t.id.equals(id))).getSingleOrNull();
-      if (row == null) continue;
+    final rows = await (db.select(db.events)..where((t) => t.id.isIn(ids))).get();
+    // Series before their exceptions: an instance needs its master's id.
+    rows.sort((a, b) => (a.recurringParentId == null ? 0 : 1) - (b.recurringParentId == null ? 0 : 1));
+    for (final row in rows) {
+      final id = row.id;
       final s = sources[row.sourceId];
       if (s == null || !s.writable || s.remoteId == null || s.accountId == null) continue;
       final api = _api(s.accountId!, tz);
+      final reminders = _remindersTouched.remove(id);
       try {
         if (row.deleted) {
+          // (An instance edit that never went up has nothing to undo.)
           if (row.remoteId != null) await api.delete(s.remoteId!, row.remoteId!, etag: row.etag);
-        } else if (row.recurringParentId != null && row.remoteId == null) {
-          _log.info('Skipping locally created recurring exception ${row.id} (edit the series in Google)');
+        } else if (row.recurringParentId != null && (row.remoteId == null || row.status == 'cancelled')) {
+          if (!await _pushInstance(api, s, row, tz)) _dirty.add(id); // its series isn't on Google yet
         } else if (row.remoteId == null) {
-          final created = await api.insert(s.remoteId!, googleBodyFromEvent(row, householdTz: tz));
+          final created = await api.insert(s.remoteId!, googleBodyFromEvent(row, householdTz: tz, withReminders: true));
           await kernel.upsert('events', row.id, {'remote_id': created.remoteId, 'etag': created.etag, 'updated_ms': created.updatedMs});
         } else {
+          // Email reminders aren't on the wall: fetch them to send them back.
+          final kept = reminders ? (await api.get(s.remoteId!, row.remoteId!))?.keptReminders ?? const <Map<String, Object?>>[] : const <Map<String, Object?>>[];
+          final body = {
+            ...googleBodyFromEvent(row, householdTz: tz, withReminders: reminders, kept: kept),
+            if (row.recurringParentId != null) 'status': 'confirmed', // an instance brought back
+          };
           try {
-            final updated = await api.patch(s.remoteId!, row.remoteId!, googleBodyFromEvent(row, householdTz: tz), etag: row.etag);
+            final updated = await api.patch(s.remoteId!, row.remoteId!, body, etag: row.etag);
             await kernel.upsert('events', row.id, {'etag': updated.etag, 'updated_ms': updated.updatedMs});
           } on EtagConflict {
-            await _resolveConflict(api, s, row, tz);
+            await _resolveConflict(api, s, row, body);
           }
         }
         _attempts.remove(id);
@@ -178,6 +212,7 @@ class GoogleCalendarJob implements HubJob {
         _attempts[id] = n;
         if (n < 5 && e.isRetryable) {
           _dirty.add(id);
+          if (reminders) _remindersTouched.add(id);
         } else {
           _log.warning('Giving up pushing ${row.title}: $e');
         }
@@ -185,19 +220,107 @@ class GoogleCalendarJob implements HubJob {
     }
   }
 
+  /// "This event" of a series (SPEC §13.2): Google keeps one instance per
+  /// original start under a derived id, so a wall edit patches that
+  /// instance and a wall delete cancels it. False while the series itself
+  /// hasn't reached Google.
+  Future<bool> _pushInstance(GoogleCalendarApi api, CalendarSource s, Event row, String tz) async {
+    final db = kernel.db;
+    final master = await (db.select(db.events)..where((t) => t.id.equals(row.recurringParentId!))).getSingleOrNull();
+    if (master == null || master.deleted) return true;
+    if (master.remoteId == null) return false;
+    final original = row.originalStartMs ?? row.startMs;
+    final instanceId = row.remoteId ??
+        googleInstanceId(master.remoteId!, originalStartMs: original, allDayDate: master.allDay ? HouseholdTime.named(master.tz ?? tz).dateOfMs(original).iso : null);
+    if (row.status == 'cancelled') {
+      await api.delete(s.remoteId!, instanceId);
+      await kernel.upsert('events', row.id, {'remote_id': instanceId});
+      return true;
+    }
+    final updated = await api.patch(s.remoteId!, instanceId, {...googleBodyFromEvent(row, householdTz: tz, withReminders: true), 'status': 'confirmed'});
+    await kernel.upsert('events', row.id, {'remote_id': instanceId, 'etag': updated.etag, 'updated_ms': updated.updatedMs});
+    return true;
+  }
+
   /// Field-level LWW against the remote copy: whichever side changed last
   /// wins (SPEC §13.2). The device edit time is the newest field HLC.
-  Future<void> _resolveConflict(GoogleCalendarApi api, CalendarSource s, Event row, String tz) async {
+  Future<void> _resolveConflict(GoogleCalendarApi api, CalendarSource s, Event row, Map<String, Object?> body) async {
     final remote = await api.get(s.remoteId!, row.remoteId!);
     if (remote == null) return;
     final clocks = decodeClock(row.syncClock).values.map(Hlc.tryParse).whereType<Hlc>();
     final localMs = clocks.isEmpty ? 0 : clocks.map((h) => h.millis).reduce((a, b) => a > b ? a : b);
     if ((remote.updatedMs ?? 0) > localMs) {
-      await kernel.upsert('events', row.id, remote.toFields(s.id));
+      await kernel.upsert('events', row.id, {...remote.toFields(s.id), 'recurring_parent_id': row.recurringParentId});
     } else {
-      final forced = await api.patch(s.remoteId!, row.remoteId!, googleBodyFromEvent(row, householdTz: tz));
+      final forced = await api.patch(s.remoteId!, row.remoteId!, body);
       await kernel.upsert('events', row.id, {'etag': forced.etag, 'updated_ms': forced.updatedMs});
     }
+  }
+
+  // ─────────────────────────── Family calendar ─────────────────────────────
+
+  /// FR-CAL-04: a shared "Family" calendar in [account]'s Google, shared
+  /// with [share] (they get Google's email to add it), made the default for
+  /// new events. With [move], the Hub's own Family calendar hands its events
+  /// over (they go up on the next push) and steps aside. Asking again
+  /// returns the calendar already made.
+  Future<Map<String, Object?>> createFamilyCalendar({required String account, List<String> share = const [], bool move = false}) async {
+    final db = kernel.db;
+    final setting = await integrations.setting(SettingKeys.calendarGoogleFamily);
+    if (setting['source'] is String) {
+      final existing = await (db.select(db.calendarSources)..where((t) => t.id.equals(setting['source']! as String))).getSingleOrNull();
+      if (existing != null && !existing.deleted) return {'source': existing.id, 'account': existing.accountId, 'shared': setting['shared'] ?? const <String>[], 'failed': const <String>[], 'moved': 0};
+    }
+    final tz = (await integrations.household())?.timezone ?? 'UTC';
+    final api = _api(account, tz);
+    final remoteId = await api.createCalendar('Family', timeZone: tz, description: 'The family calendar on Dearth: events added on the wall land here.');
+    final shared = <String>[], failed = <String>[];
+    for (final raw in share) {
+      final email = raw.trim().toLowerCase();
+      if (email.isEmpty || email == account.toLowerCase() || shared.contains(email)) continue;
+      try {
+        await api.share(remoteId, email);
+        shared.add(email);
+      } on ProviderException catch (e) {
+        _log.warning('Sharing the Family calendar with $email failed: $e');
+        failed.add(email);
+      }
+    }
+
+    final id = stableId('gcal', [account, remoteId]);
+    final local = await (db.select(db.calendarSources)..where((t) => t.id.equals(Ids.familyCalendar))).getSingleOrNull();
+    final others = await (db.select(db.calendarSources)..where((t) => t.isDefault.equals(true) & t.id.equals(id).not())).get();
+    final moving = move ? await (db.select(db.events)..where((t) => t.sourceId.equals(Ids.familyCalendar) & t.deleted.equals(false))).get() : const <Event>[];
+    final reminders = await integrations.setting(SettingKeys.calendarReminders);
+    final m = kernel.mutator;
+    Op put(String key, Object? value) => m.makeOp('settings', Ids.setting('household', key), {'scope': 'household', 'key': key, 'value': value});
+    await kernel.write([
+      m.makeOp('calendar_sources', id, {
+        'kind': 'google',
+        'account_id': account,
+        'remote_id': remoteId,
+        'name': 'Family',
+        'color': local?.color ?? 0xFF5B5BD6,
+        'default_profile_ids': local?.defaultProfileIds ?? '[]',
+        'writable': true,
+        'enabled': true,
+        'is_default': true,
+        'deleted': false,
+      }),
+      for (final o in others) m.makeOp('calendar_sources', o.id, {'is_default': false}),
+      if (move && local != null) m.makeOp('calendar_sources', local.id, {'enabled': false, 'is_default': false}),
+      for (final e in moving) m.makeOp('events', e.id, {'source_id': id}),
+      put(SettingKeys.calendarGoogleFamily, {'source': id, 'account': account, 'shared': shared}),
+      // New events in it start with the reminders the Hub's Family had.
+      if (reminders[Ids.familyCalendar] case final List<Object?> leads) put(SettingKeys.calendarReminders, {...reminders, id: leads}),
+    ]);
+    // Moved events carry their reminders up with them.
+    for (final e in moving) {
+      _dirty.add(e.id);
+      _remindersTouched.add(e.id);
+    }
+    onTrigger?.call();
+    return {'source': id, 'account': account, 'shared': shared, 'failed': failed, 'moved': moving.length};
   }
 
   // ───────────────────────────── Push channels ─────────────────────────────

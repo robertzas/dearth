@@ -19,10 +19,19 @@ const int kAllDayReminderHour = 8;
 /// (a display that just rebooted).
 const Duration kReminderGrace = Duration(minutes: 5);
 
+/// `events.reminders` of an event that follows its calendar's reminders
+/// instead of its own: a Google event with `reminders.useDefault`. The wall
+/// then reminds with the calendar's default set in Settings → Calendars, so
+/// a parent's work calendar doesn't chime in the kitchen for every meeting
+/// just because Google pops it up on their phone.
+const String kCalendarReminders = 'calendar';
+
+bool followsCalendarReminders(String? json) => json == kCalendarReminders;
+
 /// The lead times stored on an event (`events.reminders`: a JSON list of
-/// minutes before the start). Empty means none.
+/// minutes before the start, or [kCalendarReminders]). Empty means none.
 List<int> decodeReminders(String? json) {
-  if (json == null || json.isEmpty) return const [];
+  if (json == null || json.isEmpty || followsCalendarReminders(json)) return const [];
   try {
     final v = jsonDecode(json);
     if (v is! List) return const [];
@@ -33,24 +42,42 @@ List<int> decodeReminders(String? json) {
 }
 
 /// The lead times that apply to [e]: its own, or — for read-only calendars
-/// (ICS), whose events can't carry their own — the calendar's default.
-/// Writable calendars apply their default when an event is created instead.
+/// (ICS), whose events can't carry their own, and events that follow their
+/// calendar — the calendar's default. Writable calendars apply their
+/// default when an event is created instead.
 List<int> effectiveReminders(Event e, {required bool writable, List<int> calendarDefault = const []}) {
+  if (followsCalendarReminders(e.reminders)) return calendarDefault;
   final own = decodeReminders(e.reminders);
   return own.isNotEmpty || writable ? own : calendarDefault;
 }
 
-/// "15 min before", "Morning of", "1 day before".
-String describeReminder(int lead, {required bool allDay}) {
+/// "15 min before", "Morning of", "1 day before". All-day leads from
+/// elsewhere (Google's "1 day before at 5 pm") read as a day and a time.
+String describeReminder(int lead, {required bool allDay, bool h24 = false}) {
   if (allDay) {
     return switch (lead) {
       0 => 'Morning of',
       840 => 'Evening before',
       1440 => 'Day before',
-      _ => '${_span(lead)} before',
+      _ => _allDayAt(lead, h24),
     };
   }
   return lead == 0 ? 'At start' : '${_span(lead)} before';
+}
+
+String _allDayAt(int lead, bool h24) {
+  final fire = kAllDayReminderHour * 60 - lead; // minutes from midnight of the day
+  final days = (fire / 1440).floor();
+  final minute = fire - days * 1440;
+  final h = minute ~/ 60, m = minute % 60;
+  final clock = h24
+      ? '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}'
+      : '${h % 12 == 0 ? 12 : h % 12}${m == 0 ? '' : ':${m.toString().padLeft(2, '0')}'} ${h < 12 ? 'am' : 'pm'}';
+  return switch (days) {
+    0 => 'That day at $clock',
+    -1 => 'Day before at $clock',
+    _ => '${-days} days before at $clock',
+  };
 }
 
 String _span(int minutes) {

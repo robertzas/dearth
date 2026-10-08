@@ -114,7 +114,7 @@ class EventDetails extends ConsumerWidget {
         if (o.event.notes != null) info(Icons.notes_rounded, o.event.notes!),
         if (effectiveReminders(o.event, writable: writable, calendarDefault: ref.watch(calendarRemindersProvider)[o.event.sourceId] ?? const [])
             case final leads when leads.isNotEmpty)
-          info(Icons.notifications_active_rounded, leads.map((m) => describeReminder(m, allDay: o.allDay)).join(', '), id: 'event.sheet.reminders'),
+          info(Icons.notifications_active_rounded, leads.map((m) => describeReminder(m, allDay: o.allDay, h24: h24)).join(', '), id: 'event.sheet.reminders'),
         if (o.event.countdown && days > 0)
           info(Icons.hourglass_bottom_rounded, '$days ${days == 1 ? 'day' : 'days'} to go · ${'🌙' * days.clamp(0, 7)} $days ${days == 1 ? 'sleep' : 'sleeps'}', id: 'event.sheet.countdown'),
         if (source != null)

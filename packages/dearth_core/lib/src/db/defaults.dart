@@ -36,6 +36,11 @@ abstract final class SettingKeys {
   /// Per calendar id: default reminder leads (FR-CAL-20).
   static const calendarReminders = 'calendar.reminders';
 
+  /// The shared "Family" Google calendar (FR-CAL-04): `{source: id,
+  /// account: email, shared: [email…]}` once the Hub made it, or
+  /// `{dismissed: true}` when the family said no to the offer.
+  static const calendarGoogleFamily = 'calendar.google_family';
+
   /// Birthdays and holidays calendars (FR-CAL-18): `{birthdays: bool,
   /// holidays: bool, country: 'US', observances: bool}`.
   static const calendarVirtual = 'calendar.virtual';

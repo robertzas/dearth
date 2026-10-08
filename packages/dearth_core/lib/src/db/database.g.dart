@@ -4962,6 +4962,9 @@ class Event extends DataClass implements Insertable<Event> {
   final String? location;
   final String? notes;
   final bool countdown;
+
+  /// JSON list of minutes before the start, or `calendar` (follows the
+  /// calendar's reminders, see `kCalendarReminders`).
   final String reminders;
   final String profileIds;
   final int? color;

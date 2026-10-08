@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:math';
+
 import 'package:dearth_core/dearth_core.dart';
 import 'package:meta/meta.dart';
 import 'package:timezone/timezone.dart' as tz;
@@ -180,9 +183,85 @@ class GoogleCalendarApi {
     );
   }
 
+  /// A new secondary calendar owned by the signed-in account (FR-CAL-04);
+  /// Google adds it to the account's calendar list.
+  Future<String> createCalendar(String summary, {required String timeZone, String? description}) async {
+    final j = asObject(
+      await fetcher.postJson(provider, _u('/calendars'), headers: await _auth(), body: {'summary': summary, 'timeZone': timeZone, 'description': ?description}),
+      provider,
+    );
+    final id = j.str('id');
+    if (id == null || id.isEmpty) throw ProviderException(provider, 'Google made no calendar');
+    return id;
+  }
+
+  /// Shares [calendarId] with [email]; Google emails them a link to add it.
+  Future<void> share(String calendarId, String email, {String role = 'writer'}) async {
+    await fetcher.postJson(provider, _u('/calendars/${_cal(calendarId)}/acl', {'sendNotifications': 'true'}), headers: await _auth(), body: {
+      'role': role,
+      'scope': {'type': 'user', 'value': email},
+    });
+  }
+
   Future<void> stopChannel(String channelId, String resourceId) async {
     await fetcher.postJson(provider, _u('/channels/stop'), headers: await _auth(), body: {'id': channelId, 'resourceId': resourceId});
   }
+}
+
+/// Dearth anchors all-day reminders at [kAllDayReminderHour] on the day,
+/// Google at midnight.
+const int _allDayAnchorMinutes = kAllDayReminderHour * 60;
+
+/// Google allows five reminders per event.
+const int _maxGoogleReminders = 5;
+
+/// Google `reminders` → `events.reminders`: popup reminders as leads,
+/// [kCalendarReminders] for `useDefault`, null when the event has none
+/// listed (left alone).
+String? remindersFromGoogle(Map<String, Object?>? r, {required bool allDay}) {
+  if (r == null || r.isEmpty) return null;
+  if (r.boolean('useDefault') ?? false) return kCalendarReminders;
+  final leads = <int>{
+    for (final o in r.arr('overrides').whereType<Map<String, Object?>>())
+      if (o.str('method') == 'popup' && o['minutes'] is num)
+        // "On the day at 9 am" can't come before Dearth's 8:00 anchor: it
+        // becomes "Morning of".
+        allDay ? max(0, (o['minutes']! as num).round() + _allDayAnchorMinutes) : max(0, (o['minutes']! as num).round()),
+  }.toList()
+    ..sort();
+  return jsonEncode(leads);
+}
+
+/// Reminders Dearth doesn't show (email), to send back untouched.
+List<Map<String, Object?>> keptRemindersFromGoogle(Map<String, Object?>? r) => [
+      for (final o in (r ?? const {}).arr('overrides').whereType<Map<String, Object?>>())
+        if (o.str('method') != 'popup') {'method': o.str('method'), 'minutes': o['minutes']},
+    ];
+
+/// `events.reminders` → Google `reminders`. All-day leads before midnight
+/// of the day (Dearth's "Morning of") have no Google form and stay on the
+/// wall only.
+Map<String, Object?> googleReminders(String? stored, {required bool allDay, List<Map<String, Object?>> kept = const []}) {
+  if (followsCalendarReminders(stored)) return {'useDefault': true};
+  final popups = [
+    for (final lead in decodeReminders(stored))
+      if (!allDay || lead >= _allDayAnchorMinutes) {'method': 'popup', 'minutes': allDay ? lead - _allDayAnchorMinutes : lead},
+  ];
+  return {'useDefault': false, 'overrides': [...popups, ...kept].take(_maxGoogleReminders).toList()};
+}
+
+/// All-day leads Google can't hold ([googleReminders] leaves them out), so
+/// a pull keeps them on the row.
+List<int> wallOnlyReminders(String? stored, {required bool allDay}) =>
+    allDay ? [for (final lead in decodeReminders(stored)) if (lead < _allDayAnchorMinutes) lead] : const [];
+
+/// The id Google gives one instance of a series: the master's id and the
+/// instance's original start (UTC for timed events, the date for all-day).
+String googleInstanceId(String masterRemoteId, {required int originalStartMs, String? allDayDate}) {
+  if (allDayDate != null) return '${masterRemoteId}_${allDayDate.replaceAll('-', '')}';
+  final t = DateTime.fromMillisecondsSinceEpoch(originalStartMs, isUtc: true);
+  String two(int n) => n.toString().padLeft(2, '0');
+  return '${masterRemoteId}_${t.year}${two(t.month)}${two(t.day)}T${two(t.hour)}${two(t.minute)}${two(t.second)}Z';
 }
 
 int? _ms(Object? iso) => iso is String ? DateTime.tryParse(iso)?.millisecondsSinceEpoch : null;
@@ -243,11 +322,15 @@ EventDraft eventFromGoogle(Map<String, Object?> e, {required String defaultTz}) 
     originalStartMs: originalMs,
     status: e.str('status') == 'cancelled' ? 'cancelled' : 'confirmed',
     updatedMs: _ms(e['updated']),
+    reminders: e['reminders'] is Map<String, Object?> ? remindersFromGoogle(e.obj('reminders'), allDay: allDay) : null,
+    keptReminders: e['reminders'] is Map<String, Object?> ? keptRemindersFromGoogle(e.obj('reminders')) : const [],
   );
 }
 
-/// Dearth event row → Google request body (outbound sync).
-Map<String, Object?> googleBodyFromEvent(Event ev, {required String householdTz}) {
+/// Dearth event row → Google request body (outbound sync). With
+/// [withReminders] the body sets the event's reminders too, keeping [kept]
+/// (email reminders); without, Google keeps whatever the event has.
+Map<String, Object?> googleBodyFromEvent(Event ev, {required String householdTz, bool withReminders = false, List<Map<String, Object?>> kept = const []}) {
   final zone = ev.tz ?? householdTz;
   String iso(int ms) => DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true).toIso8601String();
   final exdates = decodeJsonList(ev.exdates).whereType<num>().map((n) => n.toInt()).toList();
@@ -263,5 +346,6 @@ Map<String, Object?> googleBodyFromEvent(Event ev, {required String householdTz}
         if (exdates.isNotEmpty)
           'EXDATE:${exdates.map((ms) => DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true).toIso8601String().replaceAll(RegExp(r'[-:]'), '').replaceFirst(RegExp(r'\.\d+'), '')).join(',')}',
       ],
+    if (withReminders) 'reminders': googleReminders(ev.reminders, allDay: ev.allDay, kept: kept),
   };
 }

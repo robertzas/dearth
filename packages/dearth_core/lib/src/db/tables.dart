@@ -132,6 +132,8 @@ class Events extends Table with SyncRow {
   TextColumn get location => text().nullable()();
   TextColumn get notes => text().nullable()();
   BoolColumn get countdown => boolean().withDefault(const Constant(false))();
+  /// JSON list of minutes before the start, or `calendar` (follows the
+  /// calendar's reminders, see `kCalendarReminders`).
   TextColumn get reminders => text().withDefault(const Constant('[]'))();
   TextColumn get profileIds => text().withDefault(const Constant('[]'))();
   IntColumn get color => integer().nullable()();

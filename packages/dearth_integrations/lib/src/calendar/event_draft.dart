@@ -22,6 +22,8 @@ class EventDraft {
     this.originalStartMs,
     this.status = 'confirmed',
     this.updatedMs,
+    this.reminders,
+    this.keptReminders = const [],
   });
 
   final String remoteId;
@@ -44,7 +46,37 @@ class EventDraft {
   final String status;
   final int? updatedMs;
 
+  /// `events.reminders` as stored (a JSON list of leads, or
+  /// `kCalendarReminders`); null leaves the row's reminders alone (ICS).
+  final String? reminders;
+
+  /// Remote reminders Dearth doesn't show (Google email reminders), sent
+  /// back unchanged when the family edits the reminders on the wall.
+  final List<Map<String, Object?>> keptReminders;
+
   bool get isCancelled => status == 'cancelled';
+
+  EventDraft withReminders(String? reminders) => EventDraft(
+        remoteId: remoteId,
+        title: title,
+        allDay: allDay,
+        startMs: startMs,
+        endMs: endMs,
+        startDate: startDate,
+        endDate: endDate,
+        tz: tz,
+        etag: etag,
+        location: location,
+        notes: notes,
+        rrule: rrule,
+        exdates: exdates,
+        recurringRemoteId: recurringRemoteId,
+        originalStartMs: originalStartMs,
+        status: status,
+        updatedMs: updatedMs,
+        reminders: reminders,
+        keptReminders: keptReminders,
+      );
 
   /// Deterministic local row id: the Hub needs no remote↔local mapping table
   /// and re-imports converge (SPEC §8.3).
@@ -72,6 +104,7 @@ class EventDraft {
         'notes': notes,
         'status': status,
         'updated_ms': updatedMs,
+        'reminders': ?reminders,
         'deleted': false,
       };
 }

@@ -663,7 +663,15 @@ wall, synced two-way with Google, and legible for a pre-reader.
   online and are queued otherwise (§13.2).
 - **FR-CAL-04 [M2]** ★ Offer to create a shared **"Family" Google calendar**
   during setup so events created on the wall land somewhere both parents
-  see them.
+  see them. Once a Google account is connected, Settings → Calendars shows
+  the offer: pick the account it lives in and who to share it with (the
+  other connected accounts are preselected; any Google email can be
+  added, and Google emails them a link). The Hub makes it, shares it as
+  writer, makes it the default for new events and, unless unticked, moves
+  the Hub's own Family calendar's events into it (that calendar then turns
+  off). A writable Google calendar already named "Family" is offered as is
+  instead. "Not now" tucks the offer under *Add calendars*. State lives in
+  the `calendar.google_family` setting.
 
 **Views** (all available in both orientations; landscape defaults to Week,
 portrait to Agenda)
@@ -2027,7 +2035,10 @@ background isolate).
 - Scopes, least privilege:
   - M1: `openid email profile`,
     `…/auth/calendar.calendarlist.readonly`, `…/auth/calendar.events`.
-  - M2 (optional, to create a "Family" calendar): `…/auth/calendar.app.created`.
+  - M2 (optional, to create a "Family" calendar): `…/auth/calendar.app.created`,
+    plus `…/auth/calendar.acls` when it is shared from Dearth (Google
+    allows sharing only with that scope). Both are asked for only when the
+    family accepts the offer (FR-CAL-04).
   - M3 (Photos Picker): `…/auth/photospicker.mediaitems.readonly`.
   - M4 (optional): `…/auth/tasks`.
 - Several Google accounts per household are supported.
@@ -2060,6 +2071,19 @@ background isolate).
   - "This and following" truncates the master's `UNTIL` and creates a new
     series.
   - "All" patches the master.
+  - "This event" edits made on a display become instance exceptions:
+    Google's instance id is the series id plus the original start
+    (`<id>_20261017T230000Z`, or `<id>_20261017` all-day), so the Hub
+    patches that instance, or deletes it to cancel one day.
+- **Reminders** (FR-CAL-20) map to `events.reminders`: popup reminders are
+  the wall's leads; an event on `useDefault` stores `calendar` and reminds
+  with the calendar's default from Settings → Calendars (none unless the
+  family sets one, so a parent's work calendar doesn't chime in the
+  kitchen). All-day leads shift by 8 h (Google counts from midnight, the
+  wall from 8:00); "Morning of" has no Google form and stays on the wall
+  only. Email reminders aren't shown and are sent back untouched. The Hub
+  sends reminders upstream only when a display changed them, so other
+  edits leave a parent's phone reminders alone. At most 5 per event.
 - Loop prevention: the Hub records `(remote_id, etag)` for every applied
   inbound change and never echoes its own writes.
 

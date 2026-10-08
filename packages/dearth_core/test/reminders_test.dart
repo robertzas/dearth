@@ -52,6 +52,24 @@ void main() {
     expect(effectiveReminders(ev('a'), writable: true, calendarDefault: const [1440]), isEmpty);
   });
 
+  test('FR-CAL-20: an event that follows its calendar reminds with the calendar default, writable or not', () {
+    final follows = ev('a', reminders: kCalendarReminders);
+    expect(followsCalendarReminders(follows.reminders), isTrue);
+    expect(decodeReminders(follows.reminders), isEmpty);
+    expect(effectiveReminders(follows, writable: true, calendarDefault: const [30]), [30]);
+    expect(effectiveReminders(follows, writable: true), isEmpty, reason: 'the wall stays quiet until the family sets a default');
+    expect(effectiveReminders(ev('b'), writable: true, calendarDefault: const [30]), isEmpty, reason: 'explicitly none');
+  });
+
+  test('all-day leads outside the editor choices read as a day and a time', () {
+    expect(describeReminder(840, allDay: true), 'Evening before');
+    expect(describeReminder(480, allDay: true), 'That day at 12 am');
+    expect(describeReminder(900, allDay: true), 'Day before at 5 pm');
+    expect(describeReminder(900, allDay: true, h24: true), 'Day before at 17:00');
+    expect(describeReminder(1470, allDay: true), 'Day before at 7:30 am');
+    expect(describeReminder(2400, allDay: true), '2 days before at 4 pm');
+  });
+
   test('a reminder fires once its time comes, and only once', () {
     final swim = timed('swim', at(9));
     expect(dueReminders([swim], denver, nowMs: at(8, 44), fired: const {}, leadsOf: own).show, isEmpty);

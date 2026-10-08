@@ -67,6 +67,10 @@ class GoogleOAuth {
     'https://www.googleapis.com/auth/calendar.calendarlist.readonly',
     'https://www.googleapis.com/auth/calendar.events',
   ];
+  /// FR-CAL-04: make the shared "Family" calendar (Dearth can only see the
+  /// calendars it made with this one), and share it with the other parent.
+  static const appCalendarsScope = 'https://www.googleapis.com/auth/calendar.app.created';
+  static const sharingScope = 'https://www.googleapis.com/auth/calendar.acls';
   static const photosPickerScope = 'https://www.googleapis.com/auth/photospicker.mediaitems.readonly';
 
   Uri authorizationUrl({required String redirectUri, required String state, required List<String> scopes, String? codeChallenge, String? loginHint}) =>
