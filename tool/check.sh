@@ -62,7 +62,9 @@ if wanted ui && find packages/dearth_ui/test -name '*_test.dart' 2>/dev/null | g
 fi
 if wanted app; then
   shard=""
-  [[ -n "$SHARD" ]] && shard="--total-shards ${SHARD#*/} --shard-index $(( ${SHARD%/*} - 1 ))"
+  # A shard has the runner to itself: a test file per core, not the default
+  # one per two.
+  [[ -n "$SHARD" ]] && shard="--total-shards ${SHARD#*/} --shard-index $(( ${SHARD%/*} - 1 )) --concurrency $(nproc 2>/dev/null || sysctl -n hw.ncpu)"
   JOBS+=("app${SHARD:+ $SHARD}|apps/dearth_app|flutter test --no-pub --reporter compact $shard")
 fi
 

@@ -147,6 +147,14 @@ jobs:
       - name: Run shard ${{ matrix.shard }} of 16 (Wall-L, Wall-P, Tablet, Phone)
         env:
           CHROME_PATH: /usr/bin/google-chrome
+          # Playwright shards are contiguous slices of the list (project by
+          # project, files A-Z), so each project's last three slices are all
+          # Toybox journeys, ~1.6x slower per test than calendar/home/kids in
+          # its first. Weighting each project's four slices 100:65:65:65 took
+          # the slowest shard (fitted to measured test times) from ~212 to
+          # ~180 s. An internal Playwright knob: if it goes away, shards are
+          # just even again.
+          PWTEST_SHARD_WEIGHTS: 100:65:65:65:100:65:65:65:100:65:65:65:100:65:65:65
         run: |
           # Artifacts don't keep the executable bit.
           chmod +x "$RUNNER_TEMP/hub/bin/dearth_hub"
