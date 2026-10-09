@@ -87,6 +87,8 @@ const List<GameInfo> kExpansionGames = [
   GameInfo('lettermonster', 'Letter Monster', '😋', minMonths: 36, skills: ['Letter names', 'Small letters', 'Letter sounds', 'First sounds'], levels: 4),
   GameInfo('busstop', 'Bus Stop', '🚍', minMonths: 42, skills: ['Adding', 'Taking away', 'Counting on'], levels: 4),
   GameInfo('wordpop', 'Word Pop', '💬', minMonths: 48, skills: ['Early reading', 'Reading at a glance'], levels: 4),
+  GameInfo('rocket', 'Rocket Countdown', '🚀', minMonths: 42, skills: ['Counting back', 'Number order', 'Numerals to twenty'], levels: 4),
+  GameInfo('train', 'Alphabet Train', '🚂', minMonths: 42, skills: ['Alphabet order', 'Letter names', 'Small letters'], levels: 4),
 ];
 
 GameInfo? gameById(String id) => kGames.where((g) => g.id == id).firstOrNull;

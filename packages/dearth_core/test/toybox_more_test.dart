@@ -209,4 +209,82 @@ void main() {
       }
     });
   });
+
+  group('Rocket Countdown', () {
+    test('FR-TOY-03: from five → from ten → from 11–15 → from twenty, always down to one', () {
+      for (var seed = 0; seed < 100; seed++) {
+        final rng = Random(seed);
+        for (var level = 1; level <= gameById('rocket')!.levels; level++) {
+          final r = rocketRound(level, rng);
+          final why = 'seed $seed, level $level: from ${r.start}';
+          expect(r.start, switch (level) { 1 => 5, 2 => 10, 3 => inInclusiveRange(11, 15), _ => 20 }, reason: why);
+          expect(r.countdown, [for (var n = r.start; n >= 1; n--) n], reason: why);
+          expect(kRocketStarts, contains(r.start), reason: why);
+          expect(kVoiceLines, contains(rocketStartClip(r.start)), reason: why);
+          for (final n in r.countdown) {
+            expect(kVoiceLines, contains(numberClip(n)), reason: why);
+            expect(kVoiceLines, contains(findNumberClip(n)), reason: 'the hint asks for it ($why)');
+          }
+        }
+      }
+      expect(kVoiceLines[rocketStartClip(10)], 'Count down from ten!');
+    });
+
+    test('the teens never start at the same number twice running; long countdowns allow two slips', () {
+      for (var seed = 0; seed < 100; seed++) {
+        final rng = Random(seed);
+        RocketRound? last;
+        for (var i = 0; i < 5; i++) {
+          final r = rocketRound(3, rng, last: last);
+          if (last != null) expect(r.start, isNot(last.start));
+          last = r;
+        }
+      }
+      expect([for (var s = 0; s <= 4; s++) rocketResult(const RocketRound(10), s)], [GameResult.win, GameResult.win, GameResult.helped, GameResult.helped, GameResult.miss]);
+      expect([for (var s = 0; s <= 2; s++) rocketResult(const RocketRound(20), s)], [GameResult.win, GameResult.win, GameResult.win]);
+    });
+  });
+
+  group('Alphabet Train', () {
+    test('FR-TOY-03: the next of three capitals → a missing one of four → small letters, five → two gaps', () {
+      for (var seed = 0; seed < 200; seed++) {
+        final rng = Random(seed);
+        for (var level = 1; level <= gameById('train')!.levels; level++) {
+          final r = trainRound(level, rng);
+          final why = 'seed $seed, level $level: ${r.letters} gaps ${r.gaps} blocks ${r.choices}';
+          expect(r.letters, hasLength(switch (level) { 1 => 3, 2 => 4, _ => 5 }), reason: why);
+          expect(kAlphabet, contains(r.letters.join()), reason: 'in ABC order ($why)');
+          expect(r.gaps, hasLength(level == 4 ? 2 : 1), reason: why);
+          expect(r.gaps.contains(0), isFalse, reason: 'the first carriage always shows where it starts ($why)');
+          expect(r.ask, level == 1 ? TrainAsk.next : isIn(TrainAsk.values), reason: why);
+          expect(r.small, level >= 3, reason: why);
+          expect(r.choices, hasLength(level <= 2 ? 3 : 4), reason: why);
+          expect(r.choices.toSet(), hasLength(r.choices.length), reason: why);
+          for (final g in r.gaps) {
+            expect(r.choices, contains(r.letters[g]), reason: why);
+          }
+          final shown = [for (var i = 0; i < r.letters.length; i++) if (!r.gaps.contains(i)) r.letters[i]];
+          expect(r.choices.any(shown.contains), isFalse, reason: 'no block repeats a letter on the train ($why)');
+        }
+      }
+    });
+
+    test('starts move around the alphabet; slips: one gap is a counting slip, two gaps allow one', () {
+      final starts = <String>{};
+      for (var seed = 0; seed < 200; seed++) {
+        final rng = Random(seed);
+        TrainRound? last;
+        for (var i = 0; i < 4; i++) {
+          final r = trainRound(2, rng, last: last);
+          if (last != null) expect(r.letters.first, isNot(last.letters.first));
+          last = r;
+          starts.add(r.letters.first);
+        }
+      }
+      expect(starts.length, greaterThan(20));
+      const one = TrainRound(['A', 'B', 'C'], [2], ['C', 'D', 'E'], small: false), two = TrainRound(['A', 'B', 'C', 'D', 'E'], [1, 3], ['B', 'D', 'F', 'G'], small: true);
+      expect([for (var s = 0; s <= 2; s++) trainResult(one, s)], [GameResult.win, GameResult.helped, GameResult.miss]);
+      expect([for (var s = 0; s <= 2; s++) trainResult(two, s)], [GameResult.win, GameResult.win, GameResult.helped]);
+    });
+  });
 }

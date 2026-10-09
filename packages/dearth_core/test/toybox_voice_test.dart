@@ -263,6 +263,9 @@ void main() {
         for (var n = 1; n <= 4; n++) busOnClip(n),
         for (var n = 1; n <= 3; n++) busOffClip(n),
         VoiceLine.busStopAsk,
+        for (final n in kRocketStarts) rocketStartClip(n),
+        VoiceLine.rocketBlastOff,
+        VoiceLine.trainNext, VoiceLine.trainMissing, VoiceLine.trainGo,
         for (final l in kLetterSounds) ...[
           letterMonsterAskClip(LetterMonsterRound(LetterMonsterAsk.name, l.letter, [l.letter])),
           if (l.starts) letterMonsterAskClip(LetterMonsterRound(LetterMonsterAsk.sound, l.letter, [l.letter])),

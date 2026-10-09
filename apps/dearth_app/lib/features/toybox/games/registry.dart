@@ -29,6 +29,7 @@ import 'oddone.dart';
 import 'paint.dart';
 import 'patterns.dart';
 import 'rhymes.dart';
+import 'rocket.dart';
 import 'sequencer.dart';
 import 'shadows.dart';
 import 'shapes.dart';
@@ -40,6 +41,7 @@ import 'storytime.dart';
 import 'sudoku.dart';
 import 'tally.dart';
 import 'tracing.dart';
+import 'train.dart';
 import 'whosthat.dart';
 import 'wordpop.dart';
 import 'zoo.dart';
@@ -92,4 +94,6 @@ final Map<String, GameBuilder> kGameBuilders = {
   'lettermonster': LetterMonsterGame.new,
   'busstop': BusStopGame.new,
   'wordpop': WordPopGame.new,
+  'rocket': RocketGame.new,
+  'train': TrainGame.new,
 };

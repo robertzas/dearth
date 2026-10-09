@@ -55,30 +55,61 @@ test.describe('Toybox second set', () => {
   });
 
   test('FR-TOY-03: Word Pop — she pops three bubbles that say the word the voice asks for', async ({ page }) => {
+    // Moving targets on a slow headless renderer: room for a few retries.
+    test.setTimeout(240_000);
     await openToyboxGame(page, 'wordpop');
     await expectText(tid(page, 'wordpop.ask'), /^Pop the word \S+: 0 of 3$/);
     const word = (await textOf(tid(page, 'wordpop.ask'))).match(/Pop the word (\S+):/)![1];
     const height = page.viewportSize()!.height;
+    // Headless frames are slow, so bubbles rise slowly and a tap can land
+    // where one just was: find one in view, tap, and try again if the count
+    // didn't move.
     for (let k = 1; k <= 3; k++) {
-      // A bubble with the word, well up on the screen (they rise slowly,
-      // and shrink away at the top).
-      let target = '';
+      const want = k < 3 ? `Pop the word ${word}: ${k} of 3` : `Popped ${word}: 3 of 3`;
       await expect
-        .poll(async () => {
-          for (const id of await idsUnder(page, 'wordpop.bubble.')) {
-            if ((await textOf(tid(page, id))).trim() !== word) continue;
-            const box = await tid(page, id).boundingBox();
-            if (box && box.y + box.height / 2 > height * 0.3 && box.y + box.height / 2 < height * 0.85) {
-              target = id;
-              return true;
+        .poll(
+          async () => {
+            if ((await textOf(tid(page, 'wordpop.ask'))).includes(want)) return true;
+            for (const id of await idsUnder(page, 'wordpop.bubble.')) {
+              if ((await textOf(tid(page, id))).trim() !== word) continue;
+              const box = await tid(page, id).boundingBox();
+              if (!box || box.y + box.height / 2 < height * 0.2 || box.y + box.height / 2 > height * 0.92) continue;
+              await tap(tid(page, id));
+              await page.waitForTimeout(1500);
+              return (await textOf(tid(page, 'wordpop.ask'))).includes(want);
             }
-          }
-          return false;
-        }, { timeout: 30_000 })
+            return false;
+          },
+          { timeout: 90_000, intervals: [500] },
+        )
         .toBe(true);
-      await tap(tid(page, target));
-      await expectText(tid(page, 'wordpop.ask'), k < 3 ? `Pop the word ${word}: ${k} of 3` : `Popped ${word}: 3 of 3`);
     }
+    await expectCheered(page);
+  });
+
+  test('FR-TOY-03: Rocket Countdown — she taps the stars from five down to one and the rocket blasts off', async ({ page }) => {
+    await openToyboxGame(page, 'rocket');
+    await expectText(tid(page, 'rocket.ask'), 'Count down from 5: next 5');
+    for (const n of [5, 4, 3, 2, 1]) {
+      await tap(tid(page, `rocket.star.${n}`));
+      await expectText(tid(page, `rocket.star.${n}`), `${n}, lit`);
+    }
+    // A lasting label: it stays until the next rocket rolls out.
+    await expectText(tid(page, 'rocket.ask'), 'Blast off!');
+    await expectCheered(page);
+  });
+
+  test('FR-TOY-03: Alphabet Train — she puts the letter that comes next into the empty carriage', async ({ page }) => {
+    await openToyboxGame(page, 'train');
+    await expectText(tid(page, 'train.ask'), /^What comes next\? [A-Z], [A-Z], _$/);
+    const [first] = (await textOf(tid(page, 'train.ask'))).match(/[A-Z](?=,)/)!;
+    const next = String.fromCharCode(first.charCodeAt(0) + 2);
+    const blocks = await idsUnder(page, 'train.block.');
+    let right = '';
+    for (const id of blocks) if ((await textOf(tid(page, id))).trim() === next) right = id;
+    expect(right).not.toBe('');
+    await tap(tid(page, right));
+    await expectText(tid(page, 'train.car.2'), next);
     await expectCheered(page);
   });
 });

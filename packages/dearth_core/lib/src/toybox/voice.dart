@@ -10,6 +10,7 @@ import 'freeze.dart';
 import 'hear.dart';
 import 'hop.dart';
 import 'lettermonster.dart';
+import 'rocket.dart';
 import 'sight.dart';
 import 'spell.dart';
 import 'storytime.dart';
@@ -168,6 +169,9 @@ String busOffClip(int n) => 'busstop_off_$n';
 /// The answer: "Five kids on the bus!"
 String busNowClip(int n) => 'busstop_now_$n';
 
+/// "Count down from ten!"
+String rocketStartClip(int n) => 'rocket_from_$n';
+
 /// "Three."
 String numberClip(int n) => 'num_$n';
 
@@ -216,6 +220,10 @@ abstract final class VoiceLine {
   static const whoYesYou = 'who_yes_you';
   static const cookiesBell = 'cookies_bell';
   static const busStopAsk = 'busstop_ask';
+  static const rocketBlastOff = 'rocket_blastoff';
+  static const trainNext = 'train_next';
+  static const trainMissing = 'train_missing';
+  static const trainGo = 'train_go';
 }
 
 const List<String> _numbers = [
@@ -457,6 +465,13 @@ Map<String, String> _lines() {
     lines[busOffClip(n)] = n == 1 ? 'One gets off!' : '${_cap(numberWord(n))} get off!';
   }
   lines[VoiceLine.busStopAsk] = 'How many kids are on the bus now?';
+  for (final n in kRocketStarts) {
+    lines[rocketStartClip(n)] = 'Count down from ${numberWord(n)}!';
+  }
+  lines[VoiceLine.rocketBlastOff] = 'Zero! Blast off!';
+  lines[VoiceLine.trainNext] = 'What comes next?';
+  lines[VoiceLine.trainMissing] = 'Which letter is missing?';
+  lines[VoiceLine.trainGo] = 'All aboard! Choo choo!';
   lines[VoiceLine.cookiesBell] = 'Then ring the bell!';
   lines[VoiceLine.spellMissing] = 'Which sound is missing?';
   lines[VoiceLine.spellBuild] = "Let's build it, sound by sound!";

@@ -2,6 +2,8 @@ import 'package:dearth_app/core/sound.dart';
 import 'package:dearth_app/features/toybox/games/busstop.dart';
 import 'package:dearth_app/features/toybox/games/cookies.dart';
 import 'package:dearth_app/features/toybox/games/lettermonster.dart';
+import 'package:dearth_app/features/toybox/games/rocket.dart';
+import 'package:dearth_app/features/toybox/games/train.dart';
 import 'package:dearth_app/features/toybox/games/wordpop.dart';
 import 'package:dearth_core/dearth_core.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -16,7 +18,7 @@ import 'support/toybox_harness.dart';
 void main() {
   for (final size in const [Size(390, 844), Size(844, 390), Size(1080, 1920), Size(1920, 1080)]) {
     testWidgets('every game of the second set lays out on a ${size.width.toInt()}×${size.height.toInt()} screen at its busiest level', (tester) async {
-      await expectGamesLayOut(tester, const [('cookies', 1), ('cookies', 3), ('cookies', 4), ('lettermonster', 1), ('lettermonster', 2), ('lettermonster', 4), ('busstop', 1), ('busstop', 4), ('wordpop', 1), ('wordpop', 4)], size: size);
+      await expectGamesLayOut(tester, const [('cookies', 1), ('cookies', 3), ('cookies', 4), ('lettermonster', 1), ('lettermonster', 2), ('lettermonster', 4), ('busstop', 1), ('busstop', 4), ('wordpop', 1), ('wordpop', 4), ('rocket', 1), ('rocket', 4), ('train', 1), ('train', 4)], size: size);
     });
   }
 
@@ -419,6 +421,171 @@ void main() {
       expect(sound.said.where((c) => c == sightAskClip(r.word)), hasLength(2));
       expect(sound.played.where((p) => p.$1 == Sfx.nope), isEmpty);
       await tester.pump(const Duration(seconds: 12));
+      await h.shutdown();
+    });
+  });
+
+  group('Rocket Countdown', () {
+    RocketGameState game(WidgetTester tester) => tester.state<RocketGameState>(find.byType(RocketGame));
+
+    testWidgets('FR-TOY-03: "Count down from five!"; each star in order says its number and plays a higher note; at one, blast off', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'rocket', sound: sound, level: 1);
+      final r = game(tester).debugRound;
+      expect(r.start, 5);
+      expectNoFallbackText(byId('screen.game'));
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(sound.said, [rocketStartClip(5)]);
+      expect(labelOf(tester, 'rocket.ask'), 'Count down from 5: next 5');
+      for (final n in r.countdown) {
+        await tester.tap(byId('rocket.star.$n'));
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(sound.said.last, numberClip(n));
+      }
+      final notes = [for (var i = 0; i < sound.played.length; i++) if (sound.played[i].$1 == Sfx.xylophone) sound.rates[i]];
+      expect(notes, hasLength(5));
+      expect(notes, orderedEquals([...notes]..sort()), reason: 'a step higher each time');
+      expect(labelOf(tester, 'rocket.ask'), 'Blast off!');
+      expect(labelOf(tester, 'rocket.star.5'), '5, lit');
+      await tester.pump(const Duration(seconds: 1));
+      expect(sound.said.last, VoiceLine.rocketBlastOff);
+      await tester.pump(const Duration(seconds: 1));
+      await h.settle();
+      expect(await toyboxRounds(h), [('rocket', 1, 'win')]);
+      await tester.pump(const Duration(seconds: 4));
+      expect(game(tester).debugDone, 0, reason: 'a new rocket on the pad');
+      await tester.pump(const Duration(seconds: 10));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('a star out of order wiggles and says its number; two slips ask for the next and light it; a lit star only says its number', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'rocket', sound: sound, level: 2);
+      final r = game(tester).debugRound;
+      await tester.pump(const Duration(milliseconds: 700));
+      await tester.tap(byId('rocket.star.10'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(byId('rocket.star.10'));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(sound.played.where((p) => p.$1 == Sfx.nope), isEmpty, reason: 'a lit star is not a slip');
+      for (final wrong in [3, 5]) {
+        await tester.tap(byId('rocket.star.$wrong'));
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(sound.said.last, numberClip(wrong));
+      }
+      expect(game(tester).debugHint, isTrue);
+      await tester.pump(const Duration(seconds: 2));
+      expect(sound.said.last, findNumberClip(9));
+      for (final n in r.countdown.skip(1)) {
+        await tester.tap(byId('rocket.star.$n'));
+        await tester.pump(const Duration(milliseconds: 300));
+      }
+      await tester.pump(const Duration(seconds: 2));
+      await h.settle();
+      expect(await toyboxRounds(h), [('rocket', 2, 'helped')]);
+      await tester.pump(const Duration(seconds: 10));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('a long pause asks for the next star and lights it, without a slip', (tester) async {
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'rocket', sound: sound, level: 3);
+      final r = game(tester).debugRound;
+      await tester.pump(const Duration(seconds: 10));
+      expect(game(tester).debugHint, isTrue);
+      expect(sound.said.last, findNumberClip(r.start));
+      await tester.pump(const Duration(seconds: 2));
+      await h.shutdown();
+    });
+  });
+
+  group('Alphabet Train', () {
+    TrainGameState game(WidgetTester tester) => tester.state<TrainGameState>(find.byType(TrainGame));
+
+    Future<void> untilAsked(WidgetTester tester) async {
+      for (var i = 0; i < 120 && !game(tester).debugAsked; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(game(tester).debugAsked, isTrue);
+    }
+
+    testWidgets('FR-TOY-03: the train reads its letters, asks what comes next; the right block fills the carriage and the train is read out', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'train', sound: sound, level: 1);
+      final r = game(tester).debugRound;
+      expectNoFallbackText(byId('screen.game'));
+      expect(r.ask, TrainAsk.next);
+      await untilAsked(tester);
+      expect(sound.said, [letterNameClip(r.letters[0]), letterNameClip(r.letters[1]), VoiceLine.trainNext]);
+      expect(labelOf(tester, 'train.ask'), 'What comes next? ${r.letters[0]}, ${r.letters[1]}, _');
+      expect(labelOf(tester, 'train.car.2'), 'Empty');
+      await tester.tap(byId('train.block.${r.choices.indexOf(r.letters[2])}'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(sound.said.last, letterNameClip(r.letters[2]));
+      expect(labelOf(tester, 'train.car.2'), r.letters[2]);
+      expect(labelOf(tester, 'train.ask'), r.letters.join(', '));
+      await tester.pump(const Duration(seconds: 4));
+      expect(sound.said.reversed.take(4).toList().reversed, [...r.letters.map(letterNameClip), VoiceLine.trainGo]);
+      await h.settle();
+      expect(await toyboxRounds(h), [('train', 1, 'win')]);
+      await tester.pump(const Duration(seconds: 6));
+      expect(game(tester).debugDone, isFalse, reason: 'a new train pulls in');
+      await tester.pump(const Duration(seconds: 15));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('two gaps fill left to right; a wrong block wiggles and says its letter; two slips light the right one', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'train', sound: sound, level: 4);
+      final r = game(tester).debugRound;
+      expect(r.gaps, hasLength(2));
+      expect(r.small, isTrue);
+      await untilAsked(tester);
+      expect(sound.said.last, VoiceLine.trainMissing);
+      final second = r.letters[r.gaps.last];
+      // The second gap's letter first: not yet.
+      await tester.tap(byId('train.block.${r.choices.indexOf(second)}'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(sound.said.last, letterNameClip(second));
+      final decoy = r.choices.firstWhere((c) => !r.gaps.map((g) => r.letters[g]).contains(c));
+      await tester.tap(byId('train.block.${r.choices.indexOf(decoy)}'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(sound.played.where((p) => p.$1 == Sfx.nope), hasLength(2));
+      expect(game(tester).debugHint, isTrue);
+      for (final g in r.gaps) {
+        await tester.tap(byId('train.block.${r.choices.indexOf(r.letters[g])}'));
+        await tester.pump(const Duration(milliseconds: 300));
+      }
+      expect(game(tester).debugDone, isTrue);
+      expect(labelOf(tester, 'train.car.${r.gaps.first}'), r.letters[r.gaps.first].toLowerCase());
+      await h.settle();
+      expect(await toyboxRounds(h), [('train', 4, 'helped')]);
+      await tester.pump(const Duration(seconds: 20));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('a block tapped before the question only says its letter; a long pause asks again and lights the right block', (tester) async {
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'train', sound: sound, level: 2);
+      final r = game(tester).debugRound;
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.tap(byId('train.block.0'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(sound.said.last, letterNameClip(r.choices[0]));
+      await untilAsked(tester);
+      expect(sound.played.where((p) => p.$1 == Sfx.nope), isEmpty);
+      await tester.pump(const Duration(seconds: 12));
+      expect(game(tester).debugHint, isTrue);
+      expect(sound.said.where((c) => c == VoiceLine.trainMissing || c == VoiceLine.trainNext), hasLength(2));
+      await tester.pump(const Duration(seconds: 2));
       await h.shutdown();
     });
   });
