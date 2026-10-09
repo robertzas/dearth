@@ -157,7 +157,6 @@ void main() {
       lightReadingsProvider.overrideWithValue(light.stream),
       brightnessSinkProvider.overrideWithValue((_) async {}),
     ]);
-    addTearDown(c.dispose);
     DisplayMode mode() => c.read(displayProvider).mode;
     Future<void> wait(Duration d) async {
       for (var i = 0; i < d.inSeconds; i++) {
@@ -179,6 +178,8 @@ void main() {
     light.add(200);
     await wait(const Duration(seconds: 30));
     expect(mode(), DisplayMode.screensaver);
+    // Stops the room's one-second tick before the test ends.
+    c.dispose();
   });
 
   testWidgets('FR-DSP-02: the brightness follows the room, calmer for the photos, barely lit at night; phones keep their own', (tester) async {

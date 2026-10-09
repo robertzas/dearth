@@ -89,10 +89,12 @@ Future<bool> hasLightSensor() async {
 }
 
 /// Ambient light readings in lux, as the sensor reports changes. Empty
-/// where there is no sensor.
-Stream<double> lightReadings() {
-  if (!_android) return const Stream.empty();
-  return _light.receiveBroadcastStream().map((v) => (v! as num).toDouble()).handleError((Object _) {}, test: (e) => e is MissingPluginException || e is PlatformException);
+/// where there is no sensor. It asks first: an event channel with nothing
+/// behind it (widget tests, which run as Android) reports the missing
+/// plugin as an error of its own instead of through the stream.
+Stream<double> lightReadings() async* {
+  if (!await hasLightSensor()) return;
+  yield* _light.receiveBroadcastStream().map((v) => (v! as num).toDouble()).handleError((Object _) {}, test: (e) => e is PlatformException);
 }
 
 /// Sets this window's brightness (0…1), or hands it back to the system
