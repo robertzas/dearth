@@ -24,6 +24,7 @@ enum Sfx {
   cheer,
   blip,
   honk,
+  ding,
   // The music toy: one xylophone bar (pitched by rate) and four drums.
   xylophone,
   kick,
@@ -108,6 +109,7 @@ Float32List samplesFor(Sfx sfx) => switch (sfx) {
       Sfx.cheer => cheerSound(),
       Sfx.blip => blipSound(),
       Sfx.honk => honkSound(),
+      Sfx.ding => dingSound(),
       Sfx.xylophone => xylophoneNote(kXylophoneBaseMidi),
       Sfx.kick => kickDrum(),
       Sfx.snare => snareDrum(),

@@ -1,6 +1,7 @@
 import 'balance.dart';
 import 'biglittle.dart';
 import 'compare.dart';
+import 'cookies.dart';
 import 'creature.dart';
 import 'dots.dart';
 import 'dressup.dart';
@@ -133,6 +134,18 @@ String dressItemClip(DressItem item) => 'dress_item_${item.name}';
 /// "Dance like a frog!", "Hop like a bunny!"
 String freezeAnimalClip(FreezeAnimal a) => 'freeze_${a.name}';
 
+/// Cookie Count's monster: "I want five cookies!"
+String cookieAskClip(int n) => 'cookies_ask_$n';
+
+/// When the plate is right: "Five cookies! Yum, yum!"
+String cookieYumClip(int n) => 'cookies_yum_$n';
+
+/// Too few on the plate: "More, please! I want five."
+String cookieMoreClip(int n) => 'cookies_more_$n';
+
+/// Too many: "Too many! I want five."
+String cookieFewerClip(int n) => 'cookies_fewer_$n';
+
 /// "Three."
 String numberClip(int n) => 'num_$n';
 
@@ -179,6 +192,7 @@ abstract final class VoiceLine {
   static const storyEnd = 'story_end';
   static const whoYes = 'who_yes';
   static const whoYesYou = 'who_yes_you';
+  static const cookiesBell = 'cookies_bell';
 }
 
 const List<String> _numbers = [
@@ -398,6 +412,14 @@ Map<String, String> _lines() {
   lines[VoiceLine.storyEnd] = 'The end!';
   lines[VoiceLine.whoYes] = 'Yes! You found them!';
   lines[VoiceLine.whoYesYou] = "That's you!";
+  for (var n = 1; n <= kCookiePlate; n++) {
+    final cookies = '${numberWord(n)} cookie${n == 1 ? '' : 's'}';
+    lines[cookieAskClip(n)] = 'I want $cookies!';
+    lines[cookieYumClip(n)] = '${_cap(cookies)}! Yum, yum!';
+    lines[cookieMoreClip(n)] = 'More, please! I want ${numberWord(n)}.';
+    lines[cookieFewerClip(n)] = 'Too many! I want ${numberWord(n)}.';
+  }
+  lines[VoiceLine.cookiesBell] = 'Then ring the bell!';
   lines[VoiceLine.spellMissing] = 'Which sound is missing?';
   lines[VoiceLine.spellBuild] = "Let's build it, sound by sound!";
   for (var n = 0; n <= 10; n++) {

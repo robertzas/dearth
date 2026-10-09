@@ -257,6 +257,8 @@ void main() {
         for (final m in ZooMode.values) ...[zooAskClip(m), zooYesClip(m)],
         VoiceLine.tallyStart, VoiceLine.tallyFive, VoiceLine.tallyTap, VoiceLine.tallyAsk,
         for (var n = 1; n <= kTallyMax; n++) tallyBunniesClip(n),
+        for (var n = 1; n <= kCookiePlate; n++) ...[cookieAskClip(n), cookieYumClip(n), cookieMoreClip(n), cookieFewerClip(n)],
+        VoiceLine.cookiesBell,
       ];
       expect(asked.where((a) => !ids.contains(a)), isEmpty);
       expect(ids.difference(asked.toSet()), isEmpty, reason: 'no line nothing says');

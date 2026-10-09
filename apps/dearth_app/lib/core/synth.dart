@@ -247,6 +247,10 @@ Float32List honkSound() {
 }
 
 /// Drums for the music toy: kick, snare, hi-hat, tom.
+/// A counter bell (Cookie Count's "ready!"): one bright strike, A6, ringing
+/// out.
+Float32List dingSound() => normalize(strike(midiToHz(93), seconds: 1.3), peak: 0.6);
+
 Float32List kickDrum() => normalize(_sweep(150, 42, 0.32, decay: 0.12, attack: 0.002), peak: 0.85);
 Float32List snareDrum() => mix([(0, _hiss(0.2, cutoff: 1200, decay: 0.07, seed: 5)), (0, _sweep(210, 170, 0.12, decay: 0.05))], peak: 0.7);
 Float32List hatDrum() => normalize(_hiss(0.08, cutoff: 6000, decay: 0.02, seed: 9), peak: 0.45);

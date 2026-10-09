@@ -213,7 +213,7 @@ class MonsterGameState extends State<MonsterGame> with TickerProviderStateMixin 
                       Positioned.fromRect(
                         rect: l.monster,
                         child: RepaintBoundary(
-                          child: CustomPaint(painter: _MonsterPainter(chew: _chew, shake: _shake, blink: _blink, open: _open, hop: _hop, look: _look)),
+                          child: CustomPaint(painter: MonsterPainter(chew: _chew, shake: _shake, blink: _blink, open: _open, hop: _hop, look: _look)),
                         ),
                       ),
                       Positioned.fromRect(
@@ -391,16 +391,26 @@ class _Wobble extends StatelessWidget {
       );
 }
 
-/// The monster: a round green body, two horns, big eyes that follow the
-/// food and blink, and a mouth that opens, chews and smiles. Its animations
+/// The monster: a round body (green by default; Cookie Count's and Letter
+/// Monster's are their own colors), two horns, big eyes that follow the food
+/// and blink, and a mouth that opens, chews and smiles. Its animations
 /// repaint only this layer.
-class _MonsterPainter extends CustomPainter {
-  _MonsterPainter({required this.chew, required this.shake, required this.blink, required this.open, required this.hop, required this.look})
-      : super(repaint: Listenable.merge([chew, shake, blink, open, hop, look]));
+class MonsterPainter extends CustomPainter {
+  MonsterPainter({
+    required this.chew,
+    required this.shake,
+    required this.blink,
+    required this.open,
+    required this.hop,
+    required this.look,
+    this.skin = MonsterSkin.green,
+  }) : super(repaint: Listenable.merge([chew, shake, blink, open, hop, look]));
   final Animation<double> chew, shake, blink, open, hop;
   final ValueListenable<Offset> look;
+  final MonsterSkin skin;
 
-  static const _body = Color(0xFF7AC74F), _dark = Color(0xFF4E9A35), _belly = Color(0xFFBEE6A3);
+  /// Where its mouth and eyes are, as fractions of its box.
+  static const mouthAt = Offset(0.5, 0.62), eyesAt = Offset(0.5, 0.33);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -415,7 +425,7 @@ class _MonsterPainter extends CustomPainter {
       ..translate(-w / 2, -h);
 
     // Feet, horns, body, belly.
-    final dark = Paint()..color = _dark;
+    final dark = Paint()..color = skin.dark;
     canvas
       ..drawOval(Rect.fromCenter(center: Offset(w * 0.32, h * 0.95), width: w * 0.26, height: h * 0.1), dark)
       ..drawOval(Rect.fromCenter(center: Offset(w * 0.68, h * 0.95), width: w * 0.26, height: h * 0.1), dark);
@@ -438,8 +448,8 @@ class _MonsterPainter extends CustomPainter {
       ..cubicTo(w * 0.02, h * 0.42, w * 0.14, h * 0.1, w * 0.5, h * 0.1)
       ..close();
     canvas
-      ..drawPath(body, Paint()..color = _body)
-      ..drawOval(Rect.fromCenter(center: Offset(w * 0.5, h * 0.74), width: w * 0.56, height: h * 0.36), Paint()..color = _belly);
+      ..drawPath(body, Paint()..color = skin.body)
+      ..drawOval(Rect.fromCenter(center: Offset(w * 0.5, h * 0.74), width: w * 0.56, height: h * 0.36), Paint()..color = skin.belly);
     for (final (x, y, r) in [(0.2, 0.5, 0.025), (0.8, 0.46, 0.03), (0.74, 0.26, 0.02), (0.28, 0.3, 0.018)]) {
       canvas.drawCircle(Offset(w * x, h * y), w * r, dark);
     }
@@ -458,7 +468,7 @@ class _MonsterPainter extends CustomPainter {
         canvas
           ..save()
           ..clipPath(Path()..addOval(Rect.fromCircle(center: c, radius: eyeR + 1)))
-          ..drawRect(Rect.fromLTRB(c.dx - eyeR - 1, c.dy - eyeR - 1, c.dx + eyeR + 1, c.dy - eyeR + 2 * eyeR * b + 1), Paint()..color = _body)
+          ..drawRect(Rect.fromLTRB(c.dx - eyeR - 1, c.dy - eyeR - 1, c.dx + eyeR + 1, c.dy - eyeR + 2 * eyeR * b + 1), Paint()..color = skin.body)
           ..restore();
       }
     }
@@ -504,5 +514,15 @@ class _MonsterPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_MonsterPainter old) => false;
+  bool shouldRepaint(MonsterPainter old) => old.skin != skin;
+}
+
+/// A monster's colors: body, spots and feet, belly.
+enum MonsterSkin {
+  green(Color(0xFF7AC74F), Color(0xFF4E9A35), Color(0xFFBEE6A3)),
+  purple(Color(0xFF9C7BE0), Color(0xFF6B4FB8), Color(0xFFD9CCF7)),
+  orange(Color(0xFFF7A048), Color(0xFFCF6E1D), Color(0xFFFFD9A8));
+
+  const MonsterSkin(this.body, this.dark, this.belly);
+  final Color body, dark, belly;
 }

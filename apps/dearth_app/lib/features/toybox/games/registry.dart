@@ -5,6 +5,7 @@ import 'breathe.dart';
 import 'bubbles.dart';
 import 'coloring.dart';
 import 'compare.dart';
+import 'cookies.dart';
 import 'counting.dart';
 import 'creature.dart';
 import 'differences.dart';
@@ -84,4 +85,5 @@ final Map<String, GameBuilder> kGameBuilders = {
   'dressup': DressGame.new,
   'whosthat': WhoGame.new,
   'storytime': StoryGame.new,
+  'cookies': CookieGame.new,
 };
