@@ -3,6 +3,7 @@ import 'balance.dart';
 import 'biglittle.dart';
 import 'breathe.dart';
 import 'bubbles.dart';
+import 'busstop.dart';
 import 'coloring.dart';
 import 'compare.dart';
 import 'cookies.dart';
@@ -88,4 +89,5 @@ final Map<String, GameBuilder> kGameBuilders = {
   'storytime': StoryGame.new,
   'cookies': CookieGame.new,
   'lettermonster': LetterMonsterGame.new,
+  'busstop': BusStopGame.new,
 };

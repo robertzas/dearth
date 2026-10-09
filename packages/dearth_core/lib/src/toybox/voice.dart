@@ -1,5 +1,6 @@
 import 'balance.dart';
 import 'biglittle.dart';
+import 'busstop.dart';
 import 'compare.dart';
 import 'cookies.dart';
 import 'creature.dart';
@@ -155,6 +156,18 @@ String letterMonsterAskClip(LetterMonsterRound r) => switch (r.ask) {
       LetterMonsterAsk.picture => firstSoundClip(r.word!),
     };
 
+/// The bus pulls in: "Three kids are on the bus."
+String busStartClip(int n) => 'busstop_start_$n';
+
+/// "Two more get on!"
+String busOnClip(int n) => 'busstop_on_$n';
+
+/// "Two get off!"
+String busOffClip(int n) => 'busstop_off_$n';
+
+/// The answer: "Five kids on the bus!"
+String busNowClip(int n) => 'busstop_now_$n';
+
 /// "Three."
 String numberClip(int n) => 'num_$n';
 
@@ -202,6 +215,7 @@ abstract final class VoiceLine {
   static const whoYes = 'who_yes';
   static const whoYesYou = 'who_yes_you';
   static const cookiesBell = 'cookies_bell';
+  static const busStopAsk = 'busstop_ask';
 }
 
 const List<String> _numbers = [
@@ -432,6 +446,17 @@ Map<String, String> _lines() {
     lines[letterMonsterAskClip(LetterMonsterRound(LetterMonsterAsk.name, l.letter, [l.letter]))] = 'I want the letter ${l.letter}!';
     if (l.starts) lines[letterMonsterAskClip(LetterMonsterRound(LetterMonsterAsk.sound, l.letter, [l.letter]))] = 'I want the letter that says ${_sound(l)}!';
   }
+  for (var n = 1; n <= kBusStopMax; n++) {
+    lines[busStartClip(n)] = n == 1 ? '${_cap(numberWord(n))} kid is on the bus.' : '${_cap(numberWord(n))} kids are on the bus.';
+    lines[busNowClip(n)] = '${_cap(numberWord(n))} kid${n == 1 ? '' : 's'} on the bus!';
+  }
+  for (var n = 1; n <= 4; n++) {
+    lines[busOnClip(n)] = n == 1 ? 'One more gets on!' : '${_cap(numberWord(n))} more get on!';
+  }
+  for (var n = 1; n <= 3; n++) {
+    lines[busOffClip(n)] = n == 1 ? 'One gets off!' : '${_cap(numberWord(n))} get off!';
+  }
+  lines[VoiceLine.busStopAsk] = 'How many kids are on the bus now?';
   lines[VoiceLine.cookiesBell] = 'Then ring the bell!';
   lines[VoiceLine.spellMissing] = 'Which sound is missing?';
   lines[VoiceLine.spellBuild] = "Let's build it, sound by sound!";

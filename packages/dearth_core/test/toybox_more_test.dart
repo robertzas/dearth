@@ -124,4 +124,43 @@ void main() {
       expect(kVoiceLines['lmon_says_b'], 'I want the letter that says [[bˈʌ]]!');
     });
   });
+
+  group('Bus Stop', () {
+    test('FR-TOY-03: get on, to five → get on, to ten → get off → off, then on', () {
+      for (var seed = 0; seed < 200; seed++) {
+        final rng = Random(seed);
+        for (var level = 1; level <= gameById('busstop')!.levels; level++) {
+          final r = busStopRound(level, rng);
+          final why = 'seed $seed, level $level: ${r.start} -${r.off} +${r.on} in ${r.choices}';
+          expect(r.mode, switch (level) { 1 || 2 => BusStopMode.on, 3 => BusStopMode.off, _ => BusStopMode.both }, reason: why);
+          expect(r.answer, inInclusiveRange(1, level == 1 ? 5 : kBusStopMax), reason: why);
+          expect(r.start, inInclusiveRange(1, kBusStopMax), reason: why);
+          expect(r.on > 0, r.mode != BusStopMode.off, reason: why);
+          expect(r.off > 0, r.mode != BusStopMode.on, reason: why);
+          expect(r.on, lessThanOrEqualTo(4), reason: 'a voice line for each ($why)');
+          expect(r.off, lessThanOrEqualTo(3), reason: why);
+          expect(r.choices, hasLength(3), reason: why);
+          expect(r.choices.toSet(), hasLength(3), reason: why);
+          expect(r.choices, contains(r.answer), reason: why);
+          if (r.start != r.answer) expect(r.choices, contains(r.start), reason: 'forgetting the change is the decoy ($why)');
+          expect(r.choices.every((c) => c >= 0 && c <= kBusStopMax), isTrue, reason: why);
+        }
+      }
+    });
+
+    test('never the same story twice running; slips are counting slips', () {
+      for (var seed = 0; seed < 100; seed++) {
+        final rng = Random(seed);
+        BusStopRound? last;
+        for (var i = 0; i < 6; i++) {
+          final r = busStopRound(4, rng, last: last);
+          if (last != null) expect((r.start, r.on, r.off), isNot((last.start, last.on, last.off)));
+          last = r;
+        }
+      }
+      expect([for (var s = 0; s <= 2; s++) busStopResult(s)], [GameResult.win, GameResult.helped, GameResult.miss]);
+      expect(kVoiceLines[busStartClip(1)], '[[wˈʌn]] kid is on the bus.');
+      expect(kVoiceLines[busOnClip(2)], 'Two more get on!');
+    });
+  });
 }

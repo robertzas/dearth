@@ -259,6 +259,10 @@ void main() {
         for (var n = 1; n <= kTallyMax; n++) tallyBunniesClip(n),
         for (var n = 1; n <= kCookiePlate; n++) ...[cookieAskClip(n), cookieYumClip(n), cookieMoreClip(n), cookieFewerClip(n)],
         VoiceLine.cookiesBell,
+        for (var n = 1; n <= kBusStopMax; n++) ...[busStartClip(n), busNowClip(n)],
+        for (var n = 1; n <= 4; n++) busOnClip(n),
+        for (var n = 1; n <= 3; n++) busOffClip(n),
+        VoiceLine.busStopAsk,
         for (final l in kLetterSounds) ...[
           letterMonsterAskClip(LetterMonsterRound(LetterMonsterAsk.name, l.letter, [l.letter])),
           if (l.starts) letterMonsterAskClip(LetterMonsterRound(LetterMonsterAsk.sound, l.letter, [l.letter])),

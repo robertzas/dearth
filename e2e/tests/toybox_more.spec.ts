@@ -36,4 +36,21 @@ test.describe('Toybox second set', () => {
     await expectText(tid(page, 'lettermonster.ask'), `Yum! ${letter}`);
     await expectCheered(page);
   });
+
+  test('FR-TOY-03: Bus Stop — kids climb on, and she picks how many are on the bus now', async ({ page }) => {
+    await openToyboxGame(page, 'busstop');
+    await expectText(tid(page, 'busstop.ask'), 'Here comes the bus');
+    // The question comes once the last kid has climbed on.
+    await expectText(tid(page, 'busstop.ask'), 'How many kids are on the bus now?', 30_000);
+    const now = Number((await textOf(tid(page, 'busstop.bus'))).match(/Bus: (\d+) kids?/)![1]);
+    const cards = await idsUnder(page, 'busstop.card.');
+    expect(cards).toHaveLength(3);
+    let right = '';
+    for (const id of cards) if ((await textOf(tid(page, id))).trim() === `${now}`) right = id;
+    expect(right).not.toBe('');
+    await tap(tid(page, right));
+    // A lasting label: it stays until the bus drives off.
+    await expectText(tid(page, 'busstop.ask'), `${now} kid${now === 1 ? '' : 's'} on the bus`);
+    await expectCheered(page);
+  });
 });

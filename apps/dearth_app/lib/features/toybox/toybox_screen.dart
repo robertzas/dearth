@@ -65,6 +65,7 @@ const Map<String, Color> kGameHues = {
   'storytime': Color(0xFFE0A458),
   'cookies': Color(0xFF9E2A2B),
   'lettermonster': Color(0xFF606C38),
+  'busstop': Color(0xFF2B2D42),
 };
 
 /// The Toybox (SPEC §10.8, FR-TOY-01): big picture tiles of the games that

@@ -1,4 +1,5 @@
 import 'package:dearth_app/core/sound.dart';
+import 'package:dearth_app/features/toybox/games/busstop.dart';
 import 'package:dearth_app/features/toybox/games/cookies.dart';
 import 'package:dearth_app/features/toybox/games/lettermonster.dart';
 import 'package:dearth_core/dearth_core.dart';
@@ -14,7 +15,7 @@ import 'support/toybox_harness.dart';
 void main() {
   for (final size in const [Size(390, 844), Size(844, 390), Size(1080, 1920), Size(1920, 1080)]) {
     testWidgets('every game of the second set lays out on a ${size.width.toInt()}×${size.height.toInt()} screen at its busiest level', (tester) async {
-      await expectGamesLayOut(tester, const [('cookies', 1), ('cookies', 3), ('cookies', 4), ('lettermonster', 1), ('lettermonster', 2), ('lettermonster', 4)], size: size);
+      await expectGamesLayOut(tester, const [('cookies', 1), ('cookies', 3), ('cookies', 4), ('lettermonster', 1), ('lettermonster', 2), ('lettermonster', 4), ('busstop', 1), ('busstop', 4)], size: size);
     });
   }
 
@@ -64,7 +65,7 @@ void main() {
       handle.dispose();
     });
 
-    testWidgets('a wrong plate asks for more or fewer and keeps the cookies; two wrong rings show the spots; the round is a miss', (tester) async {
+    testWidgets('a short plate asks for more and keeps the cookies; a cookie tapped goes back; two wrong rings show the spots; the round is a miss', (tester) async {
       final handle = tester.ensureSemantics();
       final sound = RecordingSound();
       final h = await openToyboxGame(tester, 'cookies', sound: sound, level: 3);
@@ -78,15 +79,16 @@ void main() {
       expect(sound.played.where((p) => p.$1 == Sfx.nope), hasLength(1));
       expect(game(tester).debugPlate, r.want - 1, reason: 'she fixes the plate, it isn\'t emptied');
       expect(game(tester).debugSpots, isFalse);
-      await fill(tester, 2);
+      // Take one back off the plate (it says the new count) and ring again.
+      await tester.tap(byId('cookies.cookie.${r.want - 2}'));
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(sound.said.last, numberClip(r.want - 2));
+      expect(game(tester).debugPlate, r.want - 2);
       await tester.tap(byId('cookies.bell'));
       await tester.pump(const Duration(milliseconds: 100));
-      expect(sound.said.last, cookieFewerClip(r.want));
+      expect(sound.said.last, cookieMoreClip(r.want));
       expect(game(tester).debugSpots, isTrue, reason: 'after two slips the plate shows where they go');
-      // Take one back off the plate: it says the new count.
-      await tester.tap(byId('cookies.cookie.${r.want}'));
-      await tester.pump(const Duration(milliseconds: 500));
-      expect(sound.said.last, numberClip(r.want));
+      await fill(tester, 2);
       expect(game(tester).debugPlate, r.want);
       await tester.tap(byId('cookies.bell'));
       await tester.pump(const Duration(seconds: 4));
@@ -127,7 +129,7 @@ void main() {
       handle.dispose();
     });
 
-    testWidgets('ringing an empty plate asks again and counts for nothing; a full plate shakes the jar', (tester) async {
+    testWidgets('ringing an empty plate asks again and counts for nothing; a full plate shakes the jar and is too many', (tester) async {
       final sound = RecordingSound();
       final h = await openToyboxGame(tester, 'cookies', sound: sound, level: 2);
       final r = game(tester).debugRound;
@@ -139,6 +141,10 @@ void main() {
       await fill(tester, kCookiePlate + 1);
       expect(game(tester).debugPlate, kCookiePlate);
       expect(sound.played.where((p) => p.$1 == Sfx.boing), hasLength(1));
+      // Level 2 wants two to five: a full plate is too many.
+      await tester.tap(byId('cookies.bell'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(sound.said.last, cookieFewerClip(r.want));
       await tester.pump(const Duration(seconds: 12));
       await h.shutdown();
     });
@@ -236,6 +242,98 @@ void main() {
       await h.settle();
       expect(await toyboxRounds(h), [('lettermonster', 2, 'win')]);
       await tester.pump(const Duration(seconds: 18));
+      await h.shutdown();
+    });
+  });
+
+  group('Bus Stop', () {
+    BusStopGameState game(WidgetTester tester) => tester.state<BusStopGameState>(find.byType(BusStopGame));
+
+    /// Lets the bus pull in and the kids get on and off until the question.
+    Future<void> untilAsked(WidgetTester tester) async {
+      for (var i = 0; i < 200 && !game(tester).debugAsked; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(game(tester).debugAsked, isTrue);
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+
+    int index(BusStopRound r, int n) => r.choices.indexOf(n);
+
+    testWidgets('FR-TOY-03: the bus says how many are on board, kids climb on one by one, and the right card answers how many now', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'busstop', sound: sound, level: 1);
+      final r = game(tester).debugRound;
+      expectNoFallbackText(byId('screen.game'));
+      expect(labelOf(tester, 'busstop.ask'), 'Here comes the bus');
+      expect(game(tester).debugOnBus, r.start);
+      await untilAsked(tester);
+      expect(sound.said, [busStartClip(r.start), busOnClip(r.on), VoiceLine.busStopAsk]);
+      expect(sound.played.where((p) => p.$1 == Sfx.pop), hasLength(r.on), reason: 'a pop as each kid climbs on');
+      expect(game(tester).debugOnBus, r.answer);
+      expect(labelOf(tester, 'busstop.bus'), 'Bus: ${r.answer} kid${r.answer == 1 ? '' : 's'}');
+      expect(labelOf(tester, 'busstop.ask'), 'How many kids are on the bus now?');
+      await tester.tap(byId('busstop.card.${index(r, r.answer)}'));
+      await tester.pump();
+      expect(sound.said.last, busNowClip(r.answer));
+      expect(labelOf(tester, 'busstop.ask'), '${r.answer} kid${r.answer == 1 ? '' : 's'} on the bus');
+      await h.settle();
+      expect(await toyboxRounds(h), [('busstop', 1, 'win')]);
+      await tester.pump(const Duration(seconds: 5));
+      expect(game(tester).debugAsked, isFalse, reason: 'the bus drives off and the next one comes');
+      await tester.pump(const Duration(seconds: 20));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('kids get off; a wrong card says its number, the windows light as the voice counts, the right card glows; helped', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'busstop', sound: sound, level: 3);
+      final r = game(tester).debugRound;
+      expect(r.mode, BusStopMode.off);
+      await untilAsked(tester);
+      expect(sound.said, [busStartClip(r.start), busOffClip(r.off), VoiceLine.busStopAsk]);
+      expect(game(tester).debugOnBus, r.answer);
+      final wrong = r.choices.firstWhere((c) => c != r.answer);
+      await tester.tap(byId('busstop.card.${index(r, wrong)}'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(sound.said.last, numberClip(wrong));
+      expect(sound.played.where((p) => p.$1 == Sfx.nope), hasLength(1));
+      for (var i = 0; i < 120 && !game(tester).debugHint; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(game(tester).debugHint, isTrue);
+      final counted = sound.said.skipWhile((c) => c != numberClip(wrong)).skip(1).toList();
+      expect(counted, [for (var k = 1; k <= r.answer; k++) numberClip(k)], reason: 'one number a window');
+      await tester.tap(byId('busstop.card.${index(r, r.answer)}'));
+      await tester.pump(const Duration(seconds: 1));
+      await h.settle();
+      expect(await toyboxRounds(h), [('busstop', 3, 'helped')]);
+      await tester.pump(const Duration(seconds: 25));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('the top level: some get off, then some get on; a long pause asks again', (tester) async {
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'busstop', sound: sound, level: 4);
+      final r = game(tester).debugRound;
+      expect(r.mode, BusStopMode.both);
+      await untilAsked(tester);
+      expect(sound.said, [busStartClip(r.start), busOffClip(r.off), busOnClip(r.on), VoiceLine.busStopAsk]);
+      expect(game(tester).debugOnBus, r.answer);
+      await tester.pump(const Duration(seconds: 12));
+      expect(sound.said.where((c) => c == VoiceLine.busStopAsk), hasLength(2));
+      await tester.tap(byId('busstop.bus'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(sound.played.last.$1, Sfx.honk);
+      await tester.tap(byId('busstop.card.${index(r, r.answer)}'));
+      await tester.pump(const Duration(seconds: 1));
+      await h.settle();
+      expect(await toyboxRounds(h), [('busstop', 4, 'win')]);
+      await tester.pump(const Duration(seconds: 25));
       await h.shutdown();
     });
   });
