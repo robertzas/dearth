@@ -153,8 +153,10 @@ class SessionController extends Notifier<Session> {
   /// the Hub already has the same rows, this household's win.
   Future<void> moveToHub(Uri target, String password, {MoveProgress? onProgress}) async {
     final s = state;
-    final from = ref.read(hubApiProvider);
-    if (!s.isSolo || from == null) throw StateError('Not running on its own');
+    if (!s.isSolo) throw StateError('Not running on its own');
+    // Its own client: hubApiProvider watches this session, so reading it
+    // from here is a dependency cycle.
+    final from = HubApi(Uri.parse(s.hubUrl!), token: s.token);
     final to = HubApi(target, adminPassword: password);
     try {
       await to.health();
@@ -169,6 +171,7 @@ class SessionController extends Notifier<Session> {
       await pairedWith(target, r, name: s.deviceName);
       await BuiltInHub.erase();
     } finally {
+      from.close();
       to.close();
     }
   }

@@ -50,6 +50,10 @@ class AppHarness {
   static Future<AppHarness> demo(WidgetTester tester, {Size size = const Size(1920, 1080), SoundPlayer sound = const SilentSound(), List<Override> overrides = const []}) async {
     final h = await boot(tester, size: size, sound: sound, overrides: overrides);
     await h.settle();
+    // On a short screen the demo button is below the fold of the onboarding
+    // card, where a tap misses.
+    await tester.ensureVisible(byId('onboarding.demo'));
+    await h.settle(2);
     await tester.tap(byId('onboarding.demo'));
     await h.settle(30);
     return h;

@@ -34,6 +34,7 @@ void main() {
     await start(tester, h);
     expect(labelOf(tester, 'onboarding.error'), contains('PIN'));
     expect(h.container.read(sessionProvider).isReady, isFalse, reason: 'nothing starts until the form is complete');
+    await h.shutdown();
     handle.dispose();
   });
 }

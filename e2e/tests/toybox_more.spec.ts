@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { expectCheered, expectText, idsUnder, openToyboxGame, tap, textOf, tid } from './helpers';
+import { expectCheered, expectText, idsUnder, openToyboxGame, tap, textOf, tid, tids } from './helpers';
 
 // The Toybox's second set of number and letter games (SPEC FR-TOY-03),
 // built on the games played most, played from what the screen shows
@@ -63,22 +63,26 @@ test.describe('Toybox second set', () => {
     const height = page.viewportSize()!.height;
     // Headless frames are slow, so bubbles rise slowly and a tap can land
     // where one just was: find one in view, tap, and try again if the count
-    // didn't move.
+    // didn't move. Every bubble is read in one go and tapped by position: a
+    // locator on a bubble that floats away or pops in between waits for it
+    // to come back, forever.
     for (let k = 1; k <= 3; k++) {
       const want = k < 3 ? `Pop the word ${word}: ${k} of 3` : `Popped ${word}: 3 of 3`;
       await expect
         .poll(
           async () => {
             if ((await textOf(tid(page, 'wordpop.ask'))).includes(want)) return true;
-            for (const id of await idsUnder(page, 'wordpop.bubble.')) {
-              if ((await textOf(tid(page, id))).trim() !== word) continue;
-              const box = await tid(page, id).boundingBox();
-              if (!box || box.y + box.height / 2 < height * 0.2 || box.y + box.height / 2 > height * 0.92) continue;
-              await tap(tid(page, id));
-              await page.waitForTimeout(1500);
-              return (await textOf(tid(page, 'wordpop.ask'))).includes(want);
-            }
-            return false;
+            const bubbles = await tids(page, 'wordpop.bubble.').evaluateAll((els) =>
+              els.map((e) => {
+                const r = e.getBoundingClientRect();
+                return { text: [e.getAttribute('aria-label'), e.textContent].filter(Boolean).join(' ').trim(), x: r.x + r.width / 2, y: r.y + r.height / 2 };
+              }),
+            );
+            const hit = bubbles.find((b) => b.text === word && b.y > height * 0.2 && b.y < height * 0.92);
+            if (!hit) return false;
+            await page.mouse.click(hit.x, hit.y);
+            await page.waitForTimeout(1500);
+            return (await textOf(tid(page, 'wordpop.ask'))).includes(want);
           },
           { timeout: 90_000, intervals: [500] },
         )
