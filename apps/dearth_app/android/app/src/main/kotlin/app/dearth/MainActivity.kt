@@ -1,11 +1,19 @@
 package app.dearth
 
 import android.app.ActivityManager
+import android.content.Intent
 import android.content.pm.ActivityInfo
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.media.AudioManager
 import android.os.Bundle
+import android.os.PowerManager
+import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
@@ -14,10 +22,55 @@ class MainActivity : FlutterActivity() {
         // The orientation the app chose last time, applied before Flutter's
         // first frame, so a wall display boots the right way up.
         applyOrientation(prefs().getString(ORIENTATION, null))
+        takeKioskKey(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        inFront = true
+    }
+
+    override fun onPause() {
+        inFront = false
+        super.onPause()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        takeKioskKey(intent)
+    }
+
+    // FreeKiosk's REST key, handed over by tool/deploy_frame.sh with
+    // `am start -n app.dearth/.MainActivity --es freekiosk_api_key … --ei
+    // freekiosk_port …` (SPEC §13.9). Dart reads it with getFreeKiosk.
+    private fun takeKioskKey(intent: Intent) {
+        val key = intent.getStringExtra(FREEKIOSK_KEY) ?: return
+        kioskPrefs().edit()
+            .putString(FREEKIOSK_KEY, key)
+            .putInt(FREEKIOSK_PORT, intent.getIntExtra(FREEKIOSK_PORT, 8080))
+            .apply()
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        // The ambient light sensor, in lux, while Dart listens (SPEC FR-DSP-02).
+        EventChannel(flutterEngine.dartExecutor.binaryMessenger, "app.dearth/light").setStreamHandler(object : EventChannel.StreamHandler {
+            private var listener: SensorEventListener? = null
+
+            override fun onListen(arguments: Any?, events: EventChannel.EventSink) {
+                val sensors = getSystemService(SENSOR_SERVICE) as SensorManager
+                val light = sensors.getDefaultSensor(Sensor.TYPE_LIGHT) ?: return events.endOfStream()
+                listener = object : SensorEventListener {
+                    override fun onSensorChanged(event: SensorEvent) = events.success(event.values[0].toDouble())
+                    override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) {}
+                }.also { sensors.registerListener(it, light, SensorManager.SENSOR_DELAY_NORMAL) }
+            }
+
+            override fun onCancel(arguments: Any?) {
+                listener?.let { (getSystemService(SENSOR_SERVICE) as SensorManager).unregisterListener(it) }
+                listener = null
+            }
+        })
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "app.dearth/display").setMethodCallHandler { call, result ->
             when (call.method) {
                 "setOrientation" -> {
@@ -51,12 +104,39 @@ class MainActivity : FlutterActivity() {
                         result.error("volume", e.message, null)
                     }
                 }
+                "hasLightSensor" -> result.success((getSystemService(SENSOR_SERVICE) as SensorManager).getDefaultSensor(Sensor.TYPE_LIGHT) != null)
+                // This window's brightness, 0…1, or null to follow the
+                // system's (FR-DSP-02). It holds while Dearth is in front.
+                "setBrightness" -> {
+                    val level = (call.arguments as? Number)?.toFloat()
+                    window.attributes = window.attributes.apply {
+                        screenBrightness = level?.coerceIn(0f, 1f) ?: WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+                    }
+                    result.success(null)
+                }
+                // Turns a sleeping screen back on (the morning after "screen
+                // off at night", a timer ringing in the dark). FreeKiosk's
+                // screen/on does it too; this works without the bridge. The
+                // window's keep-screen-on flag holds it on afterwards.
+                "wakeScreen" -> {
+                    val power = getSystemService(POWER_SERVICE) as PowerManager
+                    @Suppress("DEPRECATION")
+                    power.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP, "dearth:wake").acquire(5000)
+                    result.success(power.isInteractive)
+                }
+                "isScreenOn" -> result.success((getSystemService(POWER_SERVICE) as PowerManager).isInteractive)
+                "getFreeKiosk" -> {
+                    val key = kioskPrefs().getString(FREEKIOSK_KEY, null)
+                    result.success(if (key == null) null else mapOf("key" to key, "port" to kioskPrefs().getInt(FREEKIOSK_PORT, 8080)))
+                }
                 else -> result.notImplemented()
             }
         }
     }
 
     private fun prefs() = getSharedPreferences("dearth_display", MODE_PRIVATE)
+
+    private fun kioskPrefs() = getSharedPreferences("dearth_kiosk", MODE_PRIVATE)
 
     // SPEC FR-DEV-05. "sensor" follows the accelerometer even when Android's
     // auto-rotate is off: some frame ROMs switch it off at every boot, and a
@@ -71,7 +151,13 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    private companion object {
-        const val ORIENTATION = "orientation"
+    companion object {
+        /** Whether Dearth is the activity in front (KioskWatch checks it after a boot). */
+        @Volatile
+        var inFront = false
+
+        private const val ORIENTATION = "orientation"
+        private const val FREEKIOSK_KEY = "freekiosk_api_key"
+        private const val FREEKIOSK_PORT = "freekiosk_port"
     }
 }

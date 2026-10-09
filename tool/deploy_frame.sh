@@ -10,7 +10,11 @@
 #     enter the PIN (1234), to reach FreeKiosk's settings. The volume buttons
 #     just change the volume (FreeKiosk's "Volume Up 5 times" shortcut is off:
 #     it swallowed every Volume Up press).
-#   • Auto-rotate on. Adaptive brightness on, so the screen dims with the room.
+#   • Auto-rotate on. Adaptive brightness on, so the screen dims with the room
+#     until Dearth sets its own from the light sensor.
+#   • FreeKiosk's REST API on, with a key Dearth gets too: Dearth turns the
+#     screen off at night and restarts the frame through it. The key is kept
+#     in ~/.config/dearth/ on this computer.
 #     The screen never times out, there is no lock screen, Android's own
 #     screensaver is off (Dearth has its own) and Wi-Fi stays on.
 #   • Dearth installed or updated for the device's CPU: the latest GitHub
@@ -249,13 +253,14 @@ fi
 # overlay never appears (Device Owner doesn't grant it on every ROM). Usage
 # access lets FreeKiosk see which app is in front (auto-relaunch);
 # WRITE_SECURE_SETTINGS lets it switch on its accessibility service.
-appop() { # appop <op> <what it allows>
-  if [[ "$(sh_ appops get "$FK" "$1")" == *allow* ]]; then
+appop() { # appop <op> <what it allows> [package, default FreeKiosk]
+  local pkg=${3:-$FK}
+  if [[ "$(sh_ appops get "$pkg" "$1")" == *allow* ]]; then
     ok "$2"
   elif [ $CHECK = 1 ]; then
     differs "Not allowed: $2"
   else
-    sh_ appops set "$FK" "$1" allow >/dev/null
+    sh_ appops set "$pkg" "$1" allow >/dev/null
     changed "Allowed: $2"
   fi
 }
@@ -413,6 +418,20 @@ for key, value in rows:
 PY
 }
 
+# FreeKiosk's REST API key, shared with Dearth (SPEC §13.9): made once and
+# kept on this computer, so later runs can check it.
+FK_PORT=8080
+KEY_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/dearth/freekiosk-${SERIAL%%:*}.key"
+FK_KEY=""
+[ ! -f "$KEY_FILE" ] || FK_KEY=$(tr -d ' \n' <"$KEY_FILE")
+if [ -z "$FK_KEY" ] && [ $CHECK = 0 ]; then
+  # Four groups of five letters and digits (~100 bits): short enough to type
+  # on the frame once, if FreeKiosk holds on to an older key.
+  FK_KEY=$(python3 -c 'import secrets, string; a = string.ascii_lowercase + string.digits; print("-".join("".join(secrets.choice(a) for _ in range(5)) for _ in range(4)))')
+  mkdir -p "$(dirname "$KEY_FILE")"
+  (umask 077 && printf '%s\n' "$FK_KEY" >"$KEY_FILE")
+fi
+
 # What FreeKiosk should hold: "storage key=value|what it means". A line
 # without a meaning belongs to the line above it.
 TAP_SECONDS=$(python3 -c "print(f'{$WINDOW / 1000:g}')")
@@ -434,6 +453,8 @@ FK_EXPECTED=(
   "@brightness_management_enabled=false|Brightness left to Android (adaptive)"
   "@kiosk_auto_brightness_enabled=false|"
   "@screensaver_enabled=false|FreeKiosk's screensaver off (Dearth has its own)"
+  "@kiosk_rest_api_enabled=true|FreeKiosk's REST API on port $FK_PORT (Dearth turns the screen off through it)"
+  "@kiosk_rest_api_port=$FK_PORT|"
   "@kiosk_allow_notifications=false|No notification shade or status bar"
   "@kiosk_allow_system_info=false|"
   "@kiosk_status_bar_enabled=false|"
@@ -447,7 +468,11 @@ FK_EXTRAS=(
   --es keep_screen_on true --es brightness_management_enabled false --es auto_brightness_enabled false
   --es screensaver_enabled false --es allow_notifications false --es allow_system_info false
   --es status_bar_enabled false --ez auto_start true
+  --es rest_api_enabled true --es rest_api_port "$FK_PORT"
 )
+# FreeKiosk only takes a key over ADB while it holds none (it keeps the first
+# one it was given), so sending it on every push is harmless.
+[ -z "$FK_KEY" ] || FK_EXTRAS+=(--es rest_api_key "$FK_KEY")
 
 # `fk_compare <settings file> <report>`: prints each meaning with ✓ or ✗
 # when <report> is 1; returns 1 if anything differs.
@@ -564,6 +589,43 @@ fi
 # FreeKiosk relaunches it by itself, but don't wait on that.
 if [ $INSTALLED = 1 ] && [ $PUSHED = 0 ]; then
   sh_ am start -n "$APP/.MainActivity" >/dev/null
+fi
+
+# ─────────────────────────── FreeKiosk bridge ──────────────────────────────
+
+section "Bridge"
+fk_answers() { curl -fs -m 5 -H "X-Api-Key: $FK_KEY" "http://${SERIAL%%:*}:$FK_PORT/api/health" 2>/dev/null | grep -q '"status":"ok"'; }
+if [ -z "$FK_KEY" ]; then
+  differs "No FreeKiosk key on this computer yet ($KEY_FILE)"
+elif fk_answers; then
+  ok "FreeKiosk's REST API answers to Dearth's key"
+elif [ $CHECK = 1 ]; then
+  differs "FreeKiosk's REST API doesn't answer to the key in $KEY_FILE"
+else
+  # Not pushed this run (the settings matched): push once more with the key.
+  if [ $PUSHED = 0 ]; then
+    [ "$(fk_push)" != pin ] || die "FreeKiosk refused the PIN. Pass the device's current one with --pin"
+    PUSHED=1
+  fi
+  for _ in $(seq 1 10); do fk_answers && break; sleep 2; done
+  if fk_answers; then
+    changed "FreeKiosk's REST API answers to Dearth's key"
+  else
+    problem "FreeKiosk keeps an older REST API key and ignores new ones sent over ADB. Once, on the frame: tap the $CORNER corner $TAPS times, enter the PIN, open Advanced → REST API, set the API key to  $FK_KEY  and save. Then run this again."
+  fi
+fi
+# FreeKiosk's boot screen can stick when the network sets the clock while
+# it's up (the frame boots at 1970); Dearth brings it back after a boot,
+# which takes starting an activity from the background (KioskWatch).
+[ -z "$(sh_ pm path "$APP")" ] || appop SYSTEM_ALERT_WINDOW "Dearth can unstick FreeKiosk's boot screen" "$APP"
+# Dearth learns the key when brought to the front with it, and keeps it.
+if [ -n "$FK_KEY" ] && [ -n "$(sh_ pm path "$APP")" ]; then
+  if [ $CHECK = 1 ]; then
+    note "Dearth is handed the key on every run (it can't be read back)"
+  else
+    adb_ shell am start -n "$APP/.MainActivity" --es freekiosk_api_key "$FK_KEY" --ei freekiosk_port "$FK_PORT" >/dev/null 2>&1 || true
+    ok "Dearth has the key (Settings → Screen & sound → Kiosk shows whether it works)"
+  fi
 fi
 
 # ─────────────────────────────── Android ───────────────────────────────────
@@ -734,11 +796,19 @@ if [ $REBOOT = 1 ] && [ $CHECK = 0 ]; then
     sleep 2
   done
   [ "$(sh_ getprop sys.boot_completed)" = 1 ] || die "the device didn't come back within 3 minutes"
-  for _ in $(seq 1 60); do
+  # Up to four minutes: when FreeKiosk's boot screen sticks (the clock jumps
+  # from 1970 while it's up), Dearth brings it back two minutes after boot.
+  for _ in $(seq 1 120); do
     [ "$(focus)" = "$APP" ] && break
     sleep 2
   done
-  if [ "$(focus)" = "$APP" ]; then ok "Dearth came back by itself after the reboot"; else problem "After the reboot, $(focus) is in front, not Dearth"; fi
+  if [ "$(focus)" = "$APP" ]; then
+    ok "Dearth came back by itself after the reboot"
+  elif sh_ dumpsys window | grep -q "mCurrentFocus=.*BootLockActivity"; then
+    problem "FreeKiosk's boot screen is stuck (\"Starting kiosk…\") and Dearth didn't bring it back. Unstick it: adb -s $SERIAL shell am start -n $FK/.MainActivity"
+  else
+    problem "After the reboot, $(focus) is in front, not Dearth"
+  fi
   setting system accelerometer_rotation 1 "Auto-rotate still on"
   setting system screen_brightness_mode 1 "Adaptive brightness still on"
 fi

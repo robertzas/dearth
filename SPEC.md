@@ -1364,21 +1364,35 @@ the Hub)
 |---|---|---|---|
 | **Active** | Touch, wake trigger | Full UI | Idle timeout |
 | **Screensaver** | Idle ≥ timeout (default 5 min) | Photo frame + overlays | Touch, wake trigger, timer or alarm |
-| **Night** | Schedule (e.g. 21:00–06:30) or ambient light below a threshold | Dim warm clock, or very dim photos (optional) | Schedule end; touch shows a dim UI for 60 s |
-| **Off** | Schedule (optional) | Screen physically off (FreeKiosk `screen/off`) or black at 0 % brightness | Schedule end, HA presence, timer or alarm (FreeKiosk `screen/on`) |
+| **Night** | Schedule (e.g. 21:00–06:30) or, when the display asks, two minutes of ambient light below 3 lux | Dim warm clock, or very dim photos (optional) | Schedule end, or 20 s of light above 12 lux; touch shows a dim UI for 60 s |
+| **Off** | The night schedule, on a display set to "At night: Screen off" (never for a dark room alone) | Screen physically off (FreeKiosk `screen/off`) or black at 0 % brightness | Schedule end, HA presence, timer or alarm (FreeKiosk `screen/on` and the app's own wake lock) |
 | **Privacy** | Manual or guest mode | Photos + clock only | Grown-up PIN |
 
 - **FR-DSP-01 [M1]** Mode priority: Off > Night > Privacy > Screensaver >
   Active. Manual "keep awake 1 h" override.
 - **FR-DSP-02 [M1]** **Auto-brightness from the light sensor** using a
-  configurable lux → brightness curve (separate curves per mode, min/max
-  clamps, hysteresis to prevent flicker). Brightness is applied at the
-  window level by the app, or through FreeKiosk when present.
+  lux → brightness curve (log scale between 2 and 800 lux; separate curves
+  per mode: the UI 15–100 %, the photo frame 10–85 %, the dim UI at night
+  4–35 %, the night clock 1–12 %, Off 0). The light is smoothed (lights on
+  are followed in about 2 s, a darker room in about 8 s, so a passing
+  shadow doesn't count), small changes are ignored and real ones ramp at
+  most 50 % a second, so it never flickers. Applied at the window level by
+  the app. Per display (Settings → Screen & sound): Follow the room or
+  Android's, and Dimmer / Normal / Brighter. Without a sensor the system's
+  brightness stands by day and the night scenes still dim. Settings shows
+  the room's lux and the screen's level as they are.
 - **FR-DSP-03 [M1]** Touch in Off mode can't wake an Android screen, so
   **Off is only allowed with a scheduled end** (and optional HA presence
   wake). Night (dim) is the recommended default.
 - **FR-DSP-04 [M1]** Burn-in and wear: overlays drift and the clock position
   rotates slowly in Night mode.
+- **FR-DSP-05 [M1]** **A clock that isn't set yet:** frames have no clock
+  battery and boot at their ROM's build date until the network sets the
+  time. Until the clock is past 2026-01-01 and no more than a day behind
+  the last time the device saw it set, "Setting the time…" covers the app
+  and nothing syncs, so no date on screen and no change sent is decades
+  off. After a minute it says to check Wi-Fi, and when only the "last
+  seen" rule holds it back, offers "The time is right".
 
 ### 10.13 Companion app & web admin (`FR-CMP`)
 
@@ -2391,16 +2405,30 @@ Pre-blurred backgrounds, dominant color and blur-hash are computed once
 
 ### 13.9 FreeKiosk bridge (frames running FreeKiosk)
 
-- Local REST at `http://127.0.0.1:<port>` with `X-API-Key`. The key is
-  stored in device secure storage and set during provisioning.
+- Local REST at `http://127.0.0.1:<port>` with `X-Api-Key`. FreeKiosk
+  serves it on every interface (it has no bind option), so the key is all
+  that guards it on the LAN: ~100 random bits. `tool/deploy_frame.sh` makes
+  the key once, keeps it in `~/.config/dearth/`, turns the API on and hands
+  the key to Dearth (an intent extra; Dearth keeps it in its private
+  storage). FreeKiosk only takes a key over ADB while it holds none, so a
+  frame that had one needs the new key typed once in its settings (the
+  script says so).
 - Used for:
   - `POST /api/screen/off` and `/api/screen/on` (true screen off via
     Device-Owner `lockNow()` and wake).
-  - `POST /api/brightness`, `/api/autoBrightness/disable`.
-  - `GET /api/status`, `/api/health`.
-  - `POST /api/reboot` (admin-initiated only).
-- **FreeKiosk's own screensaver is disabled** (`/api/screensaver/off`) so it
-  never fights Dearth's.
+  - `GET /api/status`, `/api/health` (Settings → Screen & sound → Kiosk).
+  - `POST /api/reboot` ("Restart this frame", grown-up).
+- Brightness is the app's own (window level, FR-DSP-02), not FreeKiosk's:
+  FreeKiosk's brightness only reaches its own window, behind Dearth.
+- **FreeKiosk's own screensaver is disabled** (provisioning) so it never
+  fights Dearth's.
+- **A stuck boot screen:** FreeKiosk (v2.0.0-beta.4 and .5) times its boot
+  screen with the wall clock; when the network sets the clock while that
+  screen is up, its timeout fires at once and loops on "Starting kiosk…"
+  under lock task. Two minutes after every boot (uptime clock), Dearth
+  checks that it is in front and otherwise asks for FreeKiosk's main
+  screen, which ends it (up to three times). Starting an activity from the
+  background needs "display over other apps", granted by the script.
 - **Fallback when FreeKiosk is absent:** window-level brightness and a black
   overlay. "Off" mode is then 0 % brightness, not a physically off screen.
 

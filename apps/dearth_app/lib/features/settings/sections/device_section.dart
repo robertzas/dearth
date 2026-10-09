@@ -7,7 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../app/display_state.dart';
+import '../../../app/frame.dart';
 import '../../../core/data/household.dart';
+import '../../../core/platform/freekiosk.dart';
 import '../../../core/platform/system_ui.dart';
 import '../../../core/providers.dart';
 import '../../../core/sound.dart';
@@ -90,6 +92,7 @@ class DeviceSection extends ConsumerWidget {
             ),
           ],
         ),
+        if (!s.isPersonal && ref.watch(hasLightSensorProvider).value == true) const _BrightnessGroup(),
         if (ref.watch(mediaVolumeProvider).value case (final level, final max) when max > 0)
           SettingsGroup(
             title: 'Sound',
@@ -145,6 +148,98 @@ class DeviceSection extends ConsumerWidget {
             ),
           ],
         ),
+        if (!s.isPersonal && ref.watch(freeKioskProvider).value != null) const _KioskGroup(),
+      ],
+    );
+  }
+}
+
+/// Brightness from the light sensor (SPEC FR-DSP-02), with what the sensor
+/// sees right now so the family can tell it works.
+class _BrightnessGroup extends ConsumerWidget {
+  const _BrightnessGroup();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(deviceSettingsProvider);
+    final session = ref.watch(sessionProvider);
+    final lux = ref.watch(roomProvider.select((r) => r.lux));
+    final level = ref.watch(brightnessProvider);
+    Future<void> patch(Map<String, Object?> p) => updateDeviceSettings(ref.read(writerProvider), deviceId: session.effectiveDeviceId, current: s, patch: p);
+    final now = [
+      if (lux != null) 'The room: ${lux < 10 ? lux.toStringAsFixed(1) : lux.round()} lux',
+      if (level != null) 'the screen at ${(level * 100).round()} %',
+    ].join(' · ');
+    return SettingsGroup(
+      title: 'Brightness',
+      footer: [
+        if (s.brightness == 'auto') 'Dims with the room’s light, and lower still for the photo frame and at night.' else 'Android sets it by day; the night clock is always dim.',
+        if (now.isNotEmpty) '${now[0].toUpperCase()}${now.substring(1)}.',
+      ].join(' '),
+      children: [
+        ChoiceRow<String>(
+          title: 'Brightness',
+          idPrefix: 'device.brightness',
+          options: const [('auto', 'Follow the room'), ('system', 'Android’s')],
+          value: s.brightness == 'system' ? 'system' : 'auto',
+          onChanged: (v) => patch({'brightness': v}),
+        ),
+        if (s.brightness != 'system')
+          ChoiceRow<int>(
+            title: 'Level',
+            idPrefix: 'device.bias',
+            options: const [(-1, 'Dimmer'), (0, 'Normal'), (1, 'Brighter')],
+            value: s.brightnessBias.clamp(-1, 1),
+            onChanged: (v) => patch({'brightnessBias': v}),
+          ),
+      ],
+    );
+  }
+}
+
+/// FreeKiosk, on frames that run it (SPEC §13.9): whether Dearth can reach
+/// it, and restarting the frame.
+class _KioskGroup extends ConsumerWidget {
+  const _KioskGroup();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = DTheme.of(context);
+    final status = ref.watch(freeKioskStatusProvider);
+    final (link, info) = status.value ?? (FreeKioskLink.unknown, null);
+    final subtitle = switch (link) {
+      _ when status.isLoading => 'Checking…',
+      FreeKioskLink.ok => 'Connected${info?.model == null ? '' : ' · ${info!.model}'} · can turn the screen off at night',
+      FreeKioskLink.unauthorized => 'FreeKiosk has another key. Run tool/deploy_frame.sh again and follow its note.',
+      FreeKioskLink.unreachable => 'Not answering. Its REST API may be off: run tool/deploy_frame.sh again.',
+      FreeKioskLink.unknown => 'Not checked yet',
+    };
+    return SettingsGroup(
+      title: 'Kiosk',
+      children: [
+        DListRow(
+          id: 'device.kiosk',
+          title: 'FreeKiosk',
+          subtitle: subtitle,
+          leading: Icon(Icons.circle, size: 14 * t.scale, color: link == FreeKioskLink.ok ? t.colors.success : t.colors.warning),
+          onTap: () => ref.invalidate(freeKioskStatusProvider),
+        ),
+        if (link == FreeKioskLink.ok)
+          DListRow(
+            id: 'device.reboot',
+            title: 'Restart this frame',
+            subtitle: 'Back in about a minute',
+            leading: Icon(Icons.restart_alt_rounded, color: t.colors.inkSecondary),
+            onTap: () async {
+              final ok = await confirmDialog(context, title: 'Restart this frame?', message: 'The screen goes dark for about a minute, then Dearth comes back.', confirmLabel: 'Restart');
+              if (!ok) return;
+              try {
+                await ref.read(freeKioskProvider).value?.reboot();
+              } on FreeKioskException catch (e) {
+                ref.read(toastProvider).show('FreeKiosk didn’t restart it (${e.link.name})', emoji: '⚠️', tone: DBannerTone.warning);
+              }
+            },
+          ),
       ],
     );
   }

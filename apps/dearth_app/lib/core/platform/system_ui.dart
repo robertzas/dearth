@@ -69,3 +69,80 @@ Future<void> applySystemBars({required bool hidden}) async {
     // Never fatal: the bars just stay as they are.
   }
 }
+
+// ──────────────────────── Light, brightness, screen ─────────────────────────
+
+const EventChannel _light = EventChannel('app.dearth/light');
+
+bool get _android => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
+/// Whether this device has an ambient light sensor (SPEC FR-DSP-02).
+Future<bool> hasLightSensor() async {
+  if (!_android) return false;
+  try {
+    return await _display.invokeMethod<bool>('hasLightSensor') ?? false;
+  } on MissingPluginException {
+    return false;
+  } on PlatformException {
+    return false;
+  }
+}
+
+/// Ambient light readings in lux, as the sensor reports changes. Empty
+/// where there is no sensor.
+Stream<double> lightReadings() {
+  if (!_android) return const Stream.empty();
+  return _light.receiveBroadcastStream().map((v) => (v! as num).toDouble()).handleError((Object _) {}, test: (e) => e is MissingPluginException || e is PlatformException);
+}
+
+/// Sets this window's brightness (0…1), or hands it back to the system
+/// (null). Android only; it holds while Dearth is in front.
+Future<void> setWindowBrightness(double? level) async {
+  if (!_android) return;
+  try {
+    await _display.invokeMethod<void>('setBrightness', level);
+  } on MissingPluginException {
+    // Widget tests, and embedders without Dearth's activity.
+  } on PlatformException {
+    // Never fatal: the system's brightness stands.
+  }
+}
+
+/// Turns the screen on if it is asleep (SPEC FR-DSP-03).
+Future<void> wakeScreen() async {
+  if (!_android) return;
+  try {
+    await _display.invokeMethod<bool>('wakeScreen');
+  } on MissingPluginException {
+    // Widget tests, and embedders without Dearth's activity.
+  } on PlatformException {
+    // FreeKiosk's screen/on is the other way back.
+  }
+}
+
+/// Whether the screen is physically on; null where unknown.
+Future<bool?> isScreenOn() async {
+  if (!_android) return null;
+  try {
+    return await _display.invokeMethod<bool>('isScreenOn');
+  } on MissingPluginException {
+    return null;
+  } on PlatformException {
+    return null;
+  }
+}
+
+/// FreeKiosk's REST port and key, as `deploy_frame.sh` handed them over
+/// (SPEC §13.9); null on devices without it.
+Future<({int port, String key})?> freeKioskConfig() async {
+  if (!_android) return null;
+  try {
+    final m = await _display.invokeMapMethod<String, Object?>('getFreeKiosk');
+    final key = m?['key'] as String?;
+    return key == null || key.isEmpty ? null : (port: (m!['port'] as num?)?.toInt() ?? 8080, key: key);
+  } on MissingPluginException {
+    return null;
+  } on PlatformException {
+    return null;
+  }
+}

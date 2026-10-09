@@ -133,6 +133,10 @@ class DeviceSettings {
     this.nightMode = true,
     this.keepAwake = true,
     this.reducedMotion = false,
+    this.brightness = 'auto',
+    this.brightnessBias = 0,
+    this.nightScreen = 'clock',
+    this.darkRoomNight = false,
   });
 
   factory DeviceSettings.fromRow(Device? d, {String? sessionRole}) {
@@ -151,6 +155,10 @@ class DeviceSettings {
       nightMode: s['nightMode'] as bool? ?? true,
       keepAwake: s['keepAwake'] as bool? ?? true,
       reducedMotion: s['reducedMotion'] as bool? ?? false,
+      brightness: s['brightness'] as String? ?? 'auto',
+      brightnessBias: (s['brightnessBias'] as num?)?.toInt() ?? 0,
+      nightScreen: s['nightScreen'] as String? ?? 'clock',
+      darkRoomNight: s['darkRoomNight'] as bool? ?? false,
     );
   }
 
@@ -172,6 +180,19 @@ class DeviceSettings {
   final bool keepAwake;
   final bool reducedMotion;
 
+  /// auto (follows the light sensor, FR-DSP-02) | system (Android's).
+  final String brightness;
+
+  /// −1 dimmer, 0, +1 brighter, along the auto curve.
+  final int brightnessBias;
+
+  /// What the night schedule shows when [nightMode] is on: clock | off
+  /// (the screen off until the schedule ends, FR-DSP-03).
+  final String nightScreen;
+
+  /// Night also when the room goes dark (§10.12), by the light sensor.
+  final bool darkRoomNight;
+
   bool get isPersonal => role == DeviceRole.personal;
 
   Map<String, Object?> settingsJson() => {
@@ -182,6 +203,10 @@ class DeviceSettings {
         'nightMode': nightMode,
         'keepAwake': keepAwake,
         'reducedMotion': reducedMotion,
+        'brightness': brightness,
+        'brightnessBias': brightnessBias,
+        'nightScreen': nightScreen,
+        'darkRoomNight': darkRoomNight,
       };
 
   @override
@@ -199,10 +224,15 @@ class DeviceSettings {
       other.screensaver == screensaver &&
       other.nightMode == nightMode &&
       other.keepAwake == keepAwake &&
-      other.reducedMotion == reducedMotion;
+      other.reducedMotion == reducedMotion &&
+      other.brightness == brightness &&
+      other.brightnessBias == brightnessBias &&
+      other.nightScreen == nightScreen &&
+      other.darkRoomNight == darkRoomNight;
 
   @override
-  int get hashCode => Object.hash(role, name, orientation, diagonalIn, viewingDistance, tierOverride, theme, userScale, idleMinutes, screensaver, nightMode, keepAwake, reducedMotion);
+  int get hashCode => Object.hash(role, name, orientation, diagonalIn, viewingDistance, tierOverride, theme, userScale, idleMinutes, screensaver, nightMode, keepAwake, reducedMotion, brightness,
+      brightnessBias, nightScreen, darkRoomNight);
 }
 
 final deviceSettingsProvider = Provider<DeviceSettings>((ref) {

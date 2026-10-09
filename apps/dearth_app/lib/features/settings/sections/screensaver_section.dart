@@ -3,6 +3,7 @@ import 'package:dearth_ui/dearth_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../app/display_state.dart';
 import '../../../core/data/household.dart';
 import '../../../core/providers.dart';
 import '../settings_screen.dart';
@@ -24,6 +25,7 @@ class ScreensaverSection extends ConsumerWidget {
     Future<void> setDevice(Map<String, Object?> patch) => updateDeviceSettings(w, deviceId: session.effectiveDeviceId, current: device, patch: patch);
     bool flag(String k) => ss[k] as bool? ?? true;
     final usual = (ss['idleMinutes'] as num?)?.toInt() ?? 5;
+    final atNight = !device.nightMode ? 'photos' : (device.nightScreen == 'off' ? 'off' : 'clock');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -47,13 +49,26 @@ class ScreensaverSection extends ConsumerWidget {
                 value: device.idleMinutes,
                 onChanged: (v) => setDevice({'idleMinutes': v}),
               ),
-              DSwitchRow(
-                id: 'device.night',
-                title: 'Night clock',
-                subtitle: 'Dim and warm during the night schedule below',
-                value: device.nightMode,
-                onChanged: (v) => setDevice({'nightMode': v}),
+              ChoiceRow<String>(
+                title: 'At night',
+                subtitle: switch (atNight) {
+                  'photos' => 'The photo frame, as by day',
+                  'clock' => 'A dim, warm clock during the night schedule below',
+                  _ => 'The screen off during the night schedule below; timers and reminders still turn it on',
+                },
+                idPrefix: 'device.atnight',
+                options: const [('photos', 'Photos'), ('clock', 'Dim clock'), ('off', 'Screen off')],
+                value: atNight,
+                onChanged: (v) => setDevice(v == 'photos' ? {'nightMode': false} : {'nightMode': true, 'nightScreen': v}),
               ),
+              if (device.nightMode && ref.watch(hasLightSensorProvider).value == true)
+                DSwitchRow(
+                  id: 'device.darkroom',
+                  title: 'Night clock when the room goes dark',
+                  subtitle: 'After two minutes of dark; the light coming back wakes it',
+                  value: device.darkRoomNight,
+                  onChanged: (v) => setDevice({'darkRoomNight': v}),
+                ),
               DSwitchRow(
                 id: 'device.keepawake',
                 title: 'Keep the screen on',

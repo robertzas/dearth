@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 
 import '../shared/face_photo.dart';
+import 'clock_check.dart';
 import 'env.dart';
 import 'session.dart';
 import 'solo/built_in_hub.dart';
@@ -281,6 +282,8 @@ final syncClientProvider = Provider<SyncClient?>((ref) {
   final s = ref.watch(sessionProvider);
   final api = ref.watch(hubApiProvider);
   if (!s.isHub || api == null) return null;
+  // Nothing goes to the Hub stamped with a clock that isn't set yet.
+  if (!ref.watch(clockSetProvider)) return null;
   final env = ref.watch(envProvider);
   final client = SyncClient(
     db: ref.watch(dbProvider),

@@ -74,6 +74,16 @@ void main() {
     await tester.tap(byId('device.idle.2-min'));
     await h.settle();
     expect(h.container.read(deviceSettingsProvider).idleMinutes, 2);
+    // FR-DSP-03: what the night shows, in one choice.
+    expect(tester.getSemantics(byId('device.atnight.dim-clock')).flagsCollection.isSelected, Tristate.isTrue);
+    await tester.tap(byId('device.atnight.screen-off'));
+    await h.settle();
+    expect(h.container.read(deviceSettingsProvider).nightScreen, 'off');
+    expect(h.container.read(deviceSettingsProvider).nightMode, isTrue);
+    await tester.tap(byId('device.atnight.photos'));
+    await h.settle();
+    expect(h.container.read(deviceSettingsProvider).nightMode, isFalse);
+    expect(byId('device.darkroom'), findsNothing, reason: 'no light sensor in tests');
     h.container.read(routerProvider).go('/settings/device');
     await h.settle();
     expect(byId('device.idle.2-min'), findsNothing, reason: 'not on Screen & sound as well');

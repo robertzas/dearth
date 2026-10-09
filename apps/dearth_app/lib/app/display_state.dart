@@ -39,6 +39,77 @@ final isNightTimeProvider = Provider<bool>((ref) {
   return inWindow(time.minuteOfDay(time.nowMs()), w);
 });
 
+// ──────────────────────────────── The room ──────────────────────────────────
+
+/// Whether this device has an ambient light sensor (Android only); tests
+/// replace it.
+final hasLightSensorProvider = FutureProvider<bool>((ref) => hasLightSensor());
+
+/// Ambient light readings in lux from this device's sensor (none off
+/// Android); tests replace it.
+final lightReadingsProvider = Provider<Stream<double>>((ref) => lightReadings());
+
+/// The room as the light sensor sees it: smoothed lux (null without a
+/// sensor) and whether it's dark (SPEC FR-DSP-02, §10.12).
+@immutable
+class Room {
+  const Room({this.lux, this.dark = false});
+  final double? lux;
+  final bool dark;
+
+  @override
+  bool operator ==(Object other) => other is Room && other.lux == lux && other.dark == dark;
+
+  @override
+  int get hashCode => Object.hash(lux, dark);
+}
+
+/// Smooths the sensor on a one-second tick (it reports changes only, so a
+/// room that stays dark sends nothing). Wall displays only; the tick starts
+/// with the first reading.
+class RoomController extends Notifier<Room> {
+  final _ambient = AmbientLight();
+  final _dark = DarkRoom();
+  double? _raw;
+  Timer? _tick;
+
+  @override
+  Room build() {
+    final personal = ref.watch(deviceSettingsProvider.select((s) => s.isPersonal));
+    if (personal) return const Room();
+    final sub = ref.watch(lightReadingsProvider).listen((lux) {
+      final first = _raw == null;
+      _raw = lux;
+      if (first) _sample();
+      _tick ??= Timer.periodic(const Duration(seconds: 1), (_) => _sample());
+    });
+    ref.onDispose(() {
+      unawaited(sub.cancel());
+      _tick?.cancel();
+      _tick = null;
+    });
+    return const Room();
+  }
+
+  void _sample() {
+    final raw = _raw;
+    if (raw == null) return;
+    final now = ref.read(idleClockProvider)();
+    final lux = _ambient.add(raw, now);
+    final next = Room(lux: (lux * 10).roundToDouble() / 10, dark: _dark.update(lux, now));
+    if (next != state) state = next;
+  }
+}
+
+final roomProvider = NotifierProvider<RoomController, Room>(RoomController.new);
+
+/// Night now: the household schedule, or a dark room on a display that
+/// asks for that (§10.12).
+final nightNowProvider = Provider<bool>((ref) {
+  if (ref.watch(isNightTimeProvider)) return true;
+  return ref.watch(deviceSettingsProvider.select((s) => s.darkRoomNight)) && ref.watch(roomProvider.select((r) => r.dark));
+});
+
 /// Sun up at the household location (true when the location is unknown).
 final isDaylightProvider = Provider<bool>((ref) {
   final loc = ref.watch(householdLocationProvider);
@@ -65,7 +136,7 @@ final themeModeProvider = Provider<DThemeMode>((ref) {
     case 'night':
       return DThemeMode.night;
   }
-  if (!s.isPersonal && s.nightMode && ref.watch(isNightTimeProvider)) return DThemeMode.night;
+  if (!s.isPersonal && s.nightMode && ref.watch(nightNowProvider)) return DThemeMode.night;
   return ref.watch(isDaylightProvider) ? DThemeMode.light : DThemeMode.evening;
 });
 
@@ -140,7 +211,9 @@ class DisplayState {
 final idleClockProvider = Provider<int Function()>((ref) => () => DateTime.now().millisecondsSinceEpoch);
 
 /// The idle engine: tracks touches, enters the screensaver after the idle
-/// timeout and Night during the night schedule; any touch wakes.
+/// timeout and Night (the clock, or the screen off) during the night; any
+/// touch wakes, but a screen that is physically off can't feel one, so Off
+/// is only for the night schedule, which ends it (FR-DSP-03).
 class DisplayController extends Notifier<DisplayState> {
   Timer? _idle;
   int _lastActivityMs = 0;
@@ -149,7 +222,9 @@ class DisplayController extends Notifier<DisplayState> {
   DisplayState build() {
     ref.onDispose(() => _idle?.cancel());
     // Re-evaluate when the night schedule or settings change.
-    ref.listen(isNightTimeProvider, (_, night) => _evaluate(night: night));
+    ref.listen(nightNowProvider, (_, night) => _evaluate(night: night));
+    // A dark room's night clock becomes Off when the schedule starts.
+    ref.listen(isNightTimeProvider, (_, _) => _evaluate(night: ref.read(nightNowProvider)));
     ref.listen(deviceSettingsProvider, (_, _) => _restartIdle());
     ref.listen(householdIdleMinutesProvider, (_, _) => _restartIdle());
     Future.microtask(_restartIdle);
@@ -197,7 +272,7 @@ class DisplayController extends Notifier<DisplayState> {
   void _restartIdle() {
     _idle?.cancel();
     if (!_enabled) return;
-    final night = ref.read(isNightTimeProvider) && ref.read(deviceSettingsProvider).nightMode;
+    final night = ref.read(nightNowProvider) && ref.read(deviceSettingsProvider).nightMode;
     final s = ref.read(deviceSettingsProvider);
     final int minutes = s.idleMinutes ?? ref.read<int>(householdIdleMinutesProvider);
     // In Night, a touch shows a dim UI for 60 s, then Night resumes.
@@ -214,19 +289,24 @@ class DisplayController extends Notifier<DisplayState> {
       return;
     }
     final s = ref.read(deviceSettingsProvider);
-    if (ref.read(isNightTimeProvider) && s.nightMode) {
-      state = state.copyWith(mode: DisplayMode.night);
+    if (ref.read(nightNowProvider) && s.nightMode) {
+      state = state.copyWith(mode: _nightMode(s));
     } else if (s.screensaver) {
       state = state.copyWith(mode: DisplayMode.screensaver);
     }
   }
 
+  /// The night clock, or Off when the display asks for the screen off and
+  /// the night schedule (not just a dark room) will end it.
+  DisplayMode _nightMode(DeviceSettings s) => s.nightScreen == 'off' && ref.read(isNightTimeProvider) ? DisplayMode.off : DisplayMode.night;
+
   void _evaluate({required bool night}) {
     if (!_enabled) return;
     final s = ref.read(deviceSettingsProvider);
-    if (night && s.nightMode && state.mode == DisplayMode.screensaver) {
-      state = state.copyWith(mode: DisplayMode.night);
-    } else if (!night && state.mode == DisplayMode.night) {
+    final dark = state.mode == DisplayMode.night || state.mode == DisplayMode.off;
+    if (night && s.nightMode && (state.mode == DisplayMode.screensaver || (dark && state.mode != _nightMode(s)))) {
+      state = state.copyWith(mode: _nightMode(s));
+    } else if (!night && dark) {
       // Morning: back to the photo frame until someone touches the screen.
       state = state.copyWith(mode: s.screensaver ? DisplayMode.screensaver : DisplayMode.active);
     }

@@ -54,6 +54,12 @@ test.describe('Settings', () => {
 });
 
 test.describe('Kiosk', () => {
+  test('a display whose clock lost the time says so instead of showing 1970', async ({ page }) => {
+    // Frames have no clock battery: after a power cut they start in 1970.
+    await page.goto('/?demo=1&e2e=1&now=1970-01-02T12:00:00');
+    await expectText(tid(page, 'clock.setting'), 'Setting the time', 90_000);
+  });
+
   test('§9.3 holding the clock for 3 s opens the kiosk menu', async ({ page }, info) => {
     test.skip(!['wall-l', 'tablet'].includes(info.project.name), 'the rail clock exists on landscape layouts');
     await openDemo(page);

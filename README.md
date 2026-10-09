@@ -289,8 +289,15 @@ It sets up:
 - **The volume buttons** change the volume. FreeKiosk's "Volume Up 5 times"
   shortcut stays off, because it swallowed every Volume Up press.
 - **The display:**
-  - Auto-rotate and adaptive brightness are on, so the screen dims with
-    the room's light.
+  - Auto-rotate and adaptive brightness are on. Once Dearth runs, it sets
+    the brightness itself from the light sensor (Settings → Screen &
+    sound).
+- **FreeKiosk's REST API**, with a key Dearth gets too: Dearth turns the
+  screen off at night through it (Photo frame & night → At night → Screen
+  off) and can restart the frame. The key is kept in
+  `~/.config/dearth/freekiosk-<ip>.key`. If FreeKiosk already had a key,
+  the script tells you to type the new one into FreeKiosk's settings once
+  (Advanced → REST API).
   - The screen never sleeps, and there's no lock screen.
   - Android's own screensaver is off (Dearth has its own).
   - Wi-Fi stays on, and Dearth and FreeKiosk are exempt from battery

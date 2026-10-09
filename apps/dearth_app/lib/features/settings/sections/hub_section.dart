@@ -199,7 +199,10 @@ class _HubSectionState extends ConsumerState<HubSection> {
               for (final d in devices)
                 DListRow(
                   title: '${d['name']}',
-                  subtitle: '${d['role']}${d['admin'] == true ? ' · admin' : ''} · ${d['online'] == true ? 'online' : 'offline'}',
+                  subtitle: [
+                    '${d['role']}${d['admin'] == true ? ' · admin' : ''} · ${d['online'] == true ? 'online' : 'offline'}',
+                    if (d['online'] == true) ...deviceHealth(d['telemetry']),
+                  ].join(' · '),
                   leading: Icon(Icons.circle, size: 14 * t.scale, color: d['online'] == true ? t.colors.success : t.colors.inkTertiary),
                 ),
               DListRow(
@@ -220,4 +223,20 @@ class _HubSectionState extends ConsumerState<HubSection> {
 String _size(Object? bytes) {
   final b = bytes is num ? bytes.toDouble() : 0.0;
   return b >= 1 << 20 ? '${(b / (1 << 20)).toStringAsFixed(1)} MB' : '${(b / 1024).ceil()} KB';
+}
+
+/// What a device's last telemetry says about it, in a few words (SPEC
+/// FR-ADM-01, §12): slow frames, memory, and anything that needs a look.
+List<String> deviceHealth(Object? telemetry) {
+  if (telemetry is! Map) return const [];
+  final frames = (telemetry['frames'] as num?)?.toInt() ?? 0;
+  final slow = (telemetry['slowFrames'] as num?)?.toInt() ?? 0;
+  return [
+    if (frames >= 30) '${(slow * 100 / frames).round()} % slow frames',
+    if (telemetry['p95Ms'] case final String p95 when frames >= 30) 'p95 $p95 ms',
+    if (telemetry['rssMb'] case final num mb) '${mb.round()} MB',
+    if (telemetry['clockSet'] == false) 'clock not set',
+    if (telemetry['freekiosk'] == 'unauthorized') 'FreeKiosk key wrong',
+    if (telemetry['freekiosk'] == 'unreachable') 'FreeKiosk not answering',
+  ];
 }

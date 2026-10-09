@@ -9,14 +9,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../core/clock_check.dart';
 import '../core/data/household.dart';
 import '../core/env.dart';
+import '../core/platform/freekiosk.dart';
 import '../core/platform/platform.dart';
 import '../core/providers.dart';
 import '../core/sync/sync_client.dart';
 import '../features/photos/screensaver.dart';
 import '../features/timers/timers.dart';
+import 'clock_layer.dart';
 import 'display_state.dart';
+import 'frame.dart';
 import 'grown_up.dart';
 import 'reminders.dart';
 import 'router.dart';
@@ -78,7 +82,12 @@ class _AppFrameState extends ConsumerState<AppFrame> with WidgetsBindingObserver
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) ref.read(syncClientProvider)?.nudge();
+    if (state == AppLifecycleState.resumed) {
+      ref.read(syncClientProvider)?.nudge();
+      // deploy_frame.sh hands over FreeKiosk's key by bringing the app to
+      // the front with it.
+      ref.invalidate(freeKioskProvider);
+    }
   }
 
   @override
@@ -122,6 +131,9 @@ class _AppFrameState extends ConsumerState<AppFrame> with WidgetsBindingObserver
     ref.listen(timerAlarmProvider, (_, _) {});
     ref.listen(orientationProvider, (_, _) {});
     ref.listen(systemBarsProvider, (_, _) {});
+    // The panel's brightness and power follow the display mode (FR-DSP-02/03).
+    ref.listen(brightnessProvider, (_, _) {});
+    ref.listen(screenPowerProvider, (_, _) {});
     return Theme(
       data: _theme!,
       child: _Effects(
@@ -145,6 +157,8 @@ class _AppFrameState extends ConsumerState<AppFrame> with WidgetsBindingObserver
                 ),
                 const _DisplayLayer(),
                 const ReminderLayer(),
+                // Above everything until the clock is set (frames after a power cut).
+                const ClockLayer(),
               ],
             ),
           ),
@@ -265,6 +279,13 @@ Future<Map<String, Object?>> captureScreenshot(Ref ref) async {
 Map<String, Object?> Function() appTelemetry(Ref ref) {
   final started = DateTime.now();
   return () => {
+        ...ref.read(frameStatsProvider).take(),
+        'rssMb': ?processRssMb(),
+        'lux': ?ref.read(roomProvider).lux,
+        'brightness': ?ref.read(brightnessProvider),
+        'screenOff': ref.read(screenPowerProvider),
+        'freekiosk': ?ref.read(freeKioskProvider).value?.link.name,
+        'clockSet': ref.read(clockSetProvider),
         'role': ref.read(deviceSettingsProvider).role,
         'tier': ref.read(perfTierProvider).name,
         'theme': ref.read(themeModeProvider).name,
