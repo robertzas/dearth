@@ -728,8 +728,8 @@ portrait to Agenda)
   kid-friendly form counts sleeps ("3 sleeps until Grandma!") with moon
   icons.
 - **FR-CAL-18 [M2]** **Birthdays & holidays:** profile birthdays, Google
-  birthday events, and a regional public-holiday calendar (bundled or
-  Nager.Date).
+  birthday events, and a bundled public-holiday calendar (US, CA, GB).
+  Other countries subscribe to an ICS holiday calendar.
 - **FR-CAL-19 [M2]** **Weather on events:** events within 7 days that have a
   location or outdoor keyword show forecast icon and temperature for their
   time and place (Skylight parity).
@@ -2406,9 +2406,10 @@ Pre-blurred backgrounds, dominant color and blur-hash are computed once
 
 ### 13.10 Holidays
 
-Public holidays come from a bundled dataset, with optional refresh from
-Nager.Date (keyless). The family picks a region; school calendars arrive via
-ICS.
+Public holidays come from a bundled dataset (US, CA, GB; the country
+follows the household's time zone). Other countries, and school calendars,
+arrive via ICS. (An online holiday source, e.g. Nager.Date, was dropped by
+the owner on 2026-10-09.)
 
 ---
 
