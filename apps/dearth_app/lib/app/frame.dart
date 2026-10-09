@@ -119,13 +119,14 @@ class ScreenPower extends Notifier<bool> {
 
   Future<void> _on() async {
     state = false;
+    // The app's own wake lock first: the morning never waits on FreeKiosk.
+    await ref.read(screenWakerProvider)();
     final kiosk = await ref.read(freeKioskProvider.future);
     try {
       await kiosk?.screenOn();
     } on FreeKioskException {
-      // The wake lock below.
+      // The wake lock has it.
     }
-    await ref.read(screenWakerProvider)();
   }
 }
 
