@@ -20,6 +20,7 @@ import 'hop.dart';
 import 'hundred.dart';
 import 'ispy.dart';
 import 'jigsaw.dart';
+import 'lettercreature.dart';
 import 'lettermonster.dart';
 import 'letters.dart';
 import 'mazes.dart';
@@ -98,4 +99,5 @@ final Map<String, GameBuilder> kGameBuilders = {
   'rocket': RocketGame.new,
   'train': TrainGame.new,
   'fishing': FishingGame.new,
+  'lettercreature': LetterCreatureGame.new,
 };

@@ -71,6 +71,7 @@ const Map<String, Color> kGameHues = {
   'rocket': Color(0xFF141844),
   'train': Color(0xFFD00000),
   'fishing': Color(0xFF0096C7),
+  'lettercreature': Color(0xFFFF5D8F),
 };
 
 /// The Toybox (SPEC §10.8, FR-TOY-01): big picture tiles of the games that

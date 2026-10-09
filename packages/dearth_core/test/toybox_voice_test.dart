@@ -268,6 +268,8 @@ void main() {
         VoiceLine.trainNext, VoiceLine.trainMissing, VoiceLine.trainGo,
         fishAskClip(const FishRound(FishAsk.biggest, [1, 2, 3])), fishAskClip(const FishRound(FishAsk.makeFive, [2, 3, 1, 5])),
         for (final (a, b) in kFivePairs) fishPairClip(a, b),
+        for (final MapEntry(key: part, value: keys) in kCreatureSounds.entries)
+          for (final (option, _, _) in keys) ...[letterCreatureAskClip(LetterCreatureStep(part, option, [option])), letterCreatureYesClip(part, option)],
         for (final l in kLetterSounds) ...[
           letterMonsterAskClip(LetterMonsterRound(LetterMonsterAsk.name, l.letter, [l.letter])),
           if (l.starts) letterMonsterAskClip(LetterMonsterRound(LetterMonsterAsk.sound, l.letter, [l.letter])),

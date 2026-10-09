@@ -330,4 +330,44 @@ void main() {
       expect(two.catches, {2, 3});
     });
   });
+
+  group('Letter Creatures', () {
+    test('FR-TOY-03: body and eyes (3 to choose) → top and legs too → arms and tail too (4 to choose)', () {
+      for (var seed = 0; seed < 200; seed++) {
+        final rng = Random(seed);
+        for (var level = 1; level <= gameById('lettercreature')!.levels; level++) {
+          final r = letterCreatureRound(level, rng);
+          final why = 'seed $seed, level $level';
+          expect([for (final s in r.steps) s.part], creatureParts(level), reason: why);
+          expect(r.color, lessThan(creatureColors(level)), reason: why);
+          for (final s in r.steps) {
+            expect(s.choices, hasLength(level >= 3 ? 4 : 3), reason: why);
+            expect(s.choices, contains(s.answer), reason: why);
+            final letters = [for (final c in s.choices) kCreatureSounds[s.part]!.firstWhere((k) => k.$1 == c).$3];
+            expect(letters.toSet(), hasLength(letters.length), reason: 'every choice starts with its own sound ($why)');
+            expect(kVoiceLines, contains(letterCreatureAskClip(s)), reason: why);
+            expect(kVoiceLines, contains(letterCreatureYesClip(s.part, s.answer)), reason: why);
+            for (final c in s.choices) {
+              expect(kVoiceLines, contains(creaturePartClip(s.part, c)), reason: 'a wrong one says its name ($why)');
+            }
+          }
+          expect(kVoiceLines, contains(creatureClip(r.creature)), reason: why);
+        }
+      }
+    });
+
+    test('every key word starts with its letter, and the creature\'s name for each part says that word', () {
+      for (final MapEntry(key: part, value: keys) in kCreatureSounds.entries) {
+        for (final (option, word, letter) in keys) {
+          expect(word[0].toUpperCase(), letter);
+          expect(kCreaturePartWords[part]![option], contains(word), reason: '$part $option');
+          expect(option, lessThan(kCreatureOptions[part]!));
+        }
+      }
+      expect(kVoiceLines[letterCreatureAskClip(const LetterCreatureStep(CreaturePart.body, 0, [0]))], 'Find a body that starts with [[ɹˈʌ]]!');
+      expect(kVoiceLines[letterCreatureYesClip(CreaturePart.top, 2)], '[[bˈʌ]], [[bˈʌ]], bunny!');
+      final r = letterCreatureRound(3, Random(1));
+      expect([for (var s = 0; s <= 7; s++) letterCreatureResult(r, s)], [...List.filled(4, GameResult.win), ...List.filled(4, GameResult.helped)]);
+    });
+  });
 }

@@ -2,6 +2,7 @@ import 'package:dearth_app/core/sound.dart';
 import 'package:dearth_app/features/toybox/games/busstop.dart';
 import 'package:dearth_app/features/toybox/games/cookies.dart';
 import 'package:dearth_app/features/toybox/games/fishing.dart';
+import 'package:dearth_app/features/toybox/games/lettercreature.dart';
 import 'package:dearth_app/features/toybox/games/lettermonster.dart';
 import 'package:dearth_app/features/toybox/games/rocket.dart';
 import 'package:dearth_app/features/toybox/games/train.dart';
@@ -19,7 +20,7 @@ import 'support/toybox_harness.dart';
 void main() {
   for (final size in const [Size(390, 844), Size(844, 390), Size(1080, 1920), Size(1920, 1080)]) {
     testWidgets('every game of the second set lays out on a ${size.width.toInt()}×${size.height.toInt()} screen at its busiest level', (tester) async {
-      await expectGamesLayOut(tester, const [('cookies', 1), ('cookies', 3), ('cookies', 4), ('lettermonster', 1), ('lettermonster', 2), ('lettermonster', 4), ('busstop', 1), ('busstop', 4), ('wordpop', 1), ('wordpop', 4), ('rocket', 1), ('rocket', 4), ('train', 1), ('train', 4), ('fishing', 1), ('fishing', 4)], size: size);
+      await expectGamesLayOut(tester, const [('cookies', 1), ('cookies', 3), ('cookies', 4), ('lettermonster', 1), ('lettermonster', 2), ('lettermonster', 4), ('busstop', 1), ('busstop', 4), ('wordpop', 1), ('wordpop', 4), ('rocket', 1), ('rocket', 4), ('train', 1), ('train', 4), ('fishing', 1), ('fishing', 4), ('lettercreature', 1), ('lettercreature', 3)], size: size);
     });
   }
 
@@ -664,6 +665,90 @@ void main() {
       await h.settle();
       expect(await toyboxRounds(h), [('fishing', 3, 'win')]);
       await tester.pump(const Duration(seconds: 12));
+      await h.shutdown();
+    });
+  });
+
+  group('Letter Creatures', () {
+    LetterCreatureGameState game(WidgetTester tester) => tester.state<LetterCreatureGameState>(find.byType(LetterCreatureGame));
+
+    Future<void> pickRight(WidgetTester tester) async {
+      final s = game(tester).debugRound.steps[game(tester).debugStep];
+      await tester.tap(byId('lettercreature.option.${s.choices.indexOf(s.answer)}'));
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    testWidgets('FR-TOY-03: each part is asked for by its first sound; the right one goes on with sound and word; the creature dances and says its name', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'lettercreature', sound: sound, level: 1);
+      final r = game(tester).debugRound;
+      expect([for (final s in r.steps) s.part], [CreaturePart.body, CreaturePart.face]);
+      expectNoFallbackText(byId('screen.game'));
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(sound.said, [VoiceLine.makeCreature]);
+      await tester.pump(afterVoice(VoiceLine.makeCreature));
+      expect(sound.said.last, letterCreatureAskClip(r.steps[0]));
+      expect(labelOf(tester, 'lettercreature.ask'), 'Find a body: ${r.steps[0].letter}');
+      expect(labelOf(tester, 'lettercreature.creature'), 'Parts: 0 of 2');
+      await pickRight(tester);
+      expect(sound.said.last, letterCreatureYesClip(CreaturePart.body, r.steps[0].answer));
+      expect(game(tester).debugStep, 1);
+      await tester.pump(const Duration(seconds: 3));
+      expect(sound.said.last, letterCreatureAskClip(r.steps[1]));
+      expect(labelOf(tester, 'lettercreature.ask'), 'Find eyes: ${r.steps[1].letter}');
+      await pickRight(tester);
+      expect(game(tester).debugDone, isTrue);
+      expect(labelOf(tester, 'lettercreature.ask'), "I'm a ${r.creature.name}");
+      await tester.pump(const Duration(seconds: 3));
+      expect(sound.said.last, creatureClip(r.creature));
+      expect(sound.played.where((p) => p.$1 == Sfx.xylophone), isNotEmpty, reason: 'it dances to a tune');
+      await h.settle();
+      expect(await toyboxRounds(h), [('lettercreature', 1, 'win')]);
+      await tester.pump(const Duration(seconds: 4));
+      expect(game(tester).debugDone, isFalse, reason: 'a new creature to make');
+      expect(sound.said.where((c) => c == VoiceLine.makeCreature), hasLength(1), reason: 'said once a session');
+      await tester.pump(const Duration(seconds: 12));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('a part that starts with another sound says its name and wiggles; two slips light the right one', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'lettercreature', sound: sound, level: 3);
+      final r = game(tester).debugRound;
+      expect(r.steps, hasLength(6));
+      await tester.pump(const Duration(seconds: 4));
+      final s = r.steps[0];
+      final wrong = s.choices.where((c) => c != s.answer).take(2).toList();
+      for (final (k, w) in wrong.indexed) {
+        await tester.tap(byId('lettercreature.option.${s.choices.indexOf(w)}'));
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(sound.said.last, creaturePartClip(s.part, w));
+        expect(sound.played.where((p) => p.$1 == Sfx.nope), hasLength(k + 1));
+      }
+      expect(game(tester).debugHint, isTrue);
+      while (!game(tester).debugDone) {
+        await pickRight(tester);
+        await tester.pump(const Duration(seconds: 3));
+      }
+      await h.settle();
+      expect(await toyboxRounds(h), [('lettercreature', 3, 'win')], reason: 'two slips in six parts is still a win');
+      await tester.pump(const Duration(seconds: 15));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('a long pause asks again and lights the right part, without a slip', (tester) async {
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'lettercreature', sound: sound, level: 2);
+      final r = game(tester).debugRound;
+      await tester.pump(const Duration(seconds: 16));
+      expect(game(tester).debugHint, isTrue);
+      expect(sound.said.where((c) => c == letterCreatureAskClip(r.steps[0])), hasLength(2));
+      expect(sound.played.where((p) => p.$1 == Sfx.nope), isEmpty);
+      await tester.pump(const Duration(seconds: 2));
       await h.shutdown();
     });
   });

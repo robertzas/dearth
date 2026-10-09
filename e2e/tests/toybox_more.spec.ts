@@ -130,4 +130,27 @@ test.describe('Toybox second set', () => {
       .toBe(true);
     await expectCheered(page);
   });
+
+  test('FR-TOY-03: Letter Creatures — she picks each part by its first sound and the creature dances', async ({ page }) => {
+    await openToyboxGame(page, 'lettercreature');
+    const words: Record<string, string[]> = {
+      body: ['a round body', 'an egg body', 'a pear body', 'a square body', 'a fluffy body'],
+      eyes: ['googly eyes', 'sleepy eyes', 'happy eyes', 'long eyelashes'],
+    };
+    for (const part of ['body', 'eyes']) {
+      await expectText(tid(page, 'lettercreature.ask'), new RegExp(`^Find (a )?${part}: [A-Z]$`));
+      const letter = (await textOf(tid(page, 'lettercreature.ask'))).trim().slice(-1).toLowerCase();
+      // The part whose key word (the one that isn't "a" or "an") starts with the letter.
+      let right = '';
+      for (const id of await idsUnder(page, 'lettercreature.option.')) {
+        const name = (await textOf(tid(page, id))).trim();
+        const key = name.split(' ').filter((w) => w !== 'a' && w !== 'an')[0];
+        if (words[part].includes(name) && key[0] === letter) right = id;
+      }
+      expect(right).not.toBe('');
+      await tap(tid(page, right));
+    }
+    await expectText(tid(page, 'lettercreature.ask'), /^I'm a [A-Z][a-z]+$/);
+    await expectCheered(page);
+  });
 });

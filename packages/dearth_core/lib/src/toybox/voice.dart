@@ -12,6 +12,7 @@ import 'fishing.dart';
 import 'freeze.dart';
 import 'hear.dart';
 import 'hop.dart';
+import 'lettercreature.dart';
 import 'lettermonster.dart';
 import 'rocket.dart';
 import 'sight.dart';
@@ -185,6 +186,12 @@ String fishAskClip(FishRound r) => switch (r.ask) {
 
 /// A pair that makes five, caught: "Two and three make five!"
 String fishPairClip(int a, int b) => 'fish_pair_${min(a, b)}';
+
+/// What Letter Creatures asks: "Find a body that starts with rrr!"
+String letterCreatureAskClip(LetterCreatureStep s) => 'lc_${s.part.name}_${s.letter.toLowerCase()}';
+
+/// The right part, sound and word together: "Rrr, rrr, round!"
+String letterCreatureYesClip(CreaturePart part, int option) => 'lc_yes_${part.name}_$option';
 
 /// "Three."
 String numberClip(int n) => 'num_$n';
@@ -486,6 +493,21 @@ Map<String, String> _lines() {
   lines[VoiceLine.trainNext] = 'What comes next?';
   lines[VoiceLine.trainMissing] = 'Which letter is missing?';
   lines[VoiceLine.trainGo] = 'All aboard! Choo choo!';
+  const lcAsk = {
+    CreaturePart.body: 'a body that starts',
+    CreaturePart.face: 'eyes that start',
+    CreaturePart.top: 'something for the top that starts',
+    CreaturePart.legs: 'legs that start',
+    CreaturePart.arms: 'arms that start',
+    CreaturePart.tail: 'a tail that starts',
+  };
+  for (final MapEntry(key: part, value: keys) in kCreatureSounds.entries) {
+    for (final (option, word, letter) in keys) {
+      final sound = _sound(letterSound(letter));
+      lines[letterCreatureAskClip(LetterCreatureStep(part, option, [option]))] = 'Find ${lcAsk[part]} with $sound!';
+      lines[letterCreatureYesClip(part, option)] = '$sound, $sound, $word!';
+    }
+  }
   lines['fish_biggest'] = 'Catch the biggest number!';
   lines['fish_five'] = 'Catch two fish that make five!';
   for (final (a, b) in kFivePairs) {

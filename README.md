@@ -103,8 +103,8 @@ back.
   a picture's first sound, and she feeds it the biscuit), Bus Stop (kids climb on and off the bus at the stop; how many
   are on it now?), Word Pop (she pops the bubbles that say the word the voice asks for), Rocket Countdown (she taps
   the stars from ten down to one, and the rocket blasts off), Alphabet Train (the letter that comes next, or the one
-  missing, goes into the empty carriage) and Number Fishing (she catches the fish with the number called, the biggest, or
-  two that make five). The letter, word
+  missing, goes into the empty carriage), Number Fishing (she catches the fish with the number called, the biggest, or
+  two that make five) and Letter Creatures (she builds a creature from parts picked by their first sound). The letter, word
   and number games talk: every line is a clip bundled with the app, so they
   work on a display with no text-to-speech. Every game is on for every kid, the ones that suit their age first, and every game
   adapts: three wins in a row go up a level, three misses ease off, and
