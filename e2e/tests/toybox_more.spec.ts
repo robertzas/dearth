@@ -53,4 +53,32 @@ test.describe('Toybox second set', () => {
     await expectText(tid(page, 'busstop.ask'), `${now} kid${now === 1 ? '' : 's'} on the bus`);
     await expectCheered(page);
   });
+
+  test('FR-TOY-03: Word Pop — she pops three bubbles that say the word the voice asks for', async ({ page }) => {
+    await openToyboxGame(page, 'wordpop');
+    await expectText(tid(page, 'wordpop.ask'), /^Pop the word \S+: 0 of 3$/);
+    const word = (await textOf(tid(page, 'wordpop.ask'))).match(/Pop the word (\S+):/)![1];
+    const height = page.viewportSize()!.height;
+    for (let k = 1; k <= 3; k++) {
+      // A bubble with the word, well up on the screen (they rise slowly,
+      // and shrink away at the top).
+      let target = '';
+      await expect
+        .poll(async () => {
+          for (const id of await idsUnder(page, 'wordpop.bubble.')) {
+            if ((await textOf(tid(page, id))).trim() !== word) continue;
+            const box = await tid(page, id).boundingBox();
+            if (box && box.y + box.height / 2 > height * 0.3 && box.y + box.height / 2 < height * 0.85) {
+              target = id;
+              return true;
+            }
+          }
+          return false;
+        }, { timeout: 30_000 })
+        .toBe(true);
+      await tap(tid(page, target));
+      await expectText(tid(page, 'wordpop.ask'), k < 3 ? `Pop the word ${word}: ${k} of 3` : `Popped ${word}: 3 of 3`);
+    }
+    await expectCheered(page);
+  });
 });

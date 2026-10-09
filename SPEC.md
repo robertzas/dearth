@@ -1212,10 +1212,10 @@ her thinking* from age 2 to 5, adapt to her level, and respect family limits.
     order, word building, listening, sight words, first names, tallying and
     counting past twenty
   - More numbers and letters, built on the games played most (added
-    2026-10-08): Cookie Count, Letter Monster, Bus Stop — counting out a
-    set of a given size, adding and taking away as a story she watches;
-    letter names, small letters, letter sounds and first sounds, fed to a
-    monster
+    2026-10-08): Cookie Count, Letter Monster, Bus Stop, Word Pop —
+    counting out a set of a given size, adding and taking away as a story
+    she watches; letter names, small letters, letter sounds and first
+    sounds, fed to a monster; sight words at a glance, on moving bubbles
 - **FR-TOY-04 [M3]** **Adaptive difficulty:** each game tracks success rate,
   time and hints. It levels up after consistent success, eases off after
   repeated misses, and **never shows failure screens** (gentle retry cues
@@ -2863,6 +2863,7 @@ points, not limits.
 | Cookie Count | 3+ | Counting out a set, adding and taking away | Feed the Monster's purple cousin holds up a number: "I want five cookies!" She taps the jar and a cookie flies onto the plate as the voice says the new count; a cookie tapped on the plate goes back to the jar. The plate is a ten frame (two rows of five). When she thinks it's right she rings the bell: the monster gobbles them one by one ("Five cookies! Yum, yum!"), or shakes its head ("More, please! I want five." / "Too many! I want five.") and the cookies stay so she can fix the plate; two wrong rings show a spot for each cookie it wants. The bell is explained once a session; a long pause asks again | 1–5 with a spot on the plate for each cookie → 2–5, no spots → 5–10 → the plate starts with cookies, one to three too few or too many | M4 |
 | Letter Monster | 3+ | Letter names, small letters, letter sounds, first sounds | Feed the Monster's orange cousin eats only letter biscuits (each with its letter piped on in the Toybox's print) and says which one it wants: "I want the letter B!", then "I want the letter that says buh!", then a picture in its thought bubble ("Bee. Which letter does bee start with?"). She taps a biscuit or drags it to the mouth; the right one is munched and the voice says "B. Buh, buh, ball."; another gets a head shake, says its own name and goes back to its plate. Two slips, or a long pause, light the right plate | capitals by name among three that don't look alike → small letters by name among four, with the mirror twin (b/d, p/q, n/u, m/w) as a decoy → small letters by sound among four (never two that make one sound, like c and k) → a picture's first sound among five | M4 |
 | Bus Stop | 3.5+ | First adding and taking away, counting on | Who Has More?'s double-decker pulls in with kids in its windows and a "?" on its roof sign ("Three kids are on the bus."). Kids waiting at the stop walk to the door and climb on one at a time, each filling a window with a pop ("Two more get on!"); later some climb off first and walk away ("One gets off!"). Then "How many kids are on the bus now?" and three number cards: the answer, the number it started with (forgetting the change) and a neighbor. The right card puts the number on the sign ("Five kids on the bus!") and the bus drives off. A wrong card wiggles and says its number, then the windows light one by one as the voice counts the kids, and the right card glows | 1–3 on the bus, 1–2 get on (to five) → 2–6 on, 1–4 get on (to ten) → 3–10 on, 1–3 get off → 1–3 off, then 1–3 on | M4 |
+| Word Pop | 4+ | Early reading, sight words at a glance | Bubble Pop's bubbles drift up the screen with a word on each (Sight Words' lists, in the Toybox's print on a pale band). The voice asks for one ("Find the word: go."); she pops three bubbles that say it, each bursting as the voice reads it and filling a bubble in the pill at the top. A bubble with another word bounces up and reads itself; after two slips, or a long pause, the bubbles she's after get a golden ring. Always at least two of them up, never more than three; bubbles nudge apart so words don't overlap, and shrink away at the top | two-letter words, 3 words on 5 slow bubbles → three-letter, 4 on 6 → four-letter with a look-alike start, 4 on 7 → four-letter, 5 words on 8 quicker bubbles | M4 |
 
 ### Appendix C: Chores & rewards by age
 

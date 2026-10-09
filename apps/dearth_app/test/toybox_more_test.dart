@@ -2,6 +2,7 @@ import 'package:dearth_app/core/sound.dart';
 import 'package:dearth_app/features/toybox/games/busstop.dart';
 import 'package:dearth_app/features/toybox/games/cookies.dart';
 import 'package:dearth_app/features/toybox/games/lettermonster.dart';
+import 'package:dearth_app/features/toybox/games/wordpop.dart';
 import 'package:dearth_core/dearth_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -15,7 +16,7 @@ import 'support/toybox_harness.dart';
 void main() {
   for (final size in const [Size(390, 844), Size(844, 390), Size(1080, 1920), Size(1920, 1080)]) {
     testWidgets('every game of the second set lays out on a ${size.width.toInt()}×${size.height.toInt()} screen at its busiest level', (tester) async {
-      await expectGamesLayOut(tester, const [('cookies', 1), ('cookies', 3), ('cookies', 4), ('lettermonster', 1), ('lettermonster', 2), ('lettermonster', 4), ('busstop', 1), ('busstop', 4)], size: size);
+      await expectGamesLayOut(tester, const [('cookies', 1), ('cookies', 3), ('cookies', 4), ('lettermonster', 1), ('lettermonster', 2), ('lettermonster', 4), ('busstop', 1), ('busstop', 4), ('wordpop', 1), ('wordpop', 4)], size: size);
     });
   }
 
@@ -334,6 +335,90 @@ void main() {
       await h.settle();
       expect(await toyboxRounds(h), [('busstop', 4, 'win')]);
       await tester.pump(const Duration(seconds: 25));
+      await h.shutdown();
+    });
+  });
+
+  group('Word Pop', () {
+    WordPopGameState game(WidgetTester tester) => tester.state<WordPopGameState>(find.byType(WordPopGame));
+
+    /// Taps a bubble that says [word] (or, with [not], one that doesn't),
+    /// waiting for one to be well up on the screen.
+    Future<void> popOne(WidgetTester tester, String word, {bool not = false}) async {
+      for (var i = 0; i < 80; i++) {
+        final up = game(tester).debugBubbles.where((b) => (b.$2 == word) != not && b.$3.dy > 200 && b.$3.dy < 700).toList();
+        if (up.isNotEmpty) {
+          await tester.tap(byId('wordpop.bubble.${up.first.$1}'));
+          await tester.pump(const Duration(milliseconds: 50));
+          return;
+        }
+        await tester.pump(const Duration(milliseconds: 200));
+      }
+      fail('no bubble ${not ? 'without' : 'with'} "$word" came up');
+    }
+
+    testWidgets('FR-TOY-03: the voice asks for a word; each bubble that says it pops and reads it; three finish the round', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'wordpop', sound: sound, level: 1);
+      final r = game(tester).debugRound;
+      expectNoFallbackText(byId('screen.game'));
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(sound.said, [sightAskClip(r.word)]);
+      expect(labelOf(tester, 'wordpop.ask'), 'Pop the word ${r.word}: 0 of $kWordPops');
+      expect(game(tester).debugBubbles.where((b) => b.$2 == r.word).length, greaterThanOrEqualTo(2), reason: 'always two to find');
+      for (var k = 1; k <= kWordPops; k++) {
+        await popOne(tester, r.word);
+        expect(game(tester).debugPopped, k);
+        expect(sound.said.last, sightWordClip(r.word));
+      }
+      expect(sound.played.where((p) => p.$1 == Sfx.pop), hasLength(kWordPops));
+      expect(labelOf(tester, 'wordpop.ask'), 'Popped ${r.word}: $kWordPops of $kWordPops');
+      await h.settle();
+      expect(await toyboxRounds(h), [('wordpop', 1, 'win')]);
+      await tester.pump(const Duration(seconds: 4));
+      expect(game(tester).debugPopped, 0, reason: 'a new word');
+      await tester.pump(const Duration(seconds: 12));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('another word bounces and reads itself; two slips ring the right bubbles; the round is helped', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'wordpop', sound: sound, level: 3);
+      final r = game(tester).debugRound;
+      await tester.pump(const Duration(milliseconds: 700));
+      for (var k = 1; k <= 2; k++) {
+        await popOne(tester, r.word, not: true);
+        expect(sound.said.last, isNot(sightWordClip(r.word)));
+        expect(r.words.map(sightWordClip), contains(sound.said.last), reason: 'it reads its own word');
+        expect(sound.played.where((p) => p.$1 == Sfx.nope), hasLength(k));
+        expect(game(tester).debugPopped, 0);
+        await tester.pump(const Duration(milliseconds: 300));
+      }
+      expect(game(tester).debugHint, isTrue);
+      for (var k = 0; k < kWordPops; k++) {
+        await popOne(tester, r.word);
+      }
+      await h.settle();
+      expect(await toyboxRounds(h), [('wordpop', 3, 'helped')]);
+      await tester.pump(const Duration(seconds: 16));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('a long pause asks again and rings the bubbles, without a slip', (tester) async {
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'wordpop', sound: sound, level: 2);
+      final r = game(tester).debugRound;
+      for (var i = 0; i < 110; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(game(tester).debugHint, isTrue);
+      expect(sound.said.where((c) => c == sightAskClip(r.word)), hasLength(2));
+      expect(sound.played.where((p) => p.$1 == Sfx.nope), isEmpty);
+      await tester.pump(const Duration(seconds: 12));
       await h.shutdown();
     });
   });

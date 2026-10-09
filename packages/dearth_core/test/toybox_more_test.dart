@@ -163,4 +163,50 @@ void main() {
       expect(kVoiceLines[busOnClip(2)], 'Two more get on!');
     });
   });
+
+  group('Word Pop', () {
+    test('FR-TOY-03: Sight Words\' lists, more bubbles and quicker as it climbs', () {
+      for (var seed = 0; seed < 200; seed++) {
+        final rng = Random(seed);
+        for (var level = 1; level <= gameById('wordpop')!.levels; level++) {
+          final r = wordPopRound(level, rng);
+          final why = 'seed $seed, level $level: ${r.word} in ${r.words}';
+          final pool = switch (level) { 1 => kSightTwo, 2 => kSightThree, _ => kSightFour };
+          expect(r.words.every(pool.contains), isTrue, reason: why);
+          expect(r.words, contains(r.word), reason: why);
+          expect(r.words.toSet(), hasLength(r.words.length), reason: why);
+          expect(r.words, hasLength(switch (level) { 1 => 3, 4 => 5, _ => 4 }), reason: why);
+          expect(r.bubbles, greaterThan(r.words.length), reason: why);
+          for (final w in r.words) {
+            expect(kVoiceLines, contains(sightWordClip(w)), reason: 'every bubble reads itself ($why)');
+          }
+          expect(kVoiceLines, contains(sightAskClip(r.word)), reason: why);
+        }
+      }
+      expect([for (var l = 1; l <= 4; l++) wordPopRound(l, Random(1)).speed], orderedEquals([...[for (var l = 1; l <= 4; l++) wordPopRound(l, Random(1)).speed]]..sort()));
+    });
+
+    test('there are always two bubbles to find, never more than three; otherwise a quarter carry the word', () {
+      final r = wordPopRound(2, Random(3));
+      final rng = Random(5);
+      expect([for (var i = 0; i < 50; i++) wordPopNext(r, 1, rng)].every((w) => w == r.word), isTrue);
+      final picks = [for (var i = 0; i < 3000; i++) wordPopNext(r, 2, rng)];
+      expect(picks.where((w) => w == r.word).length, inInclusiveRange(600, 900));
+      expect(picks.toSet(), r.words.toSet());
+      expect([for (var i = 0; i < 200; i++) wordPopNext(r, 3, rng)], everyElement(isNot(r.word)));
+      expect([for (var s = 0; s <= 4; s++) wordPopResult(s)], [GameResult.win, GameResult.win, GameResult.helped, GameResult.helped, GameResult.miss]);
+    });
+
+    test('never the same word twice running', () {
+      for (var seed = 0; seed < 100; seed++) {
+        final rng = Random(seed);
+        String? last;
+        for (var i = 0; i < 5; i++) {
+          final r = wordPopRound(3, rng, last: last);
+          expect(r.word, isNot(last));
+          last = r.word;
+        }
+      }
+    });
+  });
 }

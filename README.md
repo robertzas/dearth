@@ -100,8 +100,8 @@ back.
   name, then the family's, and she finds or builds it) and Who Has More? (buses with numbers; she picks the one with more kids, or fewer, or lines
   three up, and the kids fill the windows ten to a deck), Cookie Count (the monster asks for a number of cookies;
   she fills the plate from the jar and rings the bell), Letter Monster (it wants a letter by name, then by sound, then
-  a picture's first sound, and she feeds it the biscuit), and Bus Stop (kids climb on and off the bus at the stop; how many
-  are on it now?). The letter, word
+  a picture's first sound, and she feeds it the biscuit), Bus Stop (kids climb on and off the bus at the stop; how many
+  are on it now?) and Word Pop (she pops the bubbles that say the word the voice asks for). The letter, word
   and number games talk: every line is a clip bundled with the app, so they
   work on a display with no text-to-speech. Every game is on for every kid, the ones that suit their age first, and every game
   adapts: three wins in a row go up a level, three misses ease off, and

@@ -41,6 +41,7 @@ import 'sudoku.dart';
 import 'tally.dart';
 import 'tracing.dart';
 import 'whosthat.dart';
+import 'wordpop.dart';
 import 'zoo.dart';
 
 /// Every game's playfield, by game id (SPEC FR-TOY-02/03). The launcher
@@ -90,4 +91,5 @@ final Map<String, GameBuilder> kGameBuilders = {
   'cookies': CookieGame.new,
   'lettermonster': LetterMonsterGame.new,
   'busstop': BusStopGame.new,
+  'wordpop': WordPopGame.new,
 };
