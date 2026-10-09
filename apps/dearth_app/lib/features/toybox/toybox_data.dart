@@ -124,15 +124,18 @@ final kidGamesProvider = Provider.family<List<GameInfo>, String>((ref, kidId) {
   // Who's That? needs faces: two people with photos, one the voice can ask for.
   if (!whoPlayable(whoFaces(ref.watch(familyProvider), kidId))) games = [for (final g in games) if (g.id != 'whosthat') g];
   final today = ref.watch(todayProvider);
-  // Played on any display (rounds sync), not just opened here: a game she
-  // peeked into stays up top until she's played it.
+  // Played on any display (rounds sync), not just opened here. What counts
+  // is a finished round, or a session of a free-play game: leaving a round
+  // game also writes its time as "played" (for the daily budget), and a
+  // peek mustn't make a new game old or a visited one a favorite.
   final events = ref.watch(_kidRoundsProvider(kidId)).value ?? const <GameEvent>[];
+  final plays = [for (final e in events) if (e.result != GameResult.played || (gameById(e.game)?.freePlay ?? false)) e];
   final since = ref.watch(householdTimeProvider).startOfDayMs(today.addDays(-13));
   final recent = <String, int>{};
-  for (final e in events) {
+  for (final e in plays) {
     if (e.atMs >= since) recent[e.game] = (recent[e.game] ?? 0) + 1;
   }
-  return launcherOrder(games, tried: {for (final e in events) e.game}, recentRounds: recent, today: today.iso);
+  return launcherOrder(games, tried: {for (final e in plays) e.game}, recentRounds: recent, today: today.iso);
 });
 
 /// The household's faces for Who's That? (SPEC FR-TOY-03): everyone with a

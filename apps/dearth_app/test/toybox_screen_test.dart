@@ -56,11 +56,17 @@ void main() {
     await h.write((w) => [
           for (final (game, n, ago) in const [('numbers', 6, 1), ('compare', 4, 2), ('monster', 3, 3), ('farm', 2, 1), ('sight', 9, 20), ('cookies', 1, 0)])
             for (var i = 0; i < n; i++) w.op('game_events', 'ge-$game-$i', {'profile_id': 'p-ava', 'game': game, 'level': 1, 'result': 'win', 'duration_ms': 30000, 'at_ms': now - ago * day - i * 60000}, kind: OpKind.insertOnly),
+          // Visits she left without finishing (the host writes their time as "played"): neither tried nor a favorite.
+          for (var i = 0; i < 5; i++) w.op('game_events', 'ge-peek-$i', {'profile_id': 'p-ava', 'game': i.isEven ? 'rocket' : 'jigsaw', 'level': 1, 'result': 'played', 'duration_ms': 8000, 'at_ms': now - i * 60000}, kind: OpKind.insertOnly),
+          // A free-play game's sessions do count.
+          for (var i = 0; i < 4; i++) w.op('game_events', 'ge-paint-$i', {'profile_id': 'p-ava', 'game': 'paint', 'level': 1, 'result': 'played', 'duration_ms': 90000, 'at_ms': now - day - i * 60000}, kind: OpKind.insertOnly),
         ]);
     final shown = [for (final g in games.read()) g.id];
     final added = [for (final g in kGames) if (g.added != null && g.id != 'cookies') g.id];
     expect(shown.take(added.length), added, reason: 'Cookie Count has been played, so it\'s no longer new');
-    expect(shown.skip(added.length).take(3), ['numbers', 'compare', 'monster'], reason: 'three rounds or more in two weeks, most first');
+    expect(shown.skip(added.length).take(4), ['numbers', 'paint', 'compare', 'monster'], reason: 'three rounds or sessions or more in two weeks, most first (a tie keeps the age order)');
+    expect(shown.indexOf('rocket'), lessThan(added.length), reason: 'peeked into, not played: still new');
+    expect(shown.indexOf('jigsaw'), greaterThan(shown.indexOf('bubbles')), reason: 'visits are not rounds: not a favorite');
     expect(shown.indexOf('farm'), greaterThan(shown.indexOf('bubbles')), reason: 'two rounds is not a favorite');
     expect(shown.indexOf('sight'), greaterThan(shown.indexOf('memory')), reason: 'played three weeks ago: back in its age place');
     games.close();

@@ -1181,8 +1181,10 @@ her thinking* from age 2 to 5, adapt to her level, and respect family limits.
   points), with a "new!" sparkle on games not yet opened. Order (owner,
   2026-10-08): games added to the Toybox in the last 30 days that the
   child hasn't played a round of yet, newest first; then their favorites,
-  the (up to six) games with the most rounds or sessions in the last two
-  weeks, three at least, most first; then the rest, the ones that suit
+  the (up to six) games with the most finished rounds (free-play games:
+  sessions) in the last two weeks, three at least, most first (the time
+  of a visit left unfinished, recorded for the daily budget, counts for
+  neither); then the rest, the ones that suit
   the child's stage first. A new game drops into place once played.
   Grown-ups can switch any game off per kid. A grown-up corner leads to
   settings.
