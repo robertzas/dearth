@@ -68,7 +68,7 @@ class _RecipesSectionState extends ConsumerState<RecipesSection> {
     final result = await showDSheet<(String, String)>(
       context,
       title: '${source['name']} key',
-      builder: (sheet) => _KeySheet(help: _keyHelp[id] ?? 'Paste the key from the source’s website.', canRemove: source['hasKey'] == true),
+      builder: (sheet) => KeySheet(idPrefix: 'recipes.key', help: _keyHelp[id] ?? 'Paste the key from the source’s website.', canRemove: source['hasKey'] == true),
     );
     switch (result) {
       case ('remove', _):
@@ -130,46 +130,6 @@ class _RecipesSectionState extends ConsumerState<RecipesSection> {
               chevron: true,
               onTap: () => _askKey(api, s),
             ),
-        ],
-      ],
-    );
-  }
-}
-
-/// Where a key comes from, a field to paste it, and Save (or Remove). It
-/// owns its text controller, which outlives the sheet's closing animation.
-class _KeySheet extends StatefulWidget {
-  const _KeySheet({required this.help, required this.canRemove});
-  final String help;
-  final bool canRemove;
-
-  @override
-  State<_KeySheet> createState() => _KeySheetState();
-}
-
-class _KeySheetState extends State<_KeySheet> {
-  final _input = TextEditingController();
-
-  @override
-  void dispose() {
-    _input.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final t = DTheme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(widget.help, style: t.text.body),
-        SizedBox(height: t.space.md),
-        DTextField(id: 'recipes.key.input', controller: _input, hint: 'Paste the key', autofocus: true),
-        SizedBox(height: t.space.lg),
-        DButton(label: 'Save', expand: true, id: 'recipes.key.save', onPressed: () => Navigator.of(context).pop(('save', _input.text.trim()))),
-        if (widget.canRemove) ...[
-          SizedBox(height: t.space.sm),
-          DButton(label: 'Remove the key', expand: true, tone: DButtonTone.outline, id: 'recipes.key.remove', onPressed: () => Navigator.of(context).pop(('remove', ''))),
         ],
       ],
     );

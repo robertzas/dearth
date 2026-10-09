@@ -19,7 +19,7 @@ void main() {
   testWidgets('§14.3: the weather updates every 10 minutes until the household picks another pace', (tester) async {
     final handle = tester.ensureSemantics();
     final h = await AppHarness.demo(tester);
-    h.container.read(routerProvider).go('/settings/household');
+    h.container.read(routerProvider).go('/settings/weather');
     await h.settle();
     expect(tester.getSemantics(byId('household.weather.10-min')).flagsCollection.isSelected, Tristate.isTrue);
     await tester.tap(byId('household.weather.30-min'));
@@ -27,6 +27,109 @@ void main() {
     expect(h.container.read(settingMapProvider(SettingKeys.weatherRefresh)), {'minutes': 30});
     expect(tester.getSemantics(byId('household.weather.30-min')).flagsCollection.isSelected, Tristate.isTrue);
     expectNoFallbackText();
+    await h.shutdown();
+    handle.dispose();
+  });
+
+  testWidgets('FR-SET-03: Settings is grouped, and the search finds a setting inside a section and names it', (tester) async {
+    final handle = tester.ensureSemantics();
+    final h = await AppHarness.demo(tester);
+    h.container.read(routerProvider).go('/settings');
+    await h.settle();
+    // (The list is lazy: the last headings may not be built yet.)
+    expect(labelOf(tester, 'settings.group.family'), 'FAMILY');
+    expect(labelOf(tester, 'settings.group.display'), 'THIS DISPLAY');
+    Future<void> search(String q) async {
+      await tester.enterText(find.descendant(of: byId('settings.search'), matching: find.byType(EditableText)), q);
+      await h.settle(3);
+    }
+
+    await search('keep');
+    expect(labelOf(tester, 'settings.nav.screensaver'), 'Photo frame & night: Keep the screen on');
+    expect(byId('settings.nav.household'), findsNothing);
+    expect(byId('settings.nav.device'), findsNothing, reason: 'the idle settings moved to Photo frame & night');
+    expect(byId('settings.group.family'), findsNothing, reason: 'no headings over a few results');
+    // Every word has to match: "google tasks" is Lists, not Calendars.
+    await search('google tasks');
+    expect(labelOf(tester, 'settings.nav.lists'), 'Lists');
+    expect(byId('settings.nav.calendars'), findsNothing);
+    await search('zzzz');
+    expect(byId('settings.search.none'), findsOneWidget);
+    await tester.tap(byId('settings.search.clear'));
+    await h.settle(3);
+    expect(byId('settings.nav.household'), findsOneWidget);
+    expect(byId('settings.search.none'), findsNothing);
+    expectNoFallbackText();
+    await h.shutdown();
+    handle.dispose();
+  });
+
+  testWidgets('FR-SSV-01: this display’s idle settings sit with the photo frame’s, starting after the usual time until it picks its own', (tester) async {
+    final handle = tester.ensureSemantics();
+    final h = await AppHarness.demo(tester);
+    h.container.read(routerProvider).go('/settings/screensaver');
+    await h.settle();
+    expect(tester.getSemantics(byId('device.idle.usual')).flagsCollection.isSelected, Tristate.isTrue);
+    expect(byId('ss.idle.5-min'), findsOneWidget, reason: 'the usual time for every display is on the same page');
+    await tester.tap(byId('device.idle.2-min'));
+    await h.settle();
+    expect(h.container.read(deviceSettingsProvider).idleMinutes, 2);
+    h.container.read(routerProvider).go('/settings/device');
+    await h.settle();
+    expect(byId('device.idle.2-min'), findsNothing, reason: 'not on Screen & sound as well');
+    expect(byId('device.theme.auto'), findsOneWidget);
+    await h.shutdown();
+    handle.dispose();
+  });
+
+  testWidgets('FR-WX-01, FR-WX-04: Settings → Weather adds a Weather Underground key, then a station from the nearby ones, and its forecast can be left out', (tester) async {
+    final handle = tester.ensureSemantics();
+    final puts = <Map<String, Object?>>[];
+    var station = <String, Object?>{'hasKey': false, 'stationId': '', 'useWuForecast': true};
+    http.Response ok(Object body) => http.Response(jsonEncode(body), 200, headers: {'content-type': 'application/json'});
+    final api = HubApi(Uri.parse('http://hub.test'), token: 't', client: MockClient((req) async {
+      switch ((req.method, req.url.path)) {
+        case ('PUT', '/api/admin/integrations/weather'):
+          final b = jsonDecode(req.body) as Map<String, Object?>;
+          puts.add(b);
+          station = {'hasKey': station['hasKey'] == true || (b['apiKey'] as String? ?? '').isNotEmpty, 'stationId': b['stationId'], 'useWuForecast': b['useWuForecast']};
+          return ok({'ok': true});
+        case ('GET', '/api/admin/integrations'):
+          return ok({'weather': station});
+        case ('GET', '/api/admin/weather/stations'):
+          return ok([
+            {'id': 'KCOBOULD12', 'name': 'Table Mesa', 'distanceKm': 1.24},
+            {'id': 'KCOBOULD40', 'name': 'Chautauqua', 'distanceKm': 3.5},
+          ]);
+      }
+      return http.Response('{}', 404);
+    }));
+    final h = await AppHarness.demo(tester, overrides: [hubApiProvider.overrideWithValue(api)]);
+    h.container.read(routerProvider).go('/settings/weather');
+    await h.settle();
+    expect(labelOf(tester, 'weather.key'), 'Add a Weather Underground key');
+    expect(byId('weather.station'), findsNothing, reason: 'a station needs the key first');
+    expectNoFallbackText();
+
+    await tester.tap(byId('weather.key'));
+    await h.settle();
+    await tester.enterText(find.descendant(of: byId('weather.key.input'), matching: find.byType(EditableText)), 'wu-key');
+    await tester.tap(byId('weather.key.save'));
+    await h.settle();
+    expect(puts.last, {'stationId': '', 'useWuForecast': true, 'apiKey': 'wu-key'});
+    expect(labelOf(tester, 'weather.key'), 'Change the Weather Underground key');
+
+    await tester.tap(byId('weather.station'));
+    await h.settle();
+    expect(labelOf(tester, 'weather.station.near.KCOBOULD12'), contains('Table Mesa · 1.2 km away'));
+    await tester.tap(byId('weather.station.near.KCOBOULD12'));
+    await h.settle();
+    expect(puts.last, {'stationId': 'KCOBOULD12', 'useWuForecast': true});
+    expect(labelOf(tester, 'weather.station'), contains('KCOBOULD12'));
+
+    await tester.tap(byId('weather.wuforecast'));
+    await h.settle();
+    expect(puts.last, {'stationId': 'KCOBOULD12', 'useWuForecast': false}, reason: 'turning the forecast off keeps the station');
     await h.shutdown();
     handle.dispose();
   });

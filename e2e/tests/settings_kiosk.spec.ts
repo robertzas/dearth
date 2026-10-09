@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { expectText, goTo, isPhone, openDemo, tap, tid } from './helpers';
+import { expectText, goTo, isPhone, openDemo, tap, tid, typeInto } from './helpers';
 
 test.describe('Settings', () => {
   test('FR-SET-03: switching to the evening theme and 24 h clock', async ({ page }, info) => {
@@ -16,6 +16,21 @@ test.describe('Settings', () => {
     await tap(tid(page, 'device.theme.evening'));
     await goTo(page, 'home');
     if (!isPhone(info)) await expectText(tid(page, 'home.clock'), '8:30');
+  });
+
+  test('FR-SET-03: searching Settings finds a setting inside a section, and says when nothing matches', async ({ page }) => {
+    await openDemo(page);
+    await goTo(page, 'settings');
+    await typeInto(page, 'settings.search', 'underground');
+    // Only the section holding it is left, naming what matched.
+    await expectText(tid(page, 'settings.nav.weather'), 'Weather: Weather Underground');
+    await expect(tid(page, 'settings.nav.household')).toHaveCount(0);
+    await tap(tid(page, 'settings.nav.weather'));
+    await expect(tid(page, 'household.weather.5-min')).toBeVisible();
+    await goTo(page, 'settings');
+    if ((await tid(page, 'settings.search.clear').count()) > 0) await tap(tid(page, 'settings.search.clear'));
+    await typeInto(page, 'settings.search', 'zzzz');
+    await expectText(tid(page, 'settings.search.none'), 'Nothing in Settings matches');
   });
 
   test('§9.3 grown-up PIN gates adult actions once a PIN is set', async ({ page }) => {

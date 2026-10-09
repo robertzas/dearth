@@ -1427,10 +1427,16 @@ the Hub)
   connect Google and map calendars to people; weather (WU key + station, or
   keyless); photos (Amazon link, folder); done. Dearth then offers sample
   chores, routines and meal ideas.
-- **FR-SET-03 [M1]** Settings IA: Household · People · Devices · Calendar ·
-  Weather · Photos & Screensaver · Meals · Kids · Toybox · Music · Smart
-  Home · Notifications · Integrations & Accounts · Backups · Updates ·
-  Diagnostics · About & Licenses. Settings are searchable and every one has
+- **FR-SET-03 [M1]** Settings IA, in four groups, each setting in one
+  place: **Family** (Household · People · Kids & chores · Toybox), **This
+  display** (Screen & sound · Photo frame & night: this display's idle,
+  night clock and keep-awake beside every display's photo frame and night
+  schedule), **Connected services** (Calendars · Photos · Lists · Recipes ·
+  Weather: the forecast pace and a Weather Underground station, FR-WX-04)
+  and **System** (Hub & devices · About). Later: Music, Smart Home,
+  Notifications, Backups, Updates, Diagnostics. A search box at the top
+  keeps the sections where every word matches the title, the summary or a
+  setting inside, and names the settings it matched. Every setting has
   inline help. People: a person's face can come from the family photo
   library (pick a photo, drag and pinch the face into a circle); it is
   their avatar on every display and their face in Who's That?.

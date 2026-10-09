@@ -20,6 +20,8 @@ final mediaVolumeProvider = FutureProvider.autoDispose<(int, int)?>((ref) => med
 const List<(double, String)> kVolumeSteps = [(0, 'Off'), (0.25, 'Quiet'), (0.5, 'Medium'), (0.75, 'Loud'), (1, 'Max')];
 
 /// Per-device display settings (SPEC FR-DEV-05, §11.2 uiScale, §11.6 themes).
+/// When it goes idle is in Photo frame & night, with the household's idle
+/// settings.
 class DeviceSection extends ConsumerWidget {
   const DeviceSection({super.key});
 
@@ -88,38 +90,6 @@ class DeviceSection extends ConsumerWidget {
             ),
           ],
         ),
-        if (!s.isPersonal)
-          SettingsGroup(
-            title: 'Idle',
-            children: [
-              DSwitchRow(
-                id: 'device.screensaver',
-                title: 'Photo frame when idle',
-                value: s.screensaver,
-                onChanged: (v) => patch({'screensaver': v}),
-              ),
-              ChoiceRow<int?>(
-                title: 'Start after',
-                idPrefix: 'device.idle',
-                options: const [(null, 'Household'), (2, '2 min'), (5, '5 min'), (10, '10 min'), (30, '30 min')],
-                value: s.idleMinutes,
-                onChanged: (v) => patch({'idleMinutes': v}),
-              ),
-              DSwitchRow(
-                id: 'device.night',
-                title: 'Night mode',
-                subtitle: 'Dim, warm clock during the night schedule',
-                value: s.nightMode,
-                onChanged: (v) => patch({'nightMode': v}),
-              ),
-              DSwitchRow(
-                id: 'device.keepawake',
-                title: 'Keep the screen on',
-                value: s.keepAwake,
-                onChanged: (v) => patch({'keepAwake': v}),
-              ),
-            ],
-          ),
         if (ref.watch(mediaVolumeProvider).value case (final level, final max) when max > 0)
           SettingsGroup(
             title: 'Sound',
