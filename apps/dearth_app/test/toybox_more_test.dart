@@ -1,6 +1,7 @@
 import 'package:dearth_app/core/sound.dart';
 import 'package:dearth_app/features/toybox/games/busstop.dart';
 import 'package:dearth_app/features/toybox/games/cookies.dart';
+import 'package:dearth_app/features/toybox/games/fishing.dart';
 import 'package:dearth_app/features/toybox/games/lettermonster.dart';
 import 'package:dearth_app/features/toybox/games/rocket.dart';
 import 'package:dearth_app/features/toybox/games/train.dart';
@@ -18,7 +19,7 @@ import 'support/toybox_harness.dart';
 void main() {
   for (final size in const [Size(390, 844), Size(844, 390), Size(1080, 1920), Size(1920, 1080)]) {
     testWidgets('every game of the second set lays out on a ${size.width.toInt()}×${size.height.toInt()} screen at its busiest level', (tester) async {
-      await expectGamesLayOut(tester, const [('cookies', 1), ('cookies', 3), ('cookies', 4), ('lettermonster', 1), ('lettermonster', 2), ('lettermonster', 4), ('busstop', 1), ('busstop', 4), ('wordpop', 1), ('wordpop', 4), ('rocket', 1), ('rocket', 4), ('train', 1), ('train', 4)], size: size);
+      await expectGamesLayOut(tester, const [('cookies', 1), ('cookies', 3), ('cookies', 4), ('lettermonster', 1), ('lettermonster', 2), ('lettermonster', 4), ('busstop', 1), ('busstop', 4), ('wordpop', 1), ('wordpop', 4), ('rocket', 1), ('rocket', 4), ('train', 1), ('train', 4), ('fishing', 1), ('fishing', 4)], size: size);
     });
   }
 
@@ -347,14 +348,16 @@ void main() {
     /// Taps a bubble that says [word] (or, with [not], one that doesn't),
     /// waiting for one to be well up on the screen.
     Future<void> popOne(WidgetTester tester, String word, {bool not = false}) async {
-      for (var i = 0; i < 80; i++) {
-        final up = game(tester).debugBubbles.where((b) => (b.$2 == word) != not && b.$3.dy > 200 && b.$3.dy < 700).toList();
+      // A pump moves the bubbles one frame (at most 0.05 s), so step in frames.
+      for (var i = 0; i < 1200; i++) {
+        final (sky, r) = game(tester).debugSky;
+        final up = game(tester).debugBubbles.where((b) => (b.$2 == word) != not && b.$3.dy > r * 2 && b.$3.dy < sky.height - r).toList();
         if (up.isNotEmpty) {
           await tester.tap(byId('wordpop.bubble.${up.first.$1}'));
           await tester.pump(const Duration(milliseconds: 50));
           return;
         }
-        await tester.pump(const Duration(milliseconds: 200));
+        await tester.pump(const Duration(milliseconds: 50));
       }
       fail('no bubble ${not ? 'without' : 'with'} "$word" came up');
     }
@@ -586,6 +589,81 @@ void main() {
       expect(game(tester).debugHint, isTrue);
       expect(sound.said.where((c) => c == VoiceLine.trainMissing || c == VoiceLine.trainNext), hasLength(2));
       await tester.pump(const Duration(seconds: 2));
+      await h.shutdown();
+    });
+  });
+
+  group('Number Fishing', () {
+    FishingGameState game(WidgetTester tester) => tester.state<FishingGameState>(find.byType(FishingGame));
+
+    testWidgets('FR-TOY-03: the voice calls a number; the fish with it leaps into the bucket and says it', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'fishing', sound: sound, level: 1);
+      final r = game(tester).debugRound;
+      expectNoFallbackText(byId('screen.game'));
+      await tester.pump(const Duration(milliseconds: 800));
+      expect(sound.said, [findNumberClip(r.target!)]);
+      expect(labelOf(tester, 'fishing.ask'), 'Find the number ${r.target}');
+      await tester.tap(byId('fishing.fish.${r.target}'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(sound.said.last, numberClip(r.target!));
+      expect(labelOf(tester, 'fishing.ask'), 'Caught ${r.target}');
+      await tester.pump(const Duration(seconds: 1));
+      expect(labelOf(tester, 'fishing.bucket'), 'Bucket: 1 fish');
+      await h.settle();
+      expect(await toyboxRounds(h), [('fishing', 1, 'win')]);
+      await tester.pump(const Duration(seconds: 3));
+      expect(game(tester).debugCaught, isEmpty, reason: 'new fish swim in');
+      await tester.pump(const Duration(seconds: 12));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('two that make five: a fish that can\'t pair wiggles and says its number; two slips ring the partner; the pair is said together', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'fishing', sound: sound, level: 4);
+      final r = game(tester).debugRound;
+      expect(r.ask, FishAsk.makeFive);
+      await tester.pump(const Duration(milliseconds: 800));
+      expect(sound.said, [fishAskClip(r)]);
+      final pair = r.catches.toList()..sort();
+      final decoys = r.fish.where((n) => !pair.contains(n)).toList();
+      await tester.tap(byId('fishing.fish.${decoys.first}'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(sound.said.last, numberClip(decoys.first));
+      expect(sound.played.where((p) => p.$1 == Sfx.nope), hasLength(1));
+      await tester.tap(byId('fishing.fish.${pair.first}'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(labelOf(tester, 'fishing.ask'), 'Catch two fish that make five: ${pair.first} and?');
+      await tester.tap(byId('fishing.fish.${decoys.last}'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(game(tester).debugHint, isTrue);
+      await tester.tap(byId('fishing.fish.${pair.last}'));
+      await tester.pump(const Duration(seconds: 2));
+      expect(sound.said.last, fishPairClip(pair.first, pair.last));
+      expect(labelOf(tester, 'fishing.ask'), '${pair.first} and ${pair.last} make five');
+      await h.settle();
+      expect(await toyboxRounds(h), [('fishing', 4, 'helped')]);
+      await tester.pump(const Duration(seconds: 12));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('the biggest number; a long pause asks again and rings it, without a slip', (tester) async {
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'fishing', sound: sound, level: 3);
+      final r = game(tester).debugRound;
+      expect(r.ask, FishAsk.biggest);
+      await tester.pump(const Duration(seconds: 12));
+      expect(game(tester).debugHint, isTrue);
+      expect(sound.said.where((c) => c == fishAskClip(r)), hasLength(2));
+      await tester.tap(byId('fishing.fish.${r.catches.single}'));
+      await tester.pump(const Duration(seconds: 1));
+      await h.settle();
+      expect(await toyboxRounds(h), [('fishing', 3, 'win')]);
+      await tester.pump(const Duration(seconds: 12));
       await h.shutdown();
     });
   });

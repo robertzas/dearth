@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'balance.dart';
 import 'biglittle.dart';
 import 'busstop.dart';
@@ -6,6 +8,7 @@ import 'cookies.dart';
 import 'creature.dart';
 import 'dots.dart';
 import 'dressup.dart';
+import 'fishing.dart';
 import 'freeze.dart';
 import 'hear.dart';
 import 'hop.dart';
@@ -171,6 +174,17 @@ String busNowClip(int n) => 'busstop_now_$n';
 
 /// "Count down from ten!"
 String rocketStartClip(int n) => 'rocket_from_$n';
+
+/// What Number Fishing asks: "Find the number seven.", "Catch the biggest
+/// number!", "Catch two fish that make five!"
+String fishAskClip(FishRound r) => switch (r.ask) {
+      FishAsk.find => findNumberClip(r.target!),
+      FishAsk.biggest => 'fish_biggest',
+      FishAsk.makeFive => 'fish_five',
+    };
+
+/// A pair that makes five, caught: "Two and three make five!"
+String fishPairClip(int a, int b) => 'fish_pair_${min(a, b)}';
 
 /// "Three."
 String numberClip(int n) => 'num_$n';
@@ -472,6 +486,11 @@ Map<String, String> _lines() {
   lines[VoiceLine.trainNext] = 'What comes next?';
   lines[VoiceLine.trainMissing] = 'Which letter is missing?';
   lines[VoiceLine.trainGo] = 'All aboard! Choo choo!';
+  lines['fish_biggest'] = 'Catch the biggest number!';
+  lines['fish_five'] = 'Catch two fish that make five!';
+  for (final (a, b) in kFivePairs) {
+    lines[fishPairClip(a, b)] = '${_cap(numberWord(a))} and ${numberWord(b)} make five!';
+  }
   lines[VoiceLine.cookiesBell] = 'Then ring the bell!';
   lines[VoiceLine.spellMissing] = 'Which sound is missing?';
   lines[VoiceLine.spellBuild] = "Let's build it, sound by sound!";

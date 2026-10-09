@@ -266,6 +266,8 @@ void main() {
         for (final n in kRocketStarts) rocketStartClip(n),
         VoiceLine.rocketBlastOff,
         VoiceLine.trainNext, VoiceLine.trainMissing, VoiceLine.trainGo,
+        fishAskClip(const FishRound(FishAsk.biggest, [1, 2, 3])), fishAskClip(const FishRound(FishAsk.makeFive, [2, 3, 1, 5])),
+        for (final (a, b) in kFivePairs) fishPairClip(a, b),
         for (final l in kLetterSounds) ...[
           letterMonsterAskClip(LetterMonsterRound(LetterMonsterAsk.name, l.letter, [l.letter])),
           if (l.starts) letterMonsterAskClip(LetterMonsterRound(LetterMonsterAsk.sound, l.letter, [l.letter])),

@@ -13,6 +13,7 @@ import 'differences.dart';
 import 'dots.dart';
 import 'dressup.dart';
 import 'farm.dart';
+import 'fishing.dart';
 import 'freeze.dart';
 import 'hear.dart';
 import 'hop.dart';
@@ -96,4 +97,5 @@ final Map<String, GameBuilder> kGameBuilders = {
   'wordpop': WordPopGame.new,
   'rocket': RocketGame.new,
   'train': TrainGame.new,
+  'fishing': FishingGame.new,
 };

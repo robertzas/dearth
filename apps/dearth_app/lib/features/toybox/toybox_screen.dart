@@ -70,6 +70,7 @@ const Map<String, Color> kGameHues = {
   'wordpop': Color(0xFF80B918),
   'rocket': Color(0xFF141844),
   'train': Color(0xFFD00000),
+  'fishing': Color(0xFF0096C7),
 };
 
 /// The Toybox (SPEC §10.8, FR-TOY-01): big picture tiles of the games that

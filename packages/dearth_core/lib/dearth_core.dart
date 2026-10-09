@@ -40,6 +40,7 @@ export 'src/toybox/creature.dart';
 export 'src/toybox/dots.dart';
 export 'src/toybox/dressup.dart';
 export 'src/toybox/expansion.dart';
+export 'src/toybox/fishing.dart';
 export 'src/toybox/freeze.dart';
 export 'src/toybox/games.dart';
 export 'src/toybox/hear.dart';

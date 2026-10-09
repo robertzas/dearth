@@ -287,4 +287,47 @@ void main() {
       expect([for (var s = 0; s <= 2; s++) trainResult(two, s)], [GameResult.win, GameResult.win, GameResult.helped]);
     });
   });
+
+  group('Number Fishing', () {
+    test('FR-TOY-03: 1–5 among three → 6–20 with a look-alike → the biggest of three → two that make five', () {
+      for (var seed = 0; seed < 300; seed++) {
+        final rng = Random(seed);
+        for (var level = 1; level <= gameById('fishing')!.levels; level++) {
+          final r = fishRound(level, rng);
+          final why = 'seed $seed, level $level: ${r.ask} ${r.fish} target ${r.target}';
+          expect(r.ask, switch (level) { 1 || 2 => FishAsk.find, 3 => FishAsk.biggest, _ => FishAsk.makeFive }, reason: why);
+          expect(r.fish, hasLength(switch (level) { 1 || 3 => 3, _ => 4 }), reason: why);
+          expect(r.fish.toSet(), hasLength(r.fish.length), reason: why);
+          expect(kVoiceLines, contains(fishAskClip(r)), reason: why);
+          switch (level) {
+            case 1:
+              expect(r.fish.every((n) => n >= 1 && n <= 5), isTrue, reason: why);
+            case 2:
+              expect(r.target, inInclusiveRange(6, 20), reason: why);
+              expect(r.fish.every((n) => n >= 1 && n <= 20), isTrue, reason: why);
+              final twin = r.target! >= 10 ? r.target! % 10 : r.target! + 10;
+              if (twin >= 1) expect(r.fish, contains(twin), reason: 'a fish that shares a digit ($why)');
+            case 3:
+              final s = [...r.fish]..sort();
+              expect(s[2] - s[1], greaterThanOrEqualTo(2), reason: why);
+            default:
+              expect(r.catches, hasLength(2), reason: 'exactly one pair makes five ($why)');
+              expect(r.catches.reduce((a, b) => a + b), 5, reason: why);
+          }
+          for (final n in r.fish) {
+            expect(kVoiceLines, contains(numberClip(n)), reason: why);
+          }
+        }
+      }
+      expect(kVoiceLines[fishPairClip(3, 2)], 'Two and three make five!');
+      expect(kVoiceLines[fishPairClip(0, 5)], 'Zero and five make five!');
+    });
+
+    test('slips: one fish is a counting round; a pair allows one slip', () {
+      const one = FishRound(FishAsk.find, [1, 2, 3], target: 2), two = FishRound(FishAsk.makeFive, [2, 3, 1, 5]);
+      expect([for (var s = 0; s <= 2; s++) fishResult(one, s)], [GameResult.win, GameResult.helped, GameResult.miss]);
+      expect([for (var s = 0; s <= 2; s++) fishResult(two, s)], [GameResult.win, GameResult.win, GameResult.helped]);
+      expect(two.catches, {2, 3});
+    });
+  });
 }

@@ -83,6 +83,10 @@ class WordPopGameState extends State<WordPopGame> with SingleTickerProviderState
   @visibleForTesting
   int get debugPopped => _popped;
 
+  /// The sky's size and a bubble's radius.
+  @visibleForTesting
+  (Size, double) get debugSky => (_size, _radius);
+
   @visibleForTesting
   bool get debugHint => _glow;
 

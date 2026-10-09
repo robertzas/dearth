@@ -112,4 +112,22 @@ test.describe('Toybox second set', () => {
     await expectText(tid(page, 'train.car.2'), next);
     await expectCheered(page);
   });
+
+  test('FR-TOY-03: Number Fishing — she catches the fish with the number the voice calls', async ({ page }) => {
+    await openToyboxGame(page, 'fishing');
+    await expectText(tid(page, 'fishing.ask'), /^Find the number [1-5]$/);
+    const n = (await textOf(tid(page, 'fishing.ask'))).trim().slice(-1);
+    // The fish swim slowly; a tap that lands where it just was is tried again.
+    await expect
+      .poll(
+        async () => {
+          await tap(tid(page, `fishing.fish.${n}`));
+          await page.waitForTimeout(800);
+          return (await textOf(tid(page, 'fishing.ask'))).includes(`Caught ${n}`);
+        },
+        { timeout: 60_000, intervals: [500] },
+      )
+      .toBe(true);
+    await expectCheered(page);
+  });
 });
