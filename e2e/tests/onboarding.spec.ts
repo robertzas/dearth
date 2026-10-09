@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { expectText, tap, tid, typeInto } from './helpers';
+import { expectText, scrollTo, tap, tid, typeInto } from './helpers';
 
 test.describe('Onboarding', () => {
   test('FR-SET-01: first run offers the Hub or the demo', async ({ page }) => {
@@ -36,7 +36,7 @@ test.describe('Onboarding', () => {
     await expectText(tid(page, 'toybox.title'), 'Mia’s Toybox');
     // No navigation: the Toybox is all there is.
     await expect(tid(page, 'nav.calendar')).toHaveCount(0);
-    await tap(tid(page, 'toybox.game.bubbles'));
+    await tap(await scrollTo(page, 'toybox.game.bubbles'));
     await expect(tid(page, 'game.bubbles')).toBeVisible();
   });
 });

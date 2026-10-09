@@ -19,19 +19,23 @@ void main() {
     await h.settle();
   }
 
-  testWidgets('FR-TOY-01: Ava’s Toybox has every game, hers first, “new!” until she opens one', (tester) async {
+  testWidgets('FR-TOY-01: Ava’s Toybox has every game, the new ones first, then hers, “new!” until she opens one', (tester) async {
     final handle = tester.ensureSemantics();
     final h = await AppHarness.demo(tester);
     await toybox(h);
-    // Who's That? waits for face photos, which the demo family hasn't got.
-    for (final g in kGames.where((g) => g.minMonths <= 30 && g.id != 'whosthat')) {
-      expect(byId('toybox.game.${g.id}'), findsOneWidget, reason: g.id);
-    }
     final shown = [for (final g in h.container.read(kidGamesProvider('p-ava'))) g.id];
+    // Who's That? waits for face photos, which the demo family hasn't got.
     expect(shown, unorderedEquals([for (final g in kGames) if (g.id != 'whosthat') g.id]), reason: 'every game is on by default');
+    final added = [for (final g in kGames) if (g.added != null) g.id];
+    expect(shown.take(added.length), added, reason: 'games added this month that she hasn\'t played yet lead');
+    final hers = [for (final g in kGames) if (g.minMonths <= 30 && g.id != 'whosthat' && !added.contains(g.id)) g.id];
+    expect(shown.skip(added.length).take(hers.length), hers, reason: 'then the games for 2½, in catalog order (no favorites yet)');
     expect(shown.indexOf('counting'), greaterThan(shown.indexOf('memory')), reason: 'counting is for 3+, so it comes after hers');
-    expect(byId('toybox.new.bubbles'), findsOneWidget);
+    expect(byId('toybox.game.${added.first}'), findsOneWidget, reason: 'first on the screen');
 
+    await tester.ensureVisible(byId('toybox.game.bubbles'));
+    await h.settle();
+    expect(byId('toybox.new.bubbles'), findsOneWidget);
     await tester.tap(byId('toybox.game.bubbles'));
     await h.settle();
     expect(byId('game.bubbles'), findsOneWidget);
@@ -42,6 +46,25 @@ void main() {
     expect(byId('toybox.new.bubbles'), findsNothing, reason: 'opened now');
     await h.shutdown();
     handle.dispose();
+  });
+
+  testWidgets('FR-TOY-01: her favorites of the last two weeks come next, most played first; a new game she has played drops into place', (tester) async {
+    final h = await AppHarness.demo(tester);
+    final games = h.container.listen(kidGamesProvider('p-ava'), (_, _) {});
+    final now = h.container.read(householdTimeProvider).nowMs();
+    const day = 86400000;
+    await h.write((w) => [
+          for (final (game, n, ago) in const [('numbers', 6, 1), ('compare', 4, 2), ('monster', 3, 3), ('farm', 2, 1), ('sight', 9, 20), ('cookies', 1, 0)])
+            for (var i = 0; i < n; i++) w.op('game_events', 'ge-$game-$i', {'profile_id': 'p-ava', 'game': game, 'level': 1, 'result': 'win', 'duration_ms': 30000, 'at_ms': now - ago * day - i * 60000}, kind: OpKind.insertOnly),
+        ]);
+    final shown = [for (final g in games.read()) g.id];
+    final added = [for (final g in kGames) if (g.added != null && g.id != 'cookies') g.id];
+    expect(shown.take(added.length), added, reason: 'Cookie Count has been played, so it\'s no longer new');
+    expect(shown.skip(added.length).take(3), ['numbers', 'compare', 'monster'], reason: 'three rounds or more in two weeks, most first');
+    expect(shown.indexOf('farm'), greaterThan(shown.indexOf('bubbles')), reason: 'two rounds is not a favorite');
+    expect(shown.indexOf('sight'), greaterThan(shown.indexOf('memory')), reason: 'played three weeks ago: back in its age place');
+    games.close();
+    await h.shutdown();
   });
 
   testWidgets('FR-TOY-02/04: twelve pops finish a Bubble Pop round: recorded as a win and celebrated', (tester) async {

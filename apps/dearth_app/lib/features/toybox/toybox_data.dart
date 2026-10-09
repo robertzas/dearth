@@ -115,13 +115,24 @@ final kidMonthsProvider = Provider.family<int, String>((ref, kidId) {
   return ageInMonths(today: today.utcMidnight, birthday: born?.utcMidnight, stage: kid?.kidStage);
 });
 
-/// The games this kid sees, launcher order.
+/// The games this kid sees, launcher order (FR-TOY-01): new games they
+/// haven't played a round of yet, then their favorites of the last two
+/// weeks, then the rest, the ones that suit their age first.
 final kidGamesProvider = Provider.family<List<GameInfo>, String>((ref, kidId) {
   final s = ref.watch(toyboxSettingsProvider);
-  final games = gamesFor(ref.watch(kidMonthsProvider(kidId)), off: s.offFor(kidId));
+  var games = gamesFor(ref.watch(kidMonthsProvider(kidId)), off: s.offFor(kidId));
   // Who's That? needs faces: two people with photos, one the voice can ask for.
-  if (!whoPlayable(whoFaces(ref.watch(familyProvider), kidId))) return [for (final g in games) if (g.id != 'whosthat') g];
-  return games;
+  if (!whoPlayable(whoFaces(ref.watch(familyProvider), kidId))) games = [for (final g in games) if (g.id != 'whosthat') g];
+  final today = ref.watch(todayProvider);
+  // Played on any display (rounds sync), not just opened here: a game she
+  // peeked into stays up top until she's played it.
+  final events = ref.watch(_kidRoundsProvider(kidId)).value ?? const <GameEvent>[];
+  final since = ref.watch(householdTimeProvider).startOfDayMs(today.addDays(-13));
+  final recent = <String, int>{};
+  for (final e in events) {
+    if (e.atMs >= since) recent[e.game] = (recent[e.game] ?? 0) + 1;
+  }
+  return launcherOrder(games, tried: {for (final e in events) e.game}, recentRounds: recent, today: today.iso);
 });
 
 /// The household's faces for Who's That? (SPEC FR-TOY-03): everyone with a

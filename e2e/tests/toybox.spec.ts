@@ -2,7 +2,8 @@ import { expect, test } from '@playwright/test';
 import { Page } from '@playwright/test';
 import { cheered, drag, expectCheered, expectText, goTo, hold, openDemo, scrollTo, tap, textOf, tid, tids } from './helpers';
 
-// The Toybox (SPEC §10.8). Demo: Ava is 2½; every game is on, hers first.
+// The Toybox (SPEC §10.8). Demo: Ava is 2½; every game is on, the ones
+// added this month first, then hers.
 // The demo has no PINs, so the grown-up corner opens the settings directly.
 
 test.describe('Toybox', () => {
@@ -10,9 +11,11 @@ test.describe('Toybox', () => {
     await openDemo(page);
     await goTo(page, 'toybox');
     await expectText(tid(page, 'toybox.title'), 'Ava’s Toybox');
-    await expect(tid(page, 'toybox.game.farm')).toBeVisible();
+    // The games added this month lead the launcher; hers come after them.
+    await expect(tid(page, 'toybox.game.cookies')).toBeVisible();
+    const farm = await scrollTo(page, 'toybox.game.farm');
     await expect(tid(page, 'toybox.new.farm')).toBeVisible();
-    await tap(tid(page, 'toybox.game.farm'));
+    await tap(farm);
     await expect(tid(page, 'screen.game')).toBeVisible();
     await tap(tid(page, 'game.home'));
     await expect(tid(page, 'screen.toybox')).toBeVisible();
@@ -21,7 +24,7 @@ test.describe('Toybox', () => {
 
   test('FR-TOY-02: on the farm, a tapped animal says hello with its name', async ({ page }) => {
     await openDemo(page, '/toybox');
-    await tap(tid(page, 'toybox.game.farm'));
+    await tap(await scrollTo(page, 'toybox.game.farm'));
     const animal = tids(page, 'farm.animal.').first();
     const id = (await animal.getAttribute('flt-semantics-identifier'))!.replace('farm.animal.', '');
     await tap(animal);

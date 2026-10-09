@@ -3,7 +3,7 @@ import 'package:meta/meta.dart';
 /// A Toybox game (SPEC §10.8, Appendix B).
 @immutable
 class GameInfo {
-  const GameInfo(this.id, this.title, this.emoji, {required this.minMonths, required this.skills, required this.levels, this.freePlay = false});
+  const GameInfo(this.id, this.title, this.emoji, {required this.minMonths, required this.skills, required this.levels, this.freePlay = false, this.added});
 
   /// Stable id: game_events.game, settings keys, test ids.
   final String id;
@@ -22,6 +22,11 @@ class GameInfo {
   /// No winning or losing (painting, instruments): sessions are logged as
   /// "played" and the ladder moves by time spent instead.
   final bool freePlay;
+
+  /// When it joined the Toybox ("YYYY-MM-DD"), for games added after the
+  /// first sets: until a kid tries it, it's one of the new games at the top
+  /// of their launcher (see [launcherOrder]).
+  final String? added;
 }
 
 /// Every game, launcher order: the launch set (FR-TOY-02), then the
@@ -83,14 +88,14 @@ const List<GameInfo> kExpansionGames = [
   GameInfo('zoo', 'Name Zoo', '🦒', minMonths: 42, skills: ['Reading names', 'Letter names', 'Spelling'], levels: 3),
   GameInfo('compare', 'Who Has More?', '🚌', minMonths: 42, skills: ['Comparing numbers', 'More and fewer', 'Number order'], levels: 4),
   // More numbers and letters, built on the games played most (added 2026-10-08).
-  GameInfo('cookies', 'Cookie Count', '🍪', minMonths: 36, skills: ['Counting out', 'Making a set', 'Adding and taking away'], levels: 4),
-  GameInfo('lettermonster', 'Letter Monster', '😋', minMonths: 36, skills: ['Letter names', 'Small letters', 'Letter sounds', 'First sounds'], levels: 4),
-  GameInfo('busstop', 'Bus Stop', '🚍', minMonths: 42, skills: ['Adding', 'Taking away', 'Counting on'], levels: 4),
-  GameInfo('wordpop', 'Word Pop', '💬', minMonths: 48, skills: ['Early reading', 'Reading at a glance'], levels: 4),
-  GameInfo('rocket', 'Rocket Countdown', '🚀', minMonths: 42, skills: ['Counting back', 'Number order', 'Numerals to twenty'], levels: 4),
-  GameInfo('train', 'Alphabet Train', '🚂', minMonths: 42, skills: ['Alphabet order', 'Letter names', 'Small letters'], levels: 4),
-  GameInfo('fishing', 'Number Fishing', '🎣', minMonths: 42, skills: ['Reading numerals', 'Biggest number', 'Pairs that make five'], levels: 4),
-  GameInfo('lettercreature', 'Letter Creatures', '🐲', minMonths: 42, skills: ['First sounds', 'Letter sounds', 'Creativity'], levels: 3),
+  GameInfo('cookies', 'Cookie Count', '🍪', minMonths: 36, skills: ['Counting out', 'Making a set', 'Adding and taking away'], levels: 4, added: '2026-10-08'),
+  GameInfo('lettermonster', 'Letter Monster', '😋', minMonths: 36, skills: ['Letter names', 'Small letters', 'Letter sounds', 'First sounds'], levels: 4, added: '2026-10-08'),
+  GameInfo('busstop', 'Bus Stop', '🚍', minMonths: 42, skills: ['Adding', 'Taking away', 'Counting on'], levels: 4, added: '2026-10-08'),
+  GameInfo('wordpop', 'Word Pop', '💬', minMonths: 48, skills: ['Early reading', 'Reading at a glance'], levels: 4, added: '2026-10-08'),
+  GameInfo('rocket', 'Rocket Countdown', '🚀', minMonths: 42, skills: ['Counting back', 'Number order', 'Numerals to twenty'], levels: 4, added: '2026-10-08'),
+  GameInfo('train', 'Alphabet Train', '🚂', minMonths: 42, skills: ['Alphabet order', 'Letter names', 'Small letters'], levels: 4, added: '2026-10-08'),
+  GameInfo('fishing', 'Number Fishing', '🎣', minMonths: 42, skills: ['Reading numerals', 'Biggest number', 'Pairs that make five'], levels: 4, added: '2026-10-08'),
+  GameInfo('lettercreature', 'Letter Creatures', '🐲', minMonths: 42, skills: ['First sounds', 'Letter sounds', 'Creativity'], levels: 3, added: '2026-10-08'),
 ];
 
 GameInfo? gameById(String id) => kGames.where((g) => g.id == id).firstOrNull;
@@ -165,6 +170,32 @@ List<GameInfo> gamesFor(int months, {Set<String> off = const {}}) => [
       for (final g in kGames)
         if (g.minMonths > months && !off.contains(g.id)) g,
     ];
+
+/// How long a game counts as new after it's [GameInfo.added].
+const int kNewGameDays = 30;
+
+/// How many favorites lead a kid's launcher.
+const int kFavoriteGames = 6;
+
+/// The launcher's order for a kid (FR-TOY-01, owner request 2026-10-08):
+/// games added in the last [kNewGameDays] that they haven't [tried] yet,
+/// newest first, so new games are found; then their favorites, the games
+/// with the most [recentRounds] (three or more; rounds and play sessions of
+/// the last two weeks), most first, so what they love is at hand; then the
+/// rest of [games] in its own order (the ones that suit their age first).
+/// A new game drops into place once tried.
+List<GameInfo> launcherOrder(List<GameInfo> games, {required Set<String> tried, required Map<String, int> recentRounds, required String today}) {
+  final todayDate = DateTime.parse(today);
+  bool fresh(GameInfo g) => g.added != null && !tried.contains(g.id) && todayDate.difference(DateTime.parse(g.added!)).inDays < kNewGameDays;
+  // Ties keep [games]' order (List.sort isn't stable).
+  int place(GameInfo a, GameInfo b) => games.indexOf(a).compareTo(games.indexOf(b));
+  final news = [for (final g in games) if (fresh(g)) g]..sort((a, b) => b.added!.compareTo(a.added!) != 0 ? b.added!.compareTo(a.added!) : place(a, b));
+  final rest = [for (final g in games) if (!fresh(g)) g];
+  int rounds(GameInfo g) => recentRounds[g.id] ?? 0;
+  final favorites = [for (final g in rest) if (rounds(g) >= 3) g]..sort((a, b) => rounds(b) != rounds(a) ? rounds(b).compareTo(rounds(a)) : place(a, b));
+  final top = favorites.take(kFavoriteGames).toSet();
+  return [...news, ...top, for (final g in rest) if (!top.contains(g)) g];
+}
 
 /// Toybox time today (FR-TOY-05): minutes left of [budgetMinutes] after
 /// [playedMs]; null without a budget.

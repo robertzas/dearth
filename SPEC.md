@@ -1178,9 +1178,14 @@ her thinking* from age 2 to 5, adapt to her level, and respect family limits.
 - **FR-TOY-01 [M3]** **Launcher:** big illustrated square tiles (six across
   on a landscape wall, four on a portrait one, two on a phone), no reading
   required, every game on by default (owner, 2026-10-07: ages are starting
-  points), the ones that suit the child's stage first, with a "new!"
-  sparkle on games not yet opened. Grown-ups can switch any game off per
-  kid. A grown-up corner leads to settings.
+  points), with a "new!" sparkle on games not yet opened. Order (owner,
+  2026-10-08): games added to the Toybox in the last 30 days that the
+  child hasn't played a round of yet, newest first; then their favorites,
+  the (up to six) games with the most rounds or sessions in the last two
+  weeks, three at least, most first; then the rest, the ones that suit
+  the child's stage first. A new game drops into place once played.
+  Grown-ups can switch any game off per kid. A grown-up corner leads to
+  settings.
 - **FR-TOY-02 [M3]** **Launch set (M3).** The full catalog with age bands,
   skills and difficulty ladders is in Appendix B.
 
