@@ -11,7 +11,7 @@ final _log = Logger('blobs');
 
 /// Content-addressed blob store + libvips derivative pipeline (SPEC §14.4).
 class BlobStore {
-  BlobStore(this.db, this.dir) {
+  BlobStore(this.db, this.dir, {bool useVips = true}) : _vips = useVips ? null : false {
     Directory(p.join(dir, 'v')).createSync(recursive: true);
   }
 

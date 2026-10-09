@@ -7,8 +7,10 @@ import 'package:drift/drift.dart' show BooleanExpressionOperators;
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 
+import '../blobs.dart';
 import '../connections.dart';
 import '../integrations.dart';
+import '../jobs/basic_jobs.dart';
 import '../jobs/photos_job.dart';
 import '../storage.dart';
 import 'context.dart';
@@ -115,9 +117,54 @@ void mountAdminRoutes(Router r, HubContext ctx) {
     return jsonOk({'file': f.path, 'bytes': f.lengthSync()});
   });
 
+  // `?blobs=1` lists the blobs the household's rows point at, for moving it
+  // to another Hub (SPEC §7.2, §8.7): photos, faces, drawings, recordings.
   r.get('/api/admin/export', (Request req) async {
     await requireAdmin(req, ctx.auth);
-    return jsonOk(await ctx.kernel.snapshot(DeviceRole.personal));
+    final out = await ctx.kernel.snapshot(DeviceRole.personal);
+    if (req.url.queryParameters['blobs'] == '1') {
+      final shas = await referencedBlobs(ctx.kernel.db);
+      final rows = await (ctx.kernel.db.select(ctx.kernel.db.blobs)..where((t) => t.sha.isIn(shas))).get();
+      out['blobs'] = [for (final b in rows) {'sha': b.sha, 'mime': b.mime, 'bytes': b.bytes, 'origin': b.origin}];
+    }
+    return jsonOk(out);
+  });
+
+  // Moving a household in (SPEC §7.2, §8.7): its rows keep their clocks and
+  // merge field by field; then the integrations look again.
+  r.post('/api/admin/import', (Request req) async {
+    await requireAdmin(req, ctx.auth);
+    final body = await readJson(req, maxBytes: 256 << 20);
+    final ops = await ctx.kernel.importSnapshot(body);
+    for (final job in const ['weather', 'ics', 'photos', 'google-calendar', 'google-tasks']) {
+      ctx.scheduler.runNow(job, delay: const Duration(seconds: 3));
+    }
+    return jsonOk({'ok': true, 'ops': ops});
+  });
+
+  r.post('/api/admin/blobs/missing', (Request req) async {
+    await requireAdmin(req, ctx.auth);
+    final shas = [for (final s in (await readJson(req, maxBytes: 8 << 20))['shas'] as List? ?? const []) if (s is String) s];
+    final missing = <String>[];
+    for (final sha in shas) {
+      if (await ctx.blobs.entry(sha) == null || !ctx.blobs.fileFor(sha).existsSync()) missing.add(sha);
+    }
+    return jsonOk({'missing': missing});
+  });
+
+  // A blob from another Hub, as it was there (no re-encoding, same origin,
+  // so a photo source doesn't fetch it again).
+  r.put('/api/admin/blobs/<sha|[a-f0-9]{64}>', (Request req, String sha) async {
+    await requireAdmin(req, ctx.auth);
+    final bytes = <int>[];
+    await for (final chunk in req.read()) {
+      bytes.addAll(chunk);
+      if (bytes.length > BlobStore.maxUploadBytes * 4) throw HttpError(413, 'too_large');
+    }
+    final mime = req.headers['content-type']?.split(';').first.trim() ?? 'application/octet-stream';
+    final entry = await ctx.blobs.put(bytes, mime: mime, origin: req.url.queryParameters['origin']);
+    if (entry.sha != sha) throw HttpError(400, 'sha_mismatch', 'The bytes don’t match $sha');
+    return jsonOk({'sha': entry.sha});
   });
 
   r.post('/api/admin/demo-seed', (Request req) async {

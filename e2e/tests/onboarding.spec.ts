@@ -6,6 +6,8 @@ test.describe('Onboarding', () => {
     await page.goto('/?e2e=1&reset=1');
     await expect(tid(page, 'screen.onboarding')).toBeVisible({ timeout: 90_000 });
     await expect(tid(page, 'onboarding.hub')).toBeVisible();
+    // A browser can't run the built-in Hub (SPEC §7.2 Solo mode): no such option on the web.
+    await expect(tid(page, 'onboarding.solo')).toHaveCount(0);
     await tap(tid(page, 'onboarding.demo'));
     await expect(tid(page, 'screen.home')).toBeVisible({ timeout: 30_000 });
     await expect(tid(page, 'home.demo')).toBeVisible();

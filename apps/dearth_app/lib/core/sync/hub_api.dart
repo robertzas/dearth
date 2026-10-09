@@ -61,7 +61,7 @@ class PairResult {
 /// Thin HTTP client for the Hub API. All requests time out; network failures
 /// surface as [HubApiException] with code `network`.
 class HubApi {
-  HubApi(this.base, {this.token, http.Client? client}) : _client = client ?? http.Client();
+  HubApi(this.base, {this.token, this.adminPassword, http.Client? client}) : _client = client ?? http.Client();
 
   /// Normalizes user input ("10.0.1.20:8080", "dearth.example.com") to a base URL.
   static Uri? parseBase(String input) {
@@ -75,6 +75,10 @@ class HubApi {
 
   final Uri base;
   String? token;
+
+  /// Sent with every request when set: admin calls on a Hub where this
+  /// device isn't an admin (moving a household, SPEC §7.2).
+  final String? adminPassword;
   final http.Client _client;
   static const _timeout = Duration(seconds: 15);
 
@@ -85,13 +89,13 @@ class HubApi {
   Map<String, String> _headers({bool json = true, String? admin}) => {
         if (json) 'content-type': 'application/json',
         if (token != null) 'authorization': 'Bearer $token',
-        'x-dearth-admin': ?admin,
+        'x-dearth-admin': ?(admin ?? adminPassword),
       };
 
-  Future<Object?> _send(Future<http.Response> Function() call) async {
+  Future<Object?> _send(Future<http.Response> Function() call, {Duration timeout = _timeout}) async {
     final http.Response res;
     try {
-      res = await call().timeout(_timeout);
+      res = await call().timeout(timeout);
     } on TimeoutException {
       throw HubApiException(0, 'network', 'The Hub didn’t answer in time.');
     } on Object {
@@ -213,6 +217,53 @@ class HubApi {
       (await _send(() => _client.put(_u(path), headers: _headers(), body: jsonEncode(body)))) as Map<String, Object?>? ?? const {};
 
   Future<void> delete(String path) => _send(() => _client.delete(_u(path), headers: _headers(json: false)));
+
+  // ── Moving a household between Hubs (SPEC §7.2, §8.7; admin) ───────────
+
+  /// Every synced table plus the blobs the rows point at, decoded off the
+  /// UI isolate.
+  Future<Map<String, Object?>> exportHousehold() async {
+    final http.Response res;
+    try {
+      res = await _client.get(_u('/api/admin/export', {'blobs': '1'}), headers: _headers(json: false)).timeout(const Duration(minutes: 2));
+    } on Object {
+      throw HubApiException(0, 'network');
+    }
+    if (res.statusCode >= 400) {
+      final m = _tryJson(res.body);
+      throw HubApiException(res.statusCode, m is Map<String, Object?> ? m['error'] as String? ?? 'export_failed' : 'export_failed', m is Map<String, Object?> ? m['message'] as String? : null);
+    }
+    return compute(_decodeMap, res.body);
+  }
+
+  /// Writes an export into this Hub; its rows take over (returns the op count).
+  Future<int> importHousehold(Map<String, Object?> export) async {
+    final body = await compute(jsonEncode, {'schema': export['schema'], 'tables': export['tables']});
+    final res = await _send(() => _client.post(_u('/api/admin/import'), headers: _headers(), body: body), timeout: const Duration(minutes: 10));
+    return ((res as Map<String, Object?>?)?['ops'] as num?)?.toInt() ?? 0;
+  }
+
+  Future<List<String>> missingBlobs(List<String> shas) async {
+    final r = await _postJson('/api/admin/blobs/missing', {'shas': shas});
+    return [for (final s in r['missing'] as List? ?? const []) '$s'];
+  }
+
+  /// A blob exactly as stored (no variant).
+  Future<Uint8List> blobBytes(String sha) async {
+    final http.Response res;
+    try {
+      res = await _client.get(_u('/api/blobs/$sha')).timeout(const Duration(minutes: 2));
+    } on Object {
+      throw HubApiException(0, 'network');
+    }
+    if (res.statusCode >= 400) throw HubApiException(res.statusCode, 'blob_missing');
+    return res.bodyBytes;
+  }
+
+  Future<void> putBlob(String sha, Uint8List bytes, {required String mime, String? origin}) => _send(
+        () => _client.put(_u('/api/admin/blobs/$sha', origin == null ? null : {'origin': origin}), headers: {..._headers(json: false), 'content-type': mime}, body: bytes),
+        timeout: const Duration(minutes: 2),
+      );
 
   void close() => _client.close();
 }

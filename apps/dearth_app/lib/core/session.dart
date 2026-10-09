@@ -13,6 +13,10 @@ enum SessionMode {
   /// Paired with a Hub (SPEC §7.2 "Hub mode").
   hub,
 
+  /// On its own: paired with the Hub built into this app, which runs on
+  /// 127.0.0.1 while the app does (SPEC §7.2 "Solo mode").
+  solo,
+
   /// Local demo household; nothing leaves the device.
   demo,
 
@@ -43,7 +47,9 @@ class Session {
 
   static const demoDeviceId = 'local-device';
 
-  bool get isHub => mode == SessionMode.hub && hubUrl != null && token != null;
+  /// Paired with a Hub: a server, or the one built into this app.
+  bool get isHub => (mode == SessionMode.hub || mode == SessionMode.solo) && hubUrl != null && token != null;
+  bool get isSolo => mode == SessionMode.solo && isHub;
   bool get isDemo => mode == SessionMode.demo;
   bool get isToybox => mode == SessionMode.toybox;
   bool get isReady => isHub || isDemo || isToybox;
@@ -51,9 +57,9 @@ class Session {
   /// The `devices` row describing this device.
   String get effectiveDeviceId => deviceId ?? demoDeviceId;
 
-  Session copyWith({SessionMode? mode, String? role, bool? admin, String? deviceName}) => Session(
+  Session copyWith({SessionMode? mode, String? hubUrl, String? role, bool? admin, String? deviceName}) => Session(
         mode: mode ?? this.mode,
-        hubUrl: hubUrl,
+        hubUrl: hubUrl ?? this.hubUrl,
         deviceId: deviceId,
         token: token,
         role: role ?? this.role,
@@ -93,7 +99,7 @@ class SessionStore {
     final rawMode = await db.kvGet('session.mode');
     final mode = SessionMode.values.firstWhere((m) => m.name == rawMode, orElse: () => SessionMode.none);
     String? token;
-    if (mode == SessionMode.hub) {
+    if (mode == SessionMode.hub || mode == SessionMode.solo) {
       token = _useSecure ? await _readSecure() : await db.kvGet('session.token');
     }
     return Session(

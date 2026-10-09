@@ -1,5 +1,5 @@
-/// Dearth provider adapters (SPEC §13). Pure Dart; used by the Hub and by
-/// the app's Solo-mode integration runner.
+/// Dearth provider adapters (SPEC §13). Pure Dart; used by the Hub (also
+/// when it runs inside the app, in Solo mode).
 library;
 
 export 'src/calendar/event_draft.dart';

@@ -222,6 +222,38 @@ class HubKernel {
         return {'seq': seq, 'schema': kSchemaMajor, 'tables': tables};
       });
 
+  /// Writes another Hub's export ([snapshot]'s `tables`) into this one, when
+  /// a household moves between the Hub built into a device and a server
+  /// (SPEC §7.2, §8.7). The household that moves takes over: its rows are
+  /// stamped now, so where both Hubs have the same row (the household
+  /// itself, default lists, settings) the moving one wins. A fresh Hub's
+  /// own boot-time defaults are newer than the family's real settings, so
+  /// keeping the old clocks would let them win. Tombstones come along;
+  /// `devices` rows stay behind (each Hub registers its own). Returns how
+  /// many ops it wrote.
+  Future<int> importSnapshot(Map<String, Object?> snapshot) async {
+    final schema = (snapshot['schema'] as num?)?.toInt() ?? kSchemaMajor;
+    if (schema != kSchemaMajor) throw FormatException('schema $schema, this Hub speaks $kSchemaMajor');
+    final ops = <Op>[];
+    final tables = snapshot['tables'] as Map? ?? const {};
+    for (final MapEntry(key: table, value: rows) in tables.entries) {
+      if (table is! String || table == 'devices' || !store.isSynced(table) || rows is! List) continue;
+      final appendOnly = kSyncTables[table]?.appendOnly ?? false;
+      for (final raw in rows) {
+        if (raw is! Map || raw['id'] is! String) continue;
+        final fields = {
+          for (final MapEntry(:key, :value) in raw.entries)
+            if (key is String && store.isDataColumn(table, key)) key: value,
+        };
+        if (fields.isEmpty) continue;
+        ops.add(Op(id: newId(), table: table, rowId: raw['id']! as String, kind: appendOnly ? OpKind.insertOnly : OpKind.upsert, fields: fields, hlc: clock.tick().pack()));
+      }
+    }
+    await write(ops);
+    _log.info('Imported ${ops.length} rows from another Hub');
+    return ops.length;
+  }
+
   /// Drops op-log entries older than [keepDays] (devices further behind
   /// re-bootstrap from a snapshot).
   Future<int> compact({int keepDays = 30}) {

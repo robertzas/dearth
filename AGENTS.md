@@ -54,8 +54,8 @@ Read these first, in order:
 6. **Instants are epoch ms (UTC); local dates are `LocalDate`/`YYYY-MM-DD`.**
    Every "today" decision goes through `HouseholdTime`. No ad-hoc
    `DateTime.now()` in feature code.
-7. **Integrations run on the Hub** (or in Solo mode inside the app's
-   integration runner). Widgets never call providers or HTTP.
+7. **Integrations run on the Hub** (in Solo mode, the Hub built into the
+   app: `core/solo/`). Widgets never call providers or HTTP.
 8. **Performance is a requirement** (SPEC §12). Don't use `BackdropFilter`,
    `ShaderMask`, `Opacity` over large subtrees, or animated blur in feature
    code. Give independently animating regions a `RepaintBoundary`. Decode

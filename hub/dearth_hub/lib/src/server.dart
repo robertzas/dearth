@@ -42,14 +42,16 @@ class DearthHub {
   int get port => server?.port ?? 0;
   Uri get url => Uri.parse('http://127.0.0.1:$port');
 
-  static Future<DearthHub> start(HubConfig config, {bool inMemory = false, bool listen = true, Fetcher? fetcher, bool seedDemo = false}) async {
+  /// [timezone] names the household's zone on first start (the Hub built
+  /// into the app passes the device's; a server reads `TZ`).
+  static Future<DearthHub> start(HubConfig config, {bool inMemory = false, bool listen = true, Fetcher? fetcher, bool seedDemo = false, String? timezone}) async {
     final db = openHubDatabase(path: config.dbPath, inMemory: inMemory);
     final vault = SecretVault(db, config.secretKey);
     final kernel = HubKernel(db);
     final auth = HubAuth(kernel, config, vault);
     final f = fetcher ?? Fetcher(userAgent: 'Dearth Hub/$hubVersion (${config.contact})');
 
-    await _bootstrap(kernel, seedDemo: seedDemo);
+    await _bootstrap(kernel, seedDemo: seedDemo, timezone: timezone);
     final generated = await auth.ensureAdminPassword();
     if (generated != null) {
       _log.warning('══════════════════════════════════════════════════════════');
@@ -60,7 +62,7 @@ class DearthHub {
 
     final jobs = JobStore(db);
     final scheduler = Scheduler(jobs);
-    final blobs = BlobStore(db, config.blobDir);
+    final blobs = BlobStore(db, config.blobDir, useVips: config.useVips);
     final integrations = Integrations(kernel: kernel, vault: vault, config: config, fetcher: f, jobs: jobs);
     final google = GoogleCalendarJob(integrations, jobs, onTrigger: () => scheduler.runNow('google-calendar', delay: const Duration(seconds: 2)));
     scheduler
@@ -123,10 +125,10 @@ class DearthHub {
   }
 
   /// First start: household skeleton (and optional demo data).
-  static Future<void> _bootstrap(HubKernel kernel, {required bool seedDemo}) async {
+  static Future<void> _bootstrap(HubKernel kernel, {required bool seedDemo, String? timezone}) async {
     final existing = await kernel.db.select(kernel.db.households).get();
     if (existing.isEmpty) {
-      final zone = Platform.environment['TZ'] ?? Platform.environment['DEARTH_TIMEZONE'] ?? 'UTC';
+      final zone = timezone ?? Platform.environment['TZ'] ?? Platform.environment['DEARTH_TIMEZONE'] ?? 'UTC';
       await kernel.write(householdDefaultOps(kernel.mutator, timezone: locationOrUtc(zone).name));
       _log.info('Bootstrapped a new household (timezone ${locationOrUtc(zone).name})');
     }

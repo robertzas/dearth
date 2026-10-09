@@ -6,15 +6,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../app/router.dart';
 import '../../core/env.dart';
 import '../../core/providers.dart';
+import '../../core/solo/built_in_hub.dart';
 import '../../core/sync/hub_api.dart';
 import '../photos/art_pack.dart';
 
-enum _Step { welcome, connect, pairing, toybox }
+enum _Step { welcome, connect, pairing, toybox, solo }
 
-/// First run (SPEC FR-SET-01): connect to a Hub (pair), explore the demo,
-/// or set the device up as just a kid's Toybox (SPEC §7.2 "Toybox only").
+/// First run (SPEC FR-SET-01): connect to a Hub (pair), run on this device
+/// alone with the Hub built into the app (SPEC §7.2 "Solo mode"), explore
+/// the demo, or set the device up as just a kid's Toybox (§7.2 "Toybox
+/// only").
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -31,6 +35,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _kid = TextEditingController();
   final _grownUp = TextEditingController();
   final _pin = TextEditingController();
+  final _family = TextEditingController();
   int? _age;
   String _role = DeviceRole.kitchen;
   bool _busy = false;
@@ -68,6 +73,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     _kid.dispose();
     _grownUp.dispose();
     _pin.dispose();
+    _family.dispose();
     _api?.close();
     super.dispose();
   }
@@ -107,6 +113,37 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     if (problem != null) return;
     setState(() => _busy = true);
     await ref.read(sessionProvider.notifier).startToybox(kid: kid, age: _age!, pin: pin, grownUp: _grownUp.text);
+  }
+
+  Future<void> _startSolo() async {
+    final family = _family.text.trim();
+    final grownUp = _grownUp.text.trim();
+    final pin = _pin.text.trim();
+    final problem = family.isEmpty
+        ? 'Name your household: it shows at the top of the screen.'
+        : grownUp.isEmpty
+            ? 'Enter your name: you are the first grown-up.'
+            : !RegExp(r'^\d{4}$').hasMatch(pin)
+                ? 'Choose a grown-up PIN of 4 digits: settings and approvals ask for it.'
+                : null;
+    setState(() => _error = problem);
+    if (problem != null) return;
+    setState(() => _busy = true);
+    final name = _name.text.trim().isEmpty ? 'This display' : _name.text.trim();
+    try {
+      await ref.read(sessionProvider.notifier).startSolo(family: family, grownUp: grownUp, pin: pin, role: _role, deviceName: name);
+    } on Object catch (e) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = 'Dearth couldn’t start on this device: $e';
+        });
+      }
+      return;
+    }
+    // The forecast and sunrise need a place: that's the first thing to set.
+    ref.read(routerProvider).go('/settings/household');
+    ref.read(toastProvider).show('Now add where you live, for the weather', emoji: '📍');
   }
 
   Future<void> _connect() async {
@@ -217,6 +254,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           _Step.connect => _connectForm(t),
           _Step.pairing => _pairing(t),
           _Step.toybox => _toyboxForm(t),
+          _Step.solo => _soloForm(t),
         },
       ),
     );
@@ -267,6 +305,21 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             subtitle: _originIsHub ? Uri.parse(_hub.text).authority : 'Sync with the Dearth Hub running at home',
             onTap: () => setState(() => _step = _Step.connect),
           ),
+          if (BuiltInHub.supported) ...[
+            SizedBox(height: t.space.md),
+            _OptionCard(
+              id: 'onboarding.solo',
+              emoji: '📟',
+              title: 'Run it on this device',
+              subtitle: 'No Hub needed: this device keeps the family’s data. You can move to a Hub later.',
+              onTap: _busy
+                  ? null
+                  : () => setState(() {
+                        _step = _Step.solo;
+                        _error = null;
+                      }),
+            ),
+          ],
           SizedBox(height: t.space.md),
           _OptionCard(
             id: 'onboarding.demo',
@@ -374,6 +427,58 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           if (_error != null) ...[SizedBox(height: t.space.md), DBanner(title: _error!, tone: DBannerTone.danger, id: 'onboarding.error')],
           SizedBox(height: t.space.lg),
           DButton(label: 'Open the Toybox', id: 'onboarding.toybox.start', size: DButtonSize.lg, expand: true, busy: _busy, onPressed: _busy ? null : _startToybox),
+        ],
+      );
+
+  Widget _soloForm(DTheme t) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              DIconButton(
+                icon: Icons.arrow_back_rounded,
+                label: 'Back',
+                tone: DButtonTone.ghost,
+                onPressed: _busy
+                    ? null
+                    : () => setState(() {
+                          _step = _Step.welcome;
+                          _error = null;
+                        }),
+              ),
+              SizedBox(width: t.space.sm),
+              Expanded(child: Text('Run it on this device', style: t.text.h2)),
+            ],
+          ),
+          SizedBox(height: t.space.xs),
+          Text(
+            'Dearth runs its own Hub inside the app: calendars, weather, photos and recipes all work, and the family’s data lives on this device. '
+            'Other screens can’t join it; when you set up a Hub, Settings moves everything there.',
+            style: t.text.body.copyWith(color: t.colors.inkSecondary),
+          ),
+          SizedBox(height: t.space.lg),
+          DTextField(id: 'onboarding.solo.family', controller: _family, label: 'Household name', hint: 'The Parkers'),
+          SizedBox(height: t.space.md),
+          DTextField(id: 'onboarding.solo.grownup', controller: _grownUp, label: 'Your name', hint: 'Sam'),
+          SizedBox(height: t.space.md),
+          DTextField(id: 'onboarding.solo.pin', controller: _pin, label: 'Grown-up PIN', hint: '4 digits, for settings and approvals', keyboardType: TextInputType.number, obscure: true),
+          SizedBox(height: t.space.md),
+          DTextField(id: 'onboarding.solo.name', controller: _name, label: 'Name this device'),
+          SizedBox(height: t.space.md),
+          Text('THIS SCREEN IS A…', style: t.text.overline),
+          SizedBox(height: t.space.xs),
+          Wrap(
+            spacing: t.space.xs,
+            runSpacing: t.space.xs,
+            children: [
+              DChip(id: 'onboarding.solo.role.kitchen', label: 'Wall display', emoji: '🖼️', selected: _role == DeviceRole.kitchen, onTap: () => setState(() => _role = DeviceRole.kitchen)),
+              DChip(id: 'onboarding.solo.role.personal', label: 'Phone or laptop', emoji: '📱', selected: _role == DeviceRole.personal, onTap: () => setState(() => _role = DeviceRole.personal)),
+            ],
+          ),
+          if (_error != null) ...[SizedBox(height: t.space.md), DBanner(title: _error!, tone: DBannerTone.danger, id: 'onboarding.error')],
+          SizedBox(height: t.space.lg),
+          DButton(label: 'Start', id: 'onboarding.solo.start', size: DButtonSize.lg, expand: true, busy: _busy, onPressed: _busy ? null : _startSolo),
         ],
       );
 

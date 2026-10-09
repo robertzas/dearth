@@ -11,6 +11,8 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import '../shared/face_photo.dart';
 import 'env.dart';
 import 'session.dart';
+import 'solo/built_in_hub.dart';
+import 'solo/household_move.dart';
 import 'sync/hub_api.dart';
 import 'sync/sync_client.dart';
 
@@ -95,6 +97,103 @@ class SessionController extends Notifier<Session> {
     await set(const Session(mode: SessionMode.toybox, role: DeviceRole.kidRoom, admin: true, deviceName: 'This tablet'));
   }
 
+  /// Runs this device on its own (SPEC §7.2 "Solo mode"): a fresh Hub built
+  /// into the app, holding a household named [family] with one grown-up
+  /// ([grownUp], [pin]), and this device paired to it as an admin.
+  Future<void> startSolo({required String family, required String grownUp, required String pin, required String role, required String deviceName}) async {
+    await ref.read(sessionStoreProvider).wipe();
+    await BuiltInHub.erase();
+    final hub = await BuiltInHub.start(
+      timezone: await deviceTimeZone(),
+      enroll: (name: deviceName, role: role),
+      setup: [
+        ('households', Ids.household, {'name': family}),
+        ('profiles', newId(), {'name': grownUp, 'role': ProfileRole.adult, 'color': 3, 'emoji': '🧑', 'pin_hash': hashPin(pin), 'sort_key': 'a'}),
+      ],
+    );
+    await _adopt(hub, await _claim(hub, deviceName), deviceName);
+  }
+
+  /// Moves this device from its Hub to one built into the app, bringing the
+  /// family's data along (SPEC §7.2). Copying everything out needs admin
+  /// rights there: this device's, or the Hub's admin [password]. The Hub
+  /// keeps its copy; this device simply stops syncing with it.
+  Future<void> runOnThisDevice({String? password, MoveProgress? onProgress}) async {
+    final s = state;
+    if (s.mode != SessionMode.hub || !s.isHub) throw StateError('Not paired with a Hub');
+    final from = HubApi(Uri.parse(s.hubUrl!), token: s.token, adminPassword: s.admin ? null : password);
+    final name = s.deviceName ?? 'This display';
+    try {
+      // Admin rights first, before anything is started or copied.
+      await from.missingBlobs(const []);
+      final household = await (ref.read(dbProvider).select(ref.read(dbProvider).households)..where((h) => h.id.equals(Ids.household))).getSingleOrNull();
+      onProgress?.call('Starting the Hub on this device…', null);
+      await BuiltInHub.erase();
+      final hub = await BuiltInHub.start(timezone: household?.timezone ?? await deviceTimeZone(), enroll: (name: name, role: s.role));
+      final paired = await _claim(hub, name);
+      final to = HubApi(hub.url, token: paired.token);
+      try {
+        await moveHousehold(from, to, onProgress: onProgress);
+      } on Object {
+        await BuiltInHub.erase();
+        rethrow;
+      } finally {
+        to.close();
+      }
+      await ref.read(sessionStoreProvider).wipe();
+      await _adopt(hub, paired, name);
+    } finally {
+      from.close();
+    }
+  }
+
+  /// Moves a household running on its own to the Hub at [target] (its admin
+  /// [password]), then pairs this device there and removes the built-in Hub
+  /// (SPEC §7.2). The family's data, photos and pictures come along; where
+  /// the Hub already has the same rows, this household's win.
+  Future<void> moveToHub(Uri target, String password, {MoveProgress? onProgress}) async {
+    final s = state;
+    final from = ref.read(hubApiProvider);
+    if (!s.isSolo || from == null) throw StateError('Not running on its own');
+    final to = HubApi(target, adminPassword: password);
+    try {
+      await to.health();
+      // A wrong password stops here, before anything is copied.
+      await to.missingBlobs(const []);
+      await moveHousehold(from, to, onProgress: onProgress);
+      onProgress?.call('Connecting this device…', null);
+      final ticket = await to.startPairing(name: s.deviceName ?? 'Display', platform: AppEnv.platformName, role: s.role);
+      await to.approveWithPassword(password, ticket.code, role: s.role, name: s.deviceName);
+      final r = await to.pairingStatus(ticket);
+      if (!r.approved) throw HubApiException(0, 'pairing_failed', 'The Hub didn’t pair this device. Try again.');
+      await pairedWith(target, r, name: s.deviceName);
+      await BuiltInHub.erase();
+    } finally {
+      to.close();
+    }
+  }
+
+  Future<PairResult> _claim(BuiltInHub hub, String name) async {
+    final api = HubApi(hub.url);
+    try {
+      final r = await api.claim(hub.enrollCode!, platform: AppEnv.platformName, name: name);
+      if (!r.approved) throw StateError('The built-in Hub didn’t pair this device (${r.status})');
+      return r;
+    } finally {
+      api.close();
+    }
+  }
+
+  Future<void> _adopt(BuiltInHub hub, PairResult r, String name) => set(Session(
+        mode: SessionMode.solo,
+        hubUrl: hub.url.toString(),
+        deviceId: r.deviceId,
+        token: r.token,
+        role: r.role ?? DeviceRole.kitchen,
+        admin: true,
+        deviceName: name,
+      ));
+
   /// Completes pairing with a Hub (SPEC §9.2). Local data is replaced by the
   /// Hub snapshot on first sync.
   Future<void> pairedWith(Uri hub, PairResult r, {String? name}) async {
@@ -110,8 +209,10 @@ class SessionController extends Notifier<Session> {
     ));
   }
 
-  /// Forgets the Hub or demo data and returns to onboarding.
+  /// Forgets the Hub or demo data and returns to onboarding. On its own,
+  /// that deletes the household: the built-in Hub held the only copy.
   Future<void> reset() async {
+    if (state.isSolo) await BuiltInHub.erase();
     await ref.read(sessionStoreProvider).wipe();
     await set(const Session());
   }
@@ -133,9 +234,35 @@ Future<String> deviceTimeZone() async {
 
 // ──────────────────────────────── Hub & sync ────────────────────────────────
 
+/// The Hub built into this app while the device runs on its own (SPEC §7.2
+/// "Solo mode"): started with the app on the port it had last time (when
+/// free), stopped when the device leaves the mode, started again if it
+/// ever falls over.
+final builtInHubProvider = FutureProvider<BuiltInHub?>((ref) async {
+  final solo = ref.watch(sessionProvider.select((s) => s.isSolo));
+  if (!solo || !BuiltInHub.supported) return null;
+  final saved = Uri.parse(ref.read(sessionProvider).hubUrl!);
+  final running = BuiltInHub.current;
+  final hub = running != null && running.url == saved ? running : await BuiltInHub.start(port: saved.port, timezone: await deviceTimeZone());
+  var disposed = false;
+  ref.onDispose(() {
+    disposed = true;
+    unawaited(hub.stop());
+  });
+  unawaited(hub.exited.then((_) {
+    if (!disposed) Timer(const Duration(seconds: 2), ref.invalidateSelf);
+  }));
+  if (hub.url != saved) {
+    await ref.read(sessionProvider.notifier).set(ref.read(sessionProvider).copyWith(hubUrl: hub.url.toString()));
+  }
+  return hub;
+});
+
 final hubApiProvider = Provider<HubApi?>((ref) {
   final s = ref.watch(sessionProvider);
   if (!s.isHub) return null;
+  // On its own, the API is there once the built-in Hub has started.
+  if (s.isSolo && ref.watch(builtInHubProvider).value == null) return null;
   final api = HubApi(Uri.parse(s.hubUrl!), token: s.token);
   ref.onDispose(api.close);
   return api;
@@ -200,7 +327,7 @@ final actorProvider = Provider<String?>((ref) => null);
 
 final mutatorProvider = Provider<Mutator>((ref) {
   final db = ref.watch(dbProvider);
-  final hub = ref.watch(sessionProvider.select((s) => s.mode == SessionMode.hub));
+  final hub = ref.watch(sessionProvider.select((s) => s.isHub));
   return Mutator(
     store: ref.watch(storeProvider),
     clock: ref.watch(hlcProvider),

@@ -22,6 +22,7 @@ class HubConfig {
     this.autoApprove = false,
     this.contact = 'dearth-hub',
     this.jobsEnabled = true,
+    this.useVips = true,
   });
 
   /// Reads `DEARTH_*` variables. A missing secret key is generated once and
@@ -106,6 +107,11 @@ class HubConfig {
   final bool autoApprove;
   final String contact;
   final bool jobsEnabled;
+
+  /// Resize and blur images with libvips when it is installed. The Hub
+  /// built into the app (SPEC §7.2 Solo mode) turns this off: phones and
+  /// frames have no `vips`, and iOS can't start processes at all.
+  final bool useVips;
 
   String get blobDir => p.join(dataDir, 'blobs');
   String get backupDir => p.join(dataDir, 'backups');

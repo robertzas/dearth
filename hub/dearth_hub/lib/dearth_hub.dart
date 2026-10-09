@@ -6,6 +6,7 @@ export 'src/blobs.dart';
 export 'src/config.dart';
 export 'src/connections.dart';
 export 'src/integrations.dart';
+export 'src/jobs/basic_jobs.dart' show blobShaOf, referencedBlobs;
 export 'src/kernel.dart';
 export 'src/server.dart';
 export 'src/storage.dart';

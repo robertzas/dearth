@@ -403,6 +403,64 @@ void main() {
     expect(await items(family), hasLength(155), reason: 'the other album is untouched');
   });
 
+  test('§7.2 moving a household: export with its blobs, import into another Hub, the moving household takes over', () async {
+    final token = await pairDevice('Kitchen', admin: true);
+    final dev = TestDevice(hub, token);
+    await dev.connect();
+    final avatar = utf8.encode('a face photo, uploaded');
+    final up = await http.post(u('/api/blobs'), headers: {'authorization': 'Bearer $token', 'content-type': 'image/jpeg'}, body: avatar);
+    final sha = (jsonDecode(up.body) as Map<String, Object?>)['sha']! as String;
+    await dev.push([
+      dev.op('profiles', 'ava', {'name': 'Ava', 'role': 'child', 'avatar_blob': jsonEncode({'sha': sha, 'aspect': 1, 'crop': [0, 0, 1]})}),
+      dev.op('list_items', 'milk', {'list_id': Ids.shoppingList, 'text': 'Milk'}),
+      dev.op('list_items', 'gone', {'list_id': Ids.shoppingList, 'text': 'Gone'}),
+      dev.op('ledger_entries', 'l1', {'profile_id': 'ava', 'currency': 'star', 'delta': 2, 'reason': 'chore'}, kind: OpKind.insertOnly),
+    ]);
+    await dev.push([dev.op('list_items', 'gone', const {}, kind: OpKind.delete)]);
+    await dev.close();
+    // A JSON reference keeps its blob through the clean-up.
+    expect(await referencedBlobs(hub.db), contains(sha));
+
+    final dir2 = await Directory.systemTemp.createTemp('dearth-hub-test2');
+    final other = await DearthHub.start(
+      HubConfig(dataDir: dir2.path, secretKey: 'm' * 32, port: 0, host: '127.0.0.1', fakeProviders: true, adminPassword: 'test-admin', jobsEnabled: false, useVips: false),
+      inMemory: true,
+      timezone: 'Europe/Paris',
+    );
+    addTearDown(() async {
+      await other.stop();
+      await dir2.delete(recursive: true);
+    });
+    Uri o(String path) => Uri.parse('http://127.0.0.1:${other.port}$path');
+    expect((await other.db.select(other.db.households).getSingle()).timezone, 'Europe/Paris', reason: 'the built-in Hub passes the device zone');
+    await hub.context.kernel.upsert('households', Ids.household, {'name': 'The Moving Family'});
+    await other.context.kernel.upsert('list_items', 'milk', {'list_id': Ids.shoppingList, 'text': 'Oat milk'});
+
+    // Exported after the new Hub booted: its defaults are newer, and must still lose.
+    final export = jsonDecode((await http.get(u('/api/admin/export?blobs=1'), headers: _admin)).body) as Map<String, Object?>;
+    expect([for (final b in export['blobs']! as List) (b as Map)['sha']], [sha]);
+    final missing = await http.post(o('/api/admin/blobs/missing'), headers: _admin, body: jsonEncode({'shas': [sha]}));
+    expect((jsonDecode(missing.body) as Map)['missing'], [sha]);
+    final put = await http.put(o('/api/admin/blobs/$sha?origin=upload'), headers: {..._admin, 'content-type': 'image/jpeg'}, body: avatar);
+    expect(put.statusCode, 200, reason: put.body);
+    final wrong = await http.put(o('/api/admin/blobs/${'0' * 64}'), headers: {..._admin, 'content-type': 'image/jpeg'}, body: avatar);
+    expect(wrong.statusCode, 400, reason: 'the bytes must match the sha');
+
+    final imported = await http.post(o('/api/admin/import'), headers: _admin, body: jsonEncode(export));
+    expect(imported.statusCode, 200, reason: imported.body);
+    final ava = await (other.db.select(other.db.profiles)..where((p) => p.id.equals('ava'))).getSingle();
+    expect(ava.name, 'Ava');
+    expect(blobShaOf(ava.avatarBlob), sha);
+    final household = await other.db.select(other.db.households).getSingle();
+    expect(household.name, 'The Moving Family');
+    expect(household.timezone, isNot('Europe/Paris'), reason: 'the moving household’s settings win over the new Hub’s defaults');
+    expect((await other.context.kernel.store.readRow('list_items', 'milk'))?['text'], 'Milk');
+    expect((await other.context.kernel.store.readRow('list_items', 'gone'))?['deleted'], 1, reason: 'tombstones come along');
+    expect(await other.context.kernel.store.readRow('ledger_entries', 'l1'), isNotNull);
+    expect(await other.db.select(other.db.devices).get(), isEmpty, reason: 'each Hub registers its own devices');
+    expect((await http.get(o('/api/blobs/$sha'))).bodyBytes, avatar);
+  });
+
   test('demo seed endpoint builds a full household', () async {
     await postJson('/api/admin/demo-seed', const <String, Object?>{}, headers: _admin);
     final profiles = await hub.db.select(hub.db.profiles).get();

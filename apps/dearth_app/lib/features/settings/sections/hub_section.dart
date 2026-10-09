@@ -7,8 +7,10 @@ import 'package:material_ui/material_ui.dart';
 import '../../../app/grown_up.dart';
 import '../../../app/shell.dart' show syncLabel;
 import '../../../core/providers.dart';
+import '../../../core/solo/built_in_hub.dart';
 import '../../../core/sync/hub_api.dart';
 import '../settings_screen.dart';
+import 'hub_move.dart';
 
 /// Hub connection, pairing approvals and devices (SPEC §9.2, FR-ADM-01).
 class HubSection extends ConsumerStatefulWidget {
@@ -88,11 +90,22 @@ class _HubSectionState extends ConsumerState<HubSection> {
     final demo = session.isDemo;
     final (title, message, label) = session.isToybox
         ? ('Leave Toybox mode?', 'The Toybox’s levels and played games are removed from this device. You can then connect a Hub or start again.', 'Leave Toybox mode')
-        : demo
+        : session.isSolo
+            ? (
+                'Delete this household?',
+                'This device holds the family’s only copy: people, calendars, lists, chores, stars and photos are deleted for good. To keep them, move to a Hub instead.',
+                'Delete everything',
+              )
+            : demo
             ? ('Leave the demo?', 'The demo family is removed from this device.', 'Leave demo')
             : ('Disconnect this display?', 'This device forgets the Hub and its local copy. The family’s data stays on the Hub.', 'Disconnect');
     final ok = await confirmDialog(context, title: title, message: message, confirmLabel: label, danger: !demo);
     if (ok) await ref.read(sessionProvider.notifier).reset();
+  }
+
+  Future<void> _switch(Future<void> Function(BuildContext) sheet) async {
+    if (!await ensureGrownUp(context, ref, reason: 'Moving the household needs a grown-up')) return;
+    if (mounted) await sheet(context);
   }
 
   @override
@@ -116,7 +129,22 @@ class _HubSectionState extends ConsumerState<HubSection> {
               const DListRow(title: 'Demo mode', subtitle: 'A sample family that lives only on this device', leading: DEmoji('🧪', size: 30))
             else if (session.isToybox)
               const DListRow(id: 'hub.toybox', title: 'Toybox only', subtitle: 'Just the games, for one child, on this device. Nothing leaves it.', leading: DEmoji('🧸', size: 30))
-            else ...[
+            else if (session.isSolo) ...[
+              DListRow(
+                id: 'hub.solo',
+                title: 'On its own',
+                subtitle: 'Its own Hub, inside the app: the family’s data lives on this device${sync == null || sync.isHealthy ? '' : ' · ${syncLabel(sync, t.colors).$1}'}',
+                leading: const DEmoji('📟', size: 30),
+              ),
+              if (hub != null) DListRow(title: 'Built-in Hub', subtitle: '${hub['version']} · ${hub['seq']} changes · ${_size(hub['dbBytes'])}'),
+              DListRow(
+                id: 'hub.move',
+                title: 'Move to a Hub',
+                subtitle: 'Set up a Hub at home, then bring everything here over to it',
+                leading: Icon(Icons.drive_file_move_rounded, color: t.colors.accent),
+                onTap: () => _switch(showMoveToHubSheet),
+              ),
+            ] else ...[
               DListRow(
                 id: 'hub.status',
                 title: session.hubUrl ?? 'Hub',
@@ -125,16 +153,31 @@ class _HubSectionState extends ConsumerState<HubSection> {
               ),
               DListRow(title: 'This device', subtitle: '${session.deviceName ?? 'Display'} · ${session.role}${session.admin ? ' · admin' : ''}'),
               if (hub != null) DListRow(title: 'Hub version', subtitle: '${hub['version']} · ${hub['seq']} changes · ${hub['fakeProviders'] == true ? 'demo providers' : 'live providers'}'),
+              if (BuiltInHub.supported)
+                DListRow(
+                  id: 'hub.solo.start',
+                  title: 'Run this device on its own',
+                  subtitle: 'Take a copy of the family’s data and stop syncing with this Hub',
+                  leading: Icon(Icons.offline_bolt_rounded, color: t.colors.accent),
+                  onTap: () => _switch(showRunOnItsOwnSheet),
+                ),
             ],
             DListRow(
               id: 'hub.leave',
-              title: session.isToybox ? 'Leave Toybox mode' : (session.isDemo ? 'Leave demo and connect a Hub' : 'Disconnect this display'),
+              title: session.isToybox
+                  ? 'Leave Toybox mode'
+                  : session.isDemo
+                      ? 'Leave demo and connect a Hub'
+                      : session.isSolo
+                          ? 'Delete this household'
+                          : 'Disconnect this display',
               leading: Icon(Icons.logout_rounded, color: t.colors.danger),
               onTap: _leave,
             ),
           ],
         ),
-        if (api != null && session.admin) ...[
+        // Nothing else can join the built-in Hub: it listens on this device only.
+        if (api != null && session.admin && !session.isSolo) ...[
           if (pairings.isNotEmpty)
             SettingsGroup(
               title: 'Waiting to join',
@@ -172,4 +215,9 @@ class _HubSectionState extends ConsumerState<HubSection> {
       ],
     );
   }
+}
+
+String _size(Object? bytes) {
+  final b = bytes is num ? bytes.toDouble() : 0.0;
+  return b >= 1 << 20 ? '${(b / (1 << 20)).toStringAsFixed(1)} MB' : '${(b / 1024).ceil()} KB';
 }

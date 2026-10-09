@@ -304,8 +304,8 @@ Settings → Device → Advanced.
 | Mode | Who it's for | How it works | Limits |
 |---|---|---|---|
 | **Hub mode** (recommended) | This household; homelabbers | Hub in Docker (`docker compose up`); any number of devices pair with it; remote access via HTTPS domain | Needs an always-on host |
-| **Solo mode** `[M5]` | One device, no server | The app runs integration workers in a background isolate against its own database | One device only. Google OAuth only on devices with a browser or Play Services (not the frame). Migrate to a Hub later via export/import. |
-| **Hub-on-device** `[M5]` ★ | Families without a server | The same Hub runtime (pure Dart) runs inside an always-on tablet; other devices pair to it | Weak devices pay the CPU cost; Google OAuth needs a phone-assisted flow |
+| **Solo mode** (owner request 2026-10-08) | One device, no server | "Run it on this device" at first run (native platforms; not the web, which a Hub serves): the household name, the first grown-up and a four-digit PIN. The **Hub itself runs inside the app**, in a background isolate listening on 127.0.0.1 only (the same code a server runs: sync, jobs, integrations, blobs, recipe search), and the app pairs with it as an admin like with any Hub, so every feature works as it does at home. The Hub's data lives in the app's support folder; it starts with the app, keeps its port across restarts when free, and restarts if it falls over. Settings → Hub & devices moves the household **to a Hub** (its address and admin password) or **from a Hub** to running on its own; both copy the family's data and the pictures it points at (§8.7) | One device: other screens can't join. Runs only while the app does. No libvips on devices: photos are kept and served full size (the app decodes them at display size). Integration keys and Google sign-ins don't move with the household. Leaving the mode without moving deletes the household |
+| **Hub-on-device** `[M5]` ★ | Families without a server | The same Hub runtime (pure Dart) runs inside an always-on tablet; other devices pair to it. Builds on Solo mode's built-in Hub: listen on the LAN instead of 127.0.0.1 | Weak devices pay the CPU cost; Google OAuth needs a phone-assisted flow |
 | **Toybox only** | A kid's tablet or phone, in the car or away from home (owner request 2026-10-08) | "Just the Toybox" at first run: the child's name and age, what they call the grown-up (for the name games), a four-digit grown-up PIN. The device holds a household of those two, shows only the Toybox (no navigation; every other route leads back to it) and a trimmed Settings (Toybox, People, This display, Toybox mode, About) behind the PIN. Nothing syncs and nothing calls the network; levels and played games stay on the device | One child per setup. No Hub data (no family faces for Who's That?, no forecast for Weather Dress-Up, which pretends). Leaving the mode clears the device before it connects to a Hub |
 | **Web dev mode** | Development | Flutter web build against a local Hub (`docker compose -f compose.dev.yml`) or a seeded in-memory Hub | Not for production displays |
 
@@ -369,7 +369,8 @@ Versions are as of 2026-10-02; pin exact versions in lockfiles.
 - **ADR-04 SQLite by default, Postgres optional.** Zero-admin for other
   families; the owner can point the Hub at existing Postgres
   (`DEARTH_DB_URL`).
-- **ADR-05 Integrations run only on the Hub** (Solo mode excepted). Tokens
+- **ADR-05 Integrations run only on the Hub** (in Solo mode, the Hub built
+  into the app). Tokens
   never land on wall devices. Quotas are shared. Webhooks need a
   server-reachable URL anyway.
 - **ADR-06 No Amazon credentials, ever.** Shared-album links only (L2).
@@ -395,7 +396,9 @@ Versions are as of 2026-10-02; pin exact versions in lockfiles.
 
 The device database is a **replica**, not the source of truth. A wiped
 device re-bootstraps from the Hub in seconds (§8.4.6). In Solo mode the
-device database *is* the source of truth and is backed up locally.
+Hub built into the app holds the source of truth in its own database (in
+the app's support folder, with the Hub's nightly backups); the device
+database stays a replica of it.
 
 ### 8.2 Entity overview
 
@@ -532,6 +535,16 @@ results. Recipe results are fetched on demand and persisted only when saved.
   pre-migration snapshot is taken on every schema upgrade.
 - One-click **export** (admin): household JSON (all tables) + blobs zip.
   **Import** restores into a fresh Hub, or promotes a Solo device to a Hub.
+- **Moving a household** between Hubs (Solo mode ↔ a server, §7.2): the
+  app reads `GET /api/admin/export?blobs=1` (every synced table and the
+  blobs its rows point at), copies the blobs the target lacks
+  (`POST /api/admin/blobs/missing`, `PUT /api/admin/blobs/<sha>`, origin
+  kept), then posts the tables to `POST /api/admin/import`. Imported rows
+  are stamped with the target's clock, so the moving household wins where
+  both have the same row (the household itself, default lists, settings):
+  a fresh Hub's boot-time defaults would otherwise be newer than the
+  family's real settings. Tombstones come along; `devices` rows don't
+  (each Hub registers its own). Integration secrets stay behind.
 - Restore drill documented in `docs/backup.md` and tested in CI.
 
 ---
@@ -1402,7 +1415,8 @@ the Hub)
 
 - **FR-SET-01 [M1]** Device first run: welcome, then **"Connect to your
   Hub"** (scan QR or enter URL, then pair, §9.2), **"Explore the demo"**,
-  **"Just the Toybox"** (§7.2 Toybox only) or **"Try it solo"** (M5).
+  **"Just the Toybox"** (§7.2 Toybox only) or **"Run it on this device"**
+  (§7.2 Solo mode, native platforms).
   Then role, orientation, screen size and viewing distance (with a live
   scale preview), then done.
 - **FR-SET-02 [M1]** Household setup wizard (web admin or companion):
@@ -2035,8 +2049,8 @@ Shared base behavior:
 - Structured health status shown in Admin.
 - **Recorded fixtures** so CI runs offline.
 
-No adapter is ever called from device UI code (Solo mode runs adapters in a
-background isolate).
+No adapter is ever called from device UI code (Solo mode runs the whole
+Hub, adapters included, in a background isolate).
 
 ### 13.2 Google (Calendar; later Photos Picker, Tasks)
 
@@ -2749,7 +2763,7 @@ kid-room music (lullabies, sleep sounds).
 
 ### M5: Extensions (v1.2+)
 AI provider (if approved) · CalDAV/iCloud + Microsoft 365 · share links ·
-Solo mode + Hub-on-device · Dearth as Device Owner launcher + silent OTA ·
+Hub-on-device (Solo mode's built-in Hub, open to the LAN) · Dearth as Device Owner launcher + silent OTA ·
 passkeys · i18n · ntfy · Mealie/Tandoor · voice via HA Assist.
 
 ---

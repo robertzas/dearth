@@ -196,6 +196,22 @@ network at all. The PIN opens the Toybox settings (games, time limits,
 levels), and **Settings → Hub & devices → Leave Toybox mode** clears it
 for a Hub later. It's the same app and APK as above.
 
+### On its own (no Hub)
+
+**Run it on this device** on the welcome screen (Android, iOS, desktop;
+not the web) asks for the household's name, your name and a four-digit
+grown-up PIN. The app then runs the Hub itself, inside the app and
+reachable only from that device, so calendars, weather, photo albums and
+recipe search all work as they do with a Hub at home. Add where you live
+in **Settings → Household** for the forecast.
+
+When you set up a Hub later, **Settings → Hub & devices → Move to a Hub**
+copies everything there (people, calendars, lists, meals, chores, stars,
+photos and pictures) and switches the device over; it needs the Hub's
+address and admin password. A display paired with a Hub can go the other
+way with **Run this device on its own**, taking a copy. Integration keys
+and Google sign-ins don't move: connect them again afterwards.
+
 ### The Hub (Docker)
 
 ```bash

@@ -159,13 +159,25 @@ class MaintenanceJob implements HubJob {
   }
 }
 
-/// Every blob sha referenced by synced rows.
+/// The sha a row's blob column points at: a bare sha, or a JSON reference
+/// (`{"sha": …}`: uploads, face crops).
+String? blobShaOf(String? ref) {
+  if (ref == null || ref.isEmpty) return null;
+  if (RegExp(r'^[a-f0-9]{64}$').hasMatch(ref)) return ref;
+  final sha = decodeJsonMap(ref)['sha'];
+  return sha is String ? sha : null;
+}
+
+/// Every blob sha referenced by synced rows. JSON references count by their
+/// sha: compared raw, a face crop's photo looked unreferenced and the
+/// clean-up removed it a week later.
 Future<Set<String>> referencedBlobs(DearthDb db) async {
   final refs = <String>{};
   Future<void> col(String table, String column) async {
     final rows = await db.customSelect('SELECT "$column" AS v FROM "$table" WHERE "$column" IS NOT NULL').get();
     for (final r in rows) {
-      refs.add(r.read<String>('v'));
+      final sha = blobShaOf(r.read<String>('v'));
+      if (sha != null) refs.add(sha);
     }
   }
 
@@ -180,11 +192,11 @@ Future<Set<String>> referencedBlobs(DearthDb db) async {
   await col('music_tiles', 'art_blob');
   await col('routines', 'cover_blob');
   final files = await db.customSelect("SELECT ref FROM music_tiles WHERE source = 'file'").get();
-  refs.addAll(files.map((r) => r.read<String>('ref')));
+  refs.addAll(files.map((r) => blobShaOf(r.read<String>('ref'))).nonNulls);
   final routines = await db.select(db.routines).get();
   for (final r in routines) {
     for (final s in decodeSteps(r.steps)) {
-      if (s.voiceBlob != null) refs.add(s.voiceBlob!);
+      if (blobShaOf(s.voiceBlob) case final sha?) refs.add(sha);
     }
   }
   return refs;
