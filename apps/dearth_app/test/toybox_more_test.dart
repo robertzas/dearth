@@ -576,10 +576,10 @@ void main() {
       final sound = RecordingSound();
       final h = await openToyboxGame(tester, 'train', sound: sound, level: 2);
       final r = game(tester).debugRound;
-      await tester.pump(const Duration(milliseconds: 500));
       await tester.tap(byId('train.block.0'));
-      await tester.pump(const Duration(milliseconds: 100));
-      expect(sound.said.last, letterNameClip(r.choices[0]));
+      await tester.pump(const Duration(milliseconds: 1));
+      // The train may read a carriage in the same beat: the block's letter was said.
+      expect(sound.said, contains(letterNameClip(r.choices[0])));
       await untilAsked(tester);
       expect(sound.played.where((p) => p.$1 == Sfx.nope), isEmpty);
       await tester.pump(const Duration(seconds: 12));

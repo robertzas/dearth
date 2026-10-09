@@ -64,10 +64,11 @@ TrainRound _round(int level, Random rng) {
       final picks = ([for (var g = 1; g < n; g++) g]..shuffle(rng)).take(2).toList()..sort();
       gaps = picks;
   }
-  // Decoys: letters near the gap (the confusions that matter: one before,
-  // one after the train) that aren't on it.
+  // Decoys: the letters nearest the gap that aren't on the train (the
+  // confusions that matter: one before it, one after). At the ends of the
+  // alphabet they all come from one side, further off.
   final near = <String>[];
-  for (final d in [1, -1, 2, -2, 3, -3, 4, -4]) {
+  for (final d in [for (var k = 1; k < kAlphabet.length; k++) ...[k, -k]]) {
     for (final g in gaps) {
       final k = start + g + d;
       if (k < 0 || k >= kAlphabet.length) continue;
