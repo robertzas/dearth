@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../core/providers.dart';
+
 import 'sections/about_section.dart';
 import 'sections/calendars_section.dart';
 import 'sections/device_section.dart';
@@ -24,6 +26,10 @@ class SettingsSection {
   final IconData icon;
   final WidgetBuilder builder;
 }
+
+/// The sections a Toybox-only device shows (SPEC §7.2): there is nothing
+/// else on it to set up.
+const List<String> kToyboxOnlySettings = ['toybox', 'people', 'device', 'hub', 'about'];
 
 final List<SettingsSection> kSettingsSections = [
   SettingsSection('household', 'Household', 'Name, location, units, time', Icons.home_rounded, (_) => const HouseholdSection()),
@@ -47,14 +53,20 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = DTheme.of(context);
     final wide = !t.isPhone && MediaQuery.sizeOf(context).width >= 1000 * t.scale;
-    final current = kSettingsSections.where((s) => s.id == section).firstOrNull ?? (wide ? kSettingsSections.first : null);
+    final toyboxOnly = ref.watch(sessionProvider.select((s) => s.isToybox));
+    final sections = [for (final s in kSettingsSections) if (!toyboxOnly || kToyboxOnlySettings.contains(s.id)) s];
+    final current = sections.where((s) => s.id == section).firstOrNull ?? (wide ? sections.first : null);
 
     final list = ListView(
       padding: EdgeInsets.zero,
       children: [
-        const DPageHeader(title: 'Settings'),
+        DPageHeader(
+          title: 'Settings',
+          // No navigation bar on a Toybox-only device: the way back to the games.
+          leading: toyboxOnly ? DIconButton(icon: Icons.arrow_back_rounded, label: 'Back to the Toybox', id: 'settings.toybox', tone: DButtonTone.ghost, onPressed: () => context.go('/toybox')) : null,
+        ),
         SizedBox(height: t.space.md),
-        for (final s in kSettingsSections)
+        for (final s in sections)
           Padding(
             padding: EdgeInsets.only(bottom: t.space.xxs),
             child: DPressable(

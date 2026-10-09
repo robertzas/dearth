@@ -186,6 +186,16 @@ sample household on that device alone. Download a build from the
 | macOS | `dearth-…-macos.zip` (unsigned: right-click → **Open** the first time) |
 | Web | `dearth-…-web.zip`. Serve the folder with any static server, e.g. `python3 -m http.server`, and open `/?demo=1`. |
 
+### Just the Toybox (a kid's tablet, offline)
+
+The welcome screen also offers **Just the Toybox**: enter the child's
+name and age, what they call you, and a four-digit grown-up PIN, and the
+device becomes that child's Toybox and nothing else. There is no
+navigation and no Hub, nothing leaves the device, and it works with no
+network at all. The PIN opens the Toybox settings (games, time limits,
+levels), and **Settings → Hub & devices → Leave Toybox mode** clears it
+for a Hub later. It's the same app and APK as above.
+
 ### The Hub (Docker)
 
 ```bash

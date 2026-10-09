@@ -84,14 +84,14 @@ class _HubSectionState extends ConsumerState<HubSection> {
   Future<void> _leave() async {
     if (!await ensureGrownUp(context, ref, reason: 'Disconnecting needs a grown-up')) return;
     if (!mounted) return;
-    final demo = ref.read(sessionProvider).isDemo;
-    final ok = await confirmDialog(
-      context,
-      title: demo ? 'Leave the demo?' : 'Disconnect this display?',
-      message: demo ? 'The demo family is removed from this device.' : 'This device forgets the Hub and its local copy. The family’s data stays on the Hub.',
-      confirmLabel: demo ? 'Leave demo' : 'Disconnect',
-      danger: !demo,
-    );
+    final session = ref.read(sessionProvider);
+    final demo = session.isDemo;
+    final (title, message, label) = session.isToybox
+        ? ('Leave Toybox mode?', 'The Toybox’s levels and played games are removed from this device. You can then connect a Hub or start again.', 'Leave Toybox mode')
+        : demo
+            ? ('Leave the demo?', 'The demo family is removed from this device.', 'Leave demo')
+            : ('Disconnect this display?', 'This device forgets the Hub and its local copy. The family’s data stays on the Hub.', 'Disconnect');
+    final ok = await confirmDialog(context, title: title, message: message, confirmLabel: label, danger: !demo);
     if (ok) await ref.read(sessionProvider.notifier).reset();
   }
 
@@ -114,6 +114,8 @@ class _HubSectionState extends ConsumerState<HubSection> {
           children: [
             if (session.isDemo)
               const DListRow(title: 'Demo mode', subtitle: 'A sample family that lives only on this device', leading: DEmoji('🧪', size: 30))
+            else if (session.isToybox)
+              const DListRow(id: 'hub.toybox', title: 'Toybox only', subtitle: 'Just the games, for one child, on this device. Nothing leaves it.', leading: DEmoji('🧸', size: 30))
             else ...[
               DListRow(
                 id: 'hub.status',
@@ -126,7 +128,7 @@ class _HubSectionState extends ConsumerState<HubSection> {
             ],
             DListRow(
               id: 'hub.leave',
-              title: session.isDemo ? 'Leave demo and connect a Hub' : 'Disconnect this display',
+              title: session.isToybox ? 'Leave Toybox mode' : (session.isDemo ? 'Leave demo and connect a Hub' : 'Disconnect this display'),
               leading: Icon(Icons.logout_rounded, color: t.colors.danger),
               onTap: _leave,
             ),

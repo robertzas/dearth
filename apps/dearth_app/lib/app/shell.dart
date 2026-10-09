@@ -41,6 +41,10 @@ class AppShell extends ConsumerWidget {
         );
     final landscape = size.width > size.height;
 
+    // Toybox only (SPEC §7.2): no other destinations to go to.
+    if (ref.watch(sessionProvider.select((s) => s.isToybox))) {
+      return Scaffold(body: SafeArea(child: body(corner: kKioskCornerClearance)));
+    }
     if (t.displayClass == DisplayClass.phone) {
       return Scaffold(
         body: SafeArea(bottom: false, child: body()),

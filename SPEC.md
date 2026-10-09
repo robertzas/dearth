@@ -306,6 +306,7 @@ Settings → Device → Advanced.
 | **Hub mode** (recommended) | This household; homelabbers | Hub in Docker (`docker compose up`); any number of devices pair with it; remote access via HTTPS domain | Needs an always-on host |
 | **Solo mode** `[M5]` | One device, no server | The app runs integration workers in a background isolate against its own database | One device only. Google OAuth only on devices with a browser or Play Services (not the frame). Migrate to a Hub later via export/import. |
 | **Hub-on-device** `[M5]` ★ | Families without a server | The same Hub runtime (pure Dart) runs inside an always-on tablet; other devices pair to it | Weak devices pay the CPU cost; Google OAuth needs a phone-assisted flow |
+| **Toybox only** | A kid's tablet or phone, in the car or away from home (owner request 2026-10-08) | "Just the Toybox" at first run: the child's name and age, what they call the grown-up (for the name games), a four-digit grown-up PIN. The device holds a household of those two, shows only the Toybox (no navigation; every other route leads back to it) and a trimmed Settings (Toybox, People, This display, Toybox mode, About) behind the PIN. Nothing syncs and nothing calls the network; levels and played games stay on the device | One child per setup. No Hub data (no family faces for Who's That?, no forecast for Weather Dress-Up, which pretends). Leaving the mode clears the device before it connects to a Hub |
 | **Web dev mode** | Development | Flutter web build against a local Hub (`docker compose -f compose.dev.yml`) or a seeded in-memory Hub | Not for production displays |
 
 ### 7.3 Repository layout (Dart pub workspace)
@@ -1393,7 +1394,8 @@ the Hub)
 ### 10.15 Onboarding & settings (`FR-SET`)
 
 - **FR-SET-01 [M1]** Device first run: welcome, then **"Connect to your
-  Hub"** (scan QR or enter URL, then pair, §9.2) or **"Try it solo"** (M5).
+  Hub"** (scan QR or enter URL, then pair, §9.2), **"Explore the demo"**,
+  **"Just the Toybox"** (§7.2 Toybox only) or **"Try it solo"** (M5).
   Then role, orientation, screen size and viewing distance (with a live
   scale preview), then done.
 - **FR-SET-02 [M1]** Household setup wizard (web admin or companion):

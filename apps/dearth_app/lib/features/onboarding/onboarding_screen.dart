@@ -11,9 +11,10 @@ import '../../core/providers.dart';
 import '../../core/sync/hub_api.dart';
 import '../photos/art_pack.dart';
 
-enum _Step { welcome, connect, pairing }
+enum _Step { welcome, connect, pairing, toybox }
 
-/// First run (SPEC FR-SET-01): connect to a Hub (pair) or explore the demo.
+/// First run (SPEC FR-SET-01): connect to a Hub (pair), explore the demo,
+/// or set the device up as just a kid's Toybox (SPEC §7.2 "Toybox only").
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -27,6 +28,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _name = TextEditingController();
   final _password = TextEditingController();
   final _code = TextEditingController();
+  final _kid = TextEditingController();
+  final _grownUp = TextEditingController();
+  final _pin = TextEditingController();
+  int? _age;
   String _role = DeviceRole.kitchen;
   bool _busy = false;
   String? _error;
@@ -60,6 +65,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     _name.dispose();
     _password.dispose();
     _code.dispose();
+    _kid.dispose();
+    _grownUp.dispose();
+    _pin.dispose();
     _api?.close();
     super.dispose();
   }
@@ -82,6 +90,23 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   Future<void> _demo() async {
     setState(() => _busy = true);
     await ref.read(sessionProvider.notifier).startDemo(role: MediaQuery.sizeOf(context).shortestSide < 600 ? DeviceRole.personal : null);
+  }
+
+  Future<void> _startToybox() async {
+    final kid = _kid.text.trim();
+    final pin = _pin.text.trim();
+    final problem = kid.isEmpty
+        ? 'Enter the child’s name: the Toybox greets them by it, and the name games use it.'
+        : _age == null
+            ? 'Pick their age, so the games that suit them come first.'
+            // The PIN pad takes four digits.
+            : !RegExp(r'^\d{4}$').hasMatch(pin)
+                ? 'Choose a grown-up PIN of 4 digits: the Toybox settings ask for it.'
+                : null;
+    setState(() => _error = problem);
+    if (problem != null) return;
+    setState(() => _busy = true);
+    await ref.read(sessionProvider.notifier).startToybox(kid: kid, age: _age!, pin: pin, grownUp: _grownUp.text);
   }
 
   Future<void> _connect() async {
@@ -191,6 +216,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           _Step.welcome => _welcome(t),
           _Step.connect => _connectForm(t),
           _Step.pairing => _pairing(t),
+          _Step.toybox => _toyboxForm(t),
         },
       ),
     );
@@ -250,6 +276,19 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             busy: _busy,
             onTap: _busy ? null : _demo,
           ),
+          SizedBox(height: t.space.md),
+          _OptionCard(
+            id: 'onboarding.toybox',
+            emoji: '🧸',
+            title: 'Just the Toybox',
+            subtitle: 'Games for one child on this device. No Hub, no setup, works offline.',
+            onTap: _busy
+                ? null
+                : () => setState(() {
+                      _step = _Step.toybox;
+                      _error = null;
+                    }),
+          ),
         ],
       );
 
@@ -292,6 +331,49 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               DButton(label: 'Use code', tone: DButtonTone.tonal, id: 'onboarding.code.use', onPressed: _busy ? null : _claim),
             ],
           ),
+        ],
+      );
+
+  Widget _toyboxForm(DTheme t) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              DIconButton(
+                icon: Icons.arrow_back_rounded,
+                label: 'Back',
+                tone: DButtonTone.ghost,
+                onPressed: () => setState(() {
+                  _step = _Step.welcome;
+                  _error = null;
+                }),
+              ),
+              SizedBox(width: t.space.sm),
+              Expanded(child: Text('Just the Toybox', style: t.text.h2)),
+            ],
+          ),
+          SizedBox(height: t.space.xs),
+          Text('Everything stays on this device. You can connect a Hub later in the settings.', style: t.text.body.copyWith(color: t.colors.inkSecondary)),
+          SizedBox(height: t.space.lg),
+          DTextField(id: 'onboarding.toybox.kid', controller: _kid, label: 'Child’s name', hint: 'Mia'),
+          SizedBox(height: t.space.md),
+          Text('THEIR AGE', style: t.text.overline),
+          SizedBox(height: t.space.xs),
+          Wrap(
+            spacing: t.space.xs,
+            runSpacing: t.space.xs,
+            children: [
+              for (var age = 2; age <= 6; age++) DChip(id: 'onboarding.toybox.age.$age', label: '$age', selected: _age == age, onTap: () => setState(() => _age = age)),
+            ],
+          ),
+          SizedBox(height: t.space.md),
+          DTextField(id: 'onboarding.toybox.grownup', controller: _grownUp, label: 'What they call you (for the name games)', hint: 'Mom, Dad, Nana…'),
+          SizedBox(height: t.space.md),
+          DTextField(id: 'onboarding.toybox.pin', controller: _pin, label: 'Grown-up PIN', hint: '4 digits, for the settings', keyboardType: TextInputType.number, obscure: true),
+          if (_error != null) ...[SizedBox(height: t.space.md), DBanner(title: _error!, tone: DBannerTone.danger, id: 'onboarding.error')],
+          SizedBox(height: t.space.lg),
+          DButton(label: 'Open the Toybox', id: 'onboarding.toybox.start', size: DButtonSize.lg, expand: true, busy: _busy, onPressed: _busy ? null : _startToybox),
         ],
       );
 

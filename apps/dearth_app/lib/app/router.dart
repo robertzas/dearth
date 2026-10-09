@@ -22,13 +22,19 @@ import 'shell.dart';
 final routerProvider = Provider<GoRouter>((ref) {
   final ready = ValueNotifier<bool>(ref.read(sessionProvider).isReady);
   ref.listen(sessionProvider.select((s) => s.isReady), (_, v) => ready.value = v);
+  final toybox = ValueNotifier<bool>(ref.read(sessionProvider).isToybox);
+  ref.listen(sessionProvider.select((s) => s.isToybox), (_, v) => toybox.value = v);
 
   final router = GoRouter(
     initialLocation: '/',
-    refreshListenable: ready,
+    refreshListenable: Listenable.merge([ready, toybox]),
     redirect: (context, state) {
-      final onWelcome = state.matchedLocation == '/welcome';
+      final at = state.matchedLocation;
+      final onWelcome = at == '/welcome';
       if (!ready.value) return onWelcome ? null : '/welcome';
+      // Toybox only (SPEC §7.2): the Toybox and the settings its grown-up
+      // corner opens; every other place leads back to the games.
+      if (toybox.value) return at == '/toybox' || at == '/settings' || kToyboxOnlySettings.any((id) => at == '/settings/$id') ? null : '/toybox';
       if (onWelcome) return '/';
       return null;
     },
@@ -67,6 +73,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.onDispose(() {
     router.dispose();
     ready.dispose();
+    toybox.dispose();
   });
   return router;
 });

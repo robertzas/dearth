@@ -15,6 +15,10 @@ enum SessionMode {
 
   /// Local demo household; nothing leaves the device.
   demo,
+
+  /// Just the Toybox, for one kid, on this device (SPEC §7.2 "Toybox
+  /// only"): no Hub, no network, no other screens.
+  toybox,
 }
 
 @immutable
@@ -41,7 +45,8 @@ class Session {
 
   bool get isHub => mode == SessionMode.hub && hubUrl != null && token != null;
   bool get isDemo => mode == SessionMode.demo;
-  bool get isReady => isHub || isDemo;
+  bool get isToybox => mode == SessionMode.toybox;
+  bool get isReady => isHub || isDemo || isToybox;
 
   /// The `devices` row describing this device.
   String get effectiveDeviceId => deviceId ?? demoDeviceId;

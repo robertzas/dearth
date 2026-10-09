@@ -67,6 +67,34 @@ class SessionController extends Notifier<Session> {
     await set(Session(mode: SessionMode.demo, role: r, admin: true, deviceName: 'This display'));
   }
 
+  /// Sets this device up as just the Toybox for one kid (SPEC §7.2 "Toybox
+  /// only"): a household of the kid and a grown-up with [pin] (the Toybox
+  /// settings and leaving the mode need one), nothing else, nothing
+  /// synced. [age] in years picks the games that suit them first; the
+  /// birthday is the first of this month that many years ago, close enough
+  /// for that.
+  Future<void> startToybox({required String kid, required int age, required String pin, String? grownUp}) async {
+    final db = ref.read(dbProvider);
+    await ref.read(sessionStoreProvider).wipe();
+    final tz = await deviceTimeZone();
+    final m = Mutator(store: ref.read(storeProvider), clock: ref.read(hlcProvider), sink: (_) async {});
+    final time = HouseholdTime.named(tz, clock: ref.read(appClockProvider).now);
+    final today = time.today();
+    final birthday = LocalDate(today.year - age, today.month, 1);
+    final adult = grownUp?.trim().isNotEmpty ?? false ? grownUp!.trim() : 'Grown-up';
+    await m.commit([
+      ...householdDefaultOps(m, timezone: tz, name: '${kid.trim()}’s Toybox'),
+      m.makeOp('profiles', newId(), {
+        'name': kid.trim(), 'role': ProfileRole.child, 'color': 8, 'emoji': '🧒', 'birthday': birthday.iso, //
+        'kid_stage': KidStage.forAge(age.toDouble()), 'buddy': 'bunny', 'sort_key': 'a',
+      }),
+      m.makeOp('profiles', newId(), {'name': adult, 'role': ProfileRole.adult, 'color': 3, 'emoji': '🧑', 'pin_hash': hashPin(pin), 'sort_key': 'b'}),
+      m.makeOp('devices', Session.demoDeviceId, {'name': 'This tablet', 'role': DeviceRole.kidRoom, 'platform': AppEnv.platformName}),
+    ]);
+    await db.kvSet('toybox.since', today.iso);
+    await set(const Session(mode: SessionMode.toybox, role: DeviceRole.kidRoom, admin: true, deviceName: 'This tablet'));
+  }
+
   /// Completes pairing with a Hub (SPEC §9.2). Local data is replaced by the
   /// Hub snapshot on first sync.
   Future<void> pairedWith(Uri hub, PairResult r, {String? name}) async {

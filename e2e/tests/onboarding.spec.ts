@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { tap, tid } from './helpers';
+import { expectText, tap, tid, typeInto } from './helpers';
 
 test.describe('Onboarding', () => {
   test('FR-SET-01: first run offers the Hub or the demo', async ({ page }) => {
@@ -21,5 +21,22 @@ test.describe('Onboarding', () => {
     await expect(tid(page, 'screen.home')).toBeVisible({ timeout: 60_000 });
     await expect(tid(page, 'home.date')).toBeVisible();
     await expect(tid(page, 'home.demo')).toHaveCount(0);
+  });
+
+  test('FR-SET-01: "Just the Toybox" sets the device up as one child\'s Toybox, with nothing else on it', async ({ page }) => {
+    await page.goto('/?e2e=1&reset=1');
+    await expect(tid(page, 'screen.onboarding')).toBeVisible({ timeout: 90_000 });
+    await tap(tid(page, 'onboarding.toybox'));
+    await typeInto(page, 'onboarding.toybox.kid', 'Mia');
+    await tap(tid(page, 'onboarding.toybox.age.4'));
+    await typeInto(page, 'onboarding.toybox.grownup', 'Mama');
+    await typeInto(page, 'onboarding.toybox.pin', '2468');
+    await tap(tid(page, 'onboarding.toybox.start'));
+    await expect(tid(page, 'screen.toybox')).toBeVisible({ timeout: 30_000 });
+    await expectText(tid(page, 'toybox.title'), 'Mia’s Toybox');
+    // No navigation: the Toybox is all there is.
+    await expect(tid(page, 'nav.calendar')).toHaveCount(0);
+    await tap(tid(page, 'toybox.game.bubbles'));
+    await expect(tid(page, 'game.bubbles')).toBeVisible();
   });
 });
