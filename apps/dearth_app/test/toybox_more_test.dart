@@ -1,5 +1,6 @@
 import 'package:dearth_app/core/sound.dart';
 import 'package:dearth_app/features/toybox/games/cookies.dart';
+import 'package:dearth_app/features/toybox/games/lettermonster.dart';
 import 'package:dearth_core/dearth_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -13,7 +14,7 @@ import 'support/toybox_harness.dart';
 void main() {
   for (final size in const [Size(390, 844), Size(844, 390), Size(1080, 1920), Size(1920, 1080)]) {
     testWidgets('every game of the second set lays out on a ${size.width.toInt()}×${size.height.toInt()} screen at its busiest level', (tester) async {
-      await expectGamesLayOut(tester, const [('cookies', 1), ('cookies', 3), ('cookies', 4)], size: size);
+      await expectGamesLayOut(tester, const [('cookies', 1), ('cookies', 3), ('cookies', 4), ('lettermonster', 1), ('lettermonster', 2), ('lettermonster', 4)], size: size);
     });
   }
 
@@ -26,6 +27,8 @@ void main() {
         await tester.tap(byId('cookies.jar'));
         await tester.pump(const Duration(milliseconds: 400));
       }
+      // Let the last one land: cookies in flight ignore taps.
+      await tester.pump(const Duration(milliseconds: 400));
     }
 
     testWidgets('FR-TOY-03: the monster asks for a number; each cookie from the jar says the count; the bell serves the plate and it eats them', (tester) async {
@@ -137,6 +140,102 @@ void main() {
       expect(game(tester).debugPlate, kCookiePlate);
       expect(sound.played.where((p) => p.$1 == Sfx.boing), hasLength(1));
       await tester.pump(const Duration(seconds: 12));
+      await h.shutdown();
+    });
+  });
+
+  group('Letter Monster', () {
+    LetterMonsterGameState game(WidgetTester tester) => tester.state<LetterMonsterGameState>(find.byType(LetterMonsterGame));
+
+    testWidgets('FR-TOY-03: the monster asks for a letter by name; the right biscuit is munched and the voice says its sound', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'lettermonster', sound: sound, level: 1);
+      final r = game(tester).debugRound;
+      expectNoFallbackText(byId('screen.game'));
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(sound.said, [letterMonsterAskClip(r)]);
+      expect(labelOf(tester, 'lettermonster.ask'), 'I want the letter ${r.letter}');
+      expect(labelOf(tester, 'lettermonster.food.${r.choices.indexOf(r.letter)}'), 'Letter ${r.letter}', reason: 'capitals at level 1');
+      await tester.tap(byId('lettermonster.food.${r.choices.indexOf(r.letter)}'));
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(sound.played.where((p) => p.$1 == Sfx.munch), hasLength(1));
+      expect(labelOf(tester, 'lettermonster.ask'), 'Yum! ${r.letter}');
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(sound.said.last, letterClip(r.letter));
+      await h.settle();
+      expect(await toyboxRounds(h), [('lettermonster', 1, 'win')]);
+      await tester.pump(const Duration(seconds: 5));
+      expect(game(tester).debugEaten, isFalse, reason: 'a new tray comes');
+      await tester.pump(const Duration(seconds: 13));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('a wrong biscuit is refused and says its name; two slips light the answer; the round is a miss', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'lettermonster', sound: sound, level: 3);
+      final r = game(tester).debugRound;
+      expect(r.ask, LetterMonsterAsk.sound);
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(sound.said.last, letterMonsterAskClip(r));
+      expect(labelOf(tester, 'lettermonster.food.0'), 'Letter ${r.choices[0].toLowerCase()}', reason: 'small letters from level 2');
+      final wrong = [for (var i = 0; i < r.choices.length; i++) if (r.choices[i] != r.letter) i];
+      for (final (k, i) in wrong.take(2).indexed) {
+        await tester.tap(byId('lettermonster.food.$i'));
+        await tester.pump(const Duration(milliseconds: 500));
+        expect(sound.said.last, letterNameClip(r.choices[i]));
+        expect(sound.played.where((p) => p.$1 == Sfx.nope), hasLength(k + 1));
+        await tester.pump(const Duration(milliseconds: 500));
+      }
+      expect(game(tester).debugHint, isTrue);
+      await tester.tap(byId('lettermonster.food.${r.choices.indexOf(r.letter)}'));
+      await tester.pump(const Duration(seconds: 1));
+      await h.settle();
+      expect(await toyboxRounds(h), [('lettermonster', 3, 'miss')]);
+      await tester.pump(const Duration(seconds: 18));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('the top level shows a picture and asks for its first sound; dragging the biscuit to the mouth feeds it', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'lettermonster', sound: sound, level: 4);
+      final r = game(tester).debugRound;
+      expect(r.ask, LetterMonsterAsk.picture);
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(sound.said.last, firstSoundClip(r.word!));
+      final from = tester.getCenter(byId('lettermonster.food.${r.choices.indexOf(r.letter)}'));
+      final to = tester.getCenter(byId('lettermonster.mouth'));
+      final gesture = await tester.startGesture(from);
+      for (var k = 1; k <= 10; k++) {
+        await gesture.moveTo(Offset.lerp(from, to, k / 10)!);
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      await gesture.up();
+      await tester.pump(const Duration(seconds: 1));
+      expect(game(tester).debugEaten, isTrue);
+      await h.settle();
+      expect(await toyboxRounds(h), [('lettermonster', 4, 'win')]);
+      await tester.pump(const Duration(seconds: 18));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('a long pause asks again and lights the answer, without a slip', (tester) async {
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'lettermonster', sound: sound, level: 2);
+      final r = game(tester).debugRound;
+      await tester.pump(const Duration(seconds: 13));
+      expect(game(tester).debugHint, isTrue);
+      expect(sound.said.where((c) => c == letterMonsterAskClip(r)), hasLength(2));
+      await tester.tap(byId('lettermonster.food.${r.choices.indexOf(r.letter)}'));
+      await tester.pump(const Duration(seconds: 1));
+      await h.settle();
+      expect(await toyboxRounds(h), [('lettermonster', 2, 'win')]);
+      await tester.pump(const Duration(seconds: 18));
       await h.shutdown();
     });
   });

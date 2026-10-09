@@ -84,6 +84,7 @@ const List<GameInfo> kExpansionGames = [
   GameInfo('compare', 'Who Has More?', '🚌', minMonths: 42, skills: ['Comparing numbers', 'More and fewer', 'Number order'], levels: 4),
   // More numbers and letters, built on the games played most (added 2026-10-08).
   GameInfo('cookies', 'Cookie Count', '🍪', minMonths: 36, skills: ['Counting out', 'Making a set', 'Adding and taking away'], levels: 4),
+  GameInfo('lettermonster', 'Letter Monster', '😋', minMonths: 36, skills: ['Letter names', 'Small letters', 'Letter sounds', 'First sounds'], levels: 4),
 ];
 
 GameInfo? gameById(String id) => kGames.where((g) => g.id == id).firstOrNull;

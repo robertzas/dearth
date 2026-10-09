@@ -259,6 +259,10 @@ void main() {
         for (var n = 1; n <= kTallyMax; n++) tallyBunniesClip(n),
         for (var n = 1; n <= kCookiePlate; n++) ...[cookieAskClip(n), cookieYumClip(n), cookieMoreClip(n), cookieFewerClip(n)],
         VoiceLine.cookiesBell,
+        for (final l in kLetterSounds) ...[
+          letterMonsterAskClip(LetterMonsterRound(LetterMonsterAsk.name, l.letter, [l.letter])),
+          if (l.starts) letterMonsterAskClip(LetterMonsterRound(LetterMonsterAsk.sound, l.letter, [l.letter])),
+        ],
       ];
       expect(asked.where((a) => !ids.contains(a)), isEmpty);
       expect(ids.difference(asked.toSet()), isEmpty, reason: 'no line nothing says');

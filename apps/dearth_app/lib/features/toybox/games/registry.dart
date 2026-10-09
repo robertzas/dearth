@@ -18,6 +18,7 @@ import 'hop.dart';
 import 'hundred.dart';
 import 'ispy.dart';
 import 'jigsaw.dart';
+import 'lettermonster.dart';
 import 'letters.dart';
 import 'mazes.dart';
 import 'memory.dart';
@@ -86,4 +87,5 @@ final Map<String, GameBuilder> kGameBuilders = {
   'whosthat': WhoGame.new,
   'storytime': StoryGame.new,
   'cookies': CookieGame.new,
+  'lettermonster': LetterMonsterGame.new,
 };

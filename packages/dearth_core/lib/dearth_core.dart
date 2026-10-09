@@ -44,6 +44,7 @@ export 'src/toybox/games.dart';
 export 'src/toybox/hear.dart';
 export 'src/toybox/hop.dart';
 export 'src/toybox/hundred.dart';
+export 'src/toybox/lettermonster.dart';
 export 'src/toybox/rounds.dart';
 export 'src/toybox/sequencer.dart';
 export 'src/toybox/sight.dart';

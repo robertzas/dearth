@@ -8,6 +8,7 @@ import 'dressup.dart';
 import 'freeze.dart';
 import 'hear.dart';
 import 'hop.dart';
+import 'lettermonster.dart';
 import 'sight.dart';
 import 'spell.dart';
 import 'storytime.dart';
@@ -145,6 +146,14 @@ String cookieMoreClip(int n) => 'cookies_more_$n';
 
 /// Too many: "Too many! I want five."
 String cookieFewerClip(int n) => 'cookies_fewer_$n';
+
+/// What Letter Monster wants: "I want the letter B!", "I want the letter
+/// that says buh!", or a picture's first sound ([firstSoundClip]).
+String letterMonsterAskClip(LetterMonsterRound r) => switch (r.ask) {
+      LetterMonsterAsk.name || LetterMonsterAsk.small => 'lmon_want_${r.letter.toLowerCase()}',
+      LetterMonsterAsk.sound => 'lmon_says_${r.letter.toLowerCase()}',
+      LetterMonsterAsk.picture => firstSoundClip(r.word!),
+    };
 
 /// "Three."
 String numberClip(int n) => 'num_$n';
@@ -418,6 +427,10 @@ Map<String, String> _lines() {
     lines[cookieYumClip(n)] = '${_cap(cookies)}! Yum, yum!';
     lines[cookieMoreClip(n)] = 'More, please! I want ${numberWord(n)}.';
     lines[cookieFewerClip(n)] = 'Too many! I want ${numberWord(n)}.';
+  }
+  for (final l in kLetterSounds) {
+    lines[letterMonsterAskClip(LetterMonsterRound(LetterMonsterAsk.name, l.letter, [l.letter]))] = 'I want the letter ${l.letter}!';
+    if (l.starts) lines[letterMonsterAskClip(LetterMonsterRound(LetterMonsterAsk.sound, l.letter, [l.letter]))] = 'I want the letter that says ${_sound(l)}!';
   }
   lines[VoiceLine.cookiesBell] = 'Then ring the bell!';
   lines[VoiceLine.spellMissing] = 'Which sound is missing?';
