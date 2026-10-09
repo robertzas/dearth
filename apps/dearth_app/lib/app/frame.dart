@@ -94,6 +94,9 @@ final screenWakerProvider = Provider<Future<void> Function()>((ref) => wakeScree
 class ScreenPower extends Notifier<bool> {
   @override
   bool build() {
+    // Kept alive here: Riverpod pauses a provider nothing listens to, and
+    // reading its future would then wait forever (AGENTS.md).
+    ref.listen(freeKioskProvider, (_, _) {});
     ref.listen(displayProvider.select((d) => d.mode), (prev, mode) {
       if (mode == DisplayMode.off && prev != DisplayMode.off) unawaited(_off());
       if (prev == DisplayMode.off && mode != DisplayMode.off) unawaited(_on());
