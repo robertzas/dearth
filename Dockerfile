@@ -3,9 +3,12 @@
 #   tool/build_all.sh --hub-image        # builds dist/web, then this image
 #   docker build -t dearth-hub .         # uses whatever is in dist/web (may be empty → API only)
 ARG DART_VERSION=3.13.5
+# Docker's official images, pulled from AWS's public copy: CI runners share
+# addresses, and Docker Hub's anonymous pull limit failed builds (429).
+ARG REGISTRY=public.ecr.aws/docker/library
 
 # ── 1. Hub build (pure Dart workspace subset; no Flutter SDK needed) ─────────
-FROM dart:${DART_VERSION} AS hub-build
+FROM ${REGISTRY}/dart:${DART_VERSION} AS hub-build
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 COPY analysis_options.yaml ./
@@ -17,7 +20,7 @@ RUN printf 'name: dearth_hub_build\npublish_to: none\nenvironment:\n  sdk: ^3.13
  && cd hub/dearth_hub && dart build cli -o /out
 
 # ── 2. Runtime ────────────────────────────────────────────────────────────────
-FROM debian:trixie-slim
+FROM ${REGISTRY}/debian:trixie-slim
 ARG VERSION=dev
 LABEL org.opencontainers.image.title="Dearth Hub" \
       org.opencontainers.image.description="Family command center hub: sync, integrations, photos, web app" \
