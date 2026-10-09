@@ -86,12 +86,14 @@ void main() {
     var now = 1000000;
     var night = false;
     final calls = <String>[];
+    final keys = <String?>{};
     var woken = 0;
     final kiosk = FreeKiosk(
       port: 8080,
       key: 'k',
+      // No expect() in here: it would run inside a pump (a guarded-call conflict).
       client: MockClient((req) async {
-        expect(req.headers['X-Api-Key'], 'k');
+        keys.add(req.headers['X-Api-Key']);
         calls.add(req.url.path);
         return http.Response('{"success":true,"data":{}}', 200);
       }),
@@ -107,7 +109,6 @@ void main() {
       screenWakerProvider.overrideWithValue(() async => woken++),
       brightnessSinkProvider.overrideWithValue((_) async {}),
     ]);
-    addTearDown(c.dispose);
     c.listen(screenPowerProvider, (_, _) {});
     final display = c.read(displayProvider.notifier);
     DisplayMode mode() => c.read(displayProvider).mode;
@@ -142,6 +143,9 @@ void main() {
     await tester.pump();
     expect(calls.where((p) => p == '/api/screen/on'), hasLength(2));
     expect(woken, 2);
+    expect(keys, {'k'}, reason: 'every call carries the key');
+    // Stops the idle timer before the test ends.
+    c.dispose();
   });
 
   testWidgets('§10.12: night when the room goes dark shows the clock (never the screen off) and the light wakes it', (tester) async {
