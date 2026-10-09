@@ -1,3 +1,4 @@
+import 'package:dearth_app/app/display_state.dart';
 import 'package:dearth_app/core/sound.dart';
 import 'package:dearth_app/features/toybox/games/busstop.dart';
 import 'package:dearth_app/features/toybox/games/cookies.dart';
@@ -8,6 +9,7 @@ import 'package:dearth_app/features/toybox/games/rocket.dart';
 import 'package:dearth_app/features/toybox/games/train.dart';
 import 'package:dearth_app/features/toybox/games/wordpop.dart';
 import 'package:dearth_core/dearth_core.dart';
+import 'package:dearth_ui/dearth_ui.dart' show PerfTier;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -412,6 +414,24 @@ void main() {
       await tester.pump(const Duration(seconds: 16));
       await h.shutdown();
       handle.dispose();
+    });
+
+    testWidgets('on the slowest displays (30 fps) the bubbles\' test ids and screen-reader nodes still follow them', (tester) async {
+      final h = await openToyboxGame(tester, 'wordpop', level: 1, overrides: [perfTierProvider.overrideWithValue(PerfTier.t1)]);
+      await tester.pump(const Duration(milliseconds: 100));
+      final (id, _, _) = game(tester).debugBubbles.first;
+      final before = tester.getCenter(byId('wordpop.bubble.$id'));
+      for (var i = 0; i < 40; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      final now = game(tester).debugBubbles.firstWhere((b) => b.$1 == id).$3;
+      final after = tester.getCenter(byId('wordpop.bubble.$id'));
+      expect(after.dy, lessThan(before.dy - 5), reason: 'the node rose with its bubble');
+      // The node sits on the bubble (within a frame's movement).
+      final sky = tester.getTopLeft(find.descendant(of: find.byType(WordPopGame), matching: find.byType(LayoutBuilder)).first);
+      expect((after - (sky + now)).distance, lessThan(game(tester).debugSky.$2 * 0.2));
+      await tester.pump(const Duration(seconds: 12));
+      await h.shutdown();
     });
 
     testWidgets('a long pause asks again and rings the bubbles, without a slip', (tester) async {

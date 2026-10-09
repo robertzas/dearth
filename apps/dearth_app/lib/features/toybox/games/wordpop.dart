@@ -62,7 +62,7 @@ class WordPopGameState extends State<WordPopGame> with SingleTickerProviderState
   double _radius = 60;
   Duration _last = Duration.zero;
   double _clock = 0, _spawnIn = 0;
-  int _frames = 0, _next = 0, _popped = 0, _slips = 0;
+  int _frames = 0, _moves = 0, _next = 0, _popped = 0, _slips = 0;
   bool _done = false, _glow = false;
   WordPopRound? _round;
   final _words = <String, (ui.Picture, Size)>{};
@@ -216,7 +216,9 @@ class WordPopGameState extends State<WordPopGame> with SingleTickerProviderState
     }
     _sparks.removeWhere((s) => s.life <= 0);
     _repaint.value++;
-    if (_frames.isEven || !_slow) _moved.value++;
+    // Every other frame that moved (its own count: on T1 [_frames] is always
+    // odd here, and the layer would never follow the bubbles).
+    if ((_moves++).isEven) _moved.value++;
   }
 
   void _burst(double x, double y, Color color, {int count = 14, double speed = 240}) {

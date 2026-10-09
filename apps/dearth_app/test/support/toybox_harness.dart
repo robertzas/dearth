@@ -8,6 +8,7 @@ import 'package:dearth_app/features/toybox/toybox_screen.dart';
 import 'package:dearth_app/shared/face_photo.dart';
 import 'package:dearth_core/dearth_core.dart';
 import 'package:drift/drift.dart' show OrderingTerm;
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -16,8 +17,8 @@ import 'app_harness.dart';
 /// Opens [game] from Ava's Toybox on the demo household (she is 2½), at a
 /// pinned [level] when given (every game is on by default).
 /// Fails unless the game opened.
-Future<AppHarness> openToyboxGame(WidgetTester tester, String game, {RecordingSound? sound, int? level, Size size = const Size(1920, 1080), List<String> faces = const []}) async {
-  final h = await AppHarness.demo(tester, sound: sound ?? RecordingSound(), size: size);
+Future<AppHarness> openToyboxGame(WidgetTester tester, String game, {RecordingSound? sound, int? level, Size size = const Size(1920, 1080), List<String> faces = const [], List<Override> overrides = const []}) async {
+  final h = await AppHarness.demo(tester, sound: sound ?? RecordingSound(), size: size, overrides: overrides);
   final settings = ToyboxSettings(pins: {'p-ava.$game': ?level});
   await h.write((w) => [
         settingOp(w, SettingKeys.toybox, settings.toJson()),
