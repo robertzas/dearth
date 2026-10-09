@@ -57,6 +57,9 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  # The frame perf gate's on-device scenarios (tool/perf_gate.sh, SPEC §12.9).
+  integration_test:
+    sdk: flutter
   lints: ^6.1.0
 
 flutter:

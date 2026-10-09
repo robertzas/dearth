@@ -2021,10 +2021,25 @@ numbers refer to the JT215M (T1) in **profile** builds unless noted.
   CPU, renderer backend, image-cache size, isolate queue depth.
 - **Telemetry to the Hub** (local only): per-device p50/p95/p99 frame times
   per screen, jank counts, memory, uptime, shown in Admin → Devices.
-- **`tool/perf_gate.sh <device>`**: builds a profile APK, installs it over
-  ADB, and runs `integration_test` scenarios with `traceAction` →
-  `TimelineSummary`. It fails on budget regressions. **Release builds for
-  displays require a green perf gate on the frame.**
+- **`tool/perf_gate.sh <device>`**: builds a profile APK whose entry point
+  is the scenarios (`apps/dearth_app/integration_test/perf_test.dart`, the
+  real app on a demo household at full motion), installs it over ADB over
+  the installed Dearth (same package and key: its data stays), reads one
+  `PERF_RESULT` line per scenario from logcat (frame build, raster and
+  total p50/p90/p99 from `FrameTiming`, frames over the display's budget
+  and over 50 ms, CPU from `/proc/self/stat`, RSS; PSS at the end from
+  `dumpsys meminfo`), then puts the installed APK back. Not `flutter
+  drive`: FreeKiosk relaunches the app whenever it stops, so the scenarios
+  start with the app. The live test binding asks for a frame after every
+  frame, which made a still screen redraw at 56 fps; the gate's binding
+  passes on only the frames the app asks for. It compares with
+  `tool/perf/baseline-<model>.json` (checked in, `--update-baseline`) and
+  fails on regressions: p90 frame, build or raster time over 1.25× + 2 ms,
+  frames over 50 ms over 1.3× + 5, CPU +3 points, memory ×1.15 (run-to-run
+  noise on the JT215M is up to ~20 %). The §12.1 budgets are printed beside
+  each scenario; misses already in the baseline don't fail it.
+  `--only <scenario>` probes one; `--soak <min>` adds the memory soak.
+  **Release builds for displays require a green perf gate on the frame.**
 
   | Scenario | Measures |
   |---|---|
@@ -2033,12 +2048,13 @@ numbers refer to the JT215M (T1) in **profile** builds unless noted.
   | Agenda fling (300 events) | Scroll jank |
   | Week view page ×10 (60 events/week) | Grid layout + paint |
   | Month view open | Chip layout |
-  | Recipe search results scroll (40 cards with images) | Image decode + scroll |
-  | Cook mode with 2 timers | Ticker cost |
+  | Recipe search results scroll (40 cards with images) | Image decode + scroll (not yet: needs a Hub's recipe photos) |
+  | Cook mode with 2 timers | Ticker cost (not yet) |
   | Screensaver 10 transitions | Crossfade + optional Ken Burns |
-  | Celebration ×5 | Particles |
+  | Celebration ×5 | Particles (Bubble Pop: 120 taps) |
   | Paint Studio 30 s of strokes | Stroke rendering |
-  | Jigsaw 12 pieces drag | Drag + hit testing |
+  | Toybox launcher fling | The GPU-bound grid (§12.2) |
+  | Jigsaw 12 pieces drag | Drag + hit testing (not yet) |
   | 1-hour soak | Memory growth |
 
 ### 12.10 Web build

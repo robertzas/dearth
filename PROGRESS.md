@@ -31,6 +31,7 @@ Useful commands (details in `README.md`):
 | Web DB runtime (sqlite3.wasm, drift worker) | `tool/web_assets.sh` |
 | App icons from the SVG source | `tool/icons/make_icons.sh` |
 | Set up, check or update the kitchen frame | `tool/deploy_frame.sh 10.0.1.148` (`--check` changes nothing; `--help`) |
+| Perf gate on the kitchen frame (SPEC §12.9) | `tool/perf_gate.sh 10.0.1.148` (~10 min; `--update-baseline` after an accepted change) |
 
 ## In progress
 
@@ -42,7 +43,8 @@ Useful commands (details in `README.md`):
 - Done (2026-10-05, owner request): more free recipe sources, aggregated and normalized into one list on every search (FR-RCP-01, FR-RCP-13, §13.6; Settings → Recipes). The owner should add the RecipeAPI.io and RapidAPI (Tasty) keys there, then re-record those two fixtures from real responses (`packages/dearth_integrations/test/fixtures/recipeapi_search.json`, `tasty_list.json` follow the documented shapes).
 - Done (2026-10-08): the family Google calendar offer (FR-CAL-04) and the Google reminders mapping on the Hub (FR-CAL-20, §13.2). The owner's Google project needs `calendar.app.created` and `calendar.acls` on its consent screen before accepting the offer.
 - Done (2026-10-08, owner request after the second set): the launcher puts new games (added in the last 30 days, not yet played) first, then her favorites of the last two weeks, then the rest by age (FR-TOY-01).
-- Next: 3.2 Android platform channel (FreeKiosk bridge, light sensor, a "setting the time…" state until the frame's clock syncs), 7.1 perf script. 6.3 Music box is **deferred** (owner, 2026-10-05): skip it until the owner brings it back.
+- Done (owner: "continue", 2026-10-09): 7.1 `tool/perf_gate.sh`, the frame perf gate, with a JT215M baseline ✅ (2026-10-09). What it measured is under Decisions & findings; the calendar's week and month builds are the worst.
+- Next: what the perf gate found on the frame (2026-10-09 baseline): the calendar's week paging (build p90 216 ms) and month view (370 ms), destination switches (98 ms builds), the photo frame's crossfade (raster p90 50 ms), memory after a run (PSS 268 MB, budget 220). Then the open items in Phases 4–6. 6.3 Music box is **deferred** (owner, 2026-10-05): skip it until the owner brings it back.
 
 ## Plan & status
 
@@ -84,7 +86,7 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
 - ⏸ 6.3 Music box: tiles, local files, YouTube, Spotify (via Hub). Deferred by the owner (2026-10-05).
 
 ### Phase 7 — Deployment tooling & CI
-- 🟡 7.1 ✅ tool/build_all.sh, tool/web_assets.sh, tool/e2e.sh, tool/icons/make_icons.sh, tool/deploy_frame.sh (ADB over LAN: FreeKiosk pinned + Device Owner + HOME, External App mode locked to Dearth, magic corner + PIN, auto-rotate, adaptive brightness, Doze exemptions, JT215M preset, Dearth APK per ABI from a release / file / local build, `--check`, `--reboot` verification) · ✅ FreeKiosk REST key handoff in deploy_frame.sh (2026-10-09) · ⬜ Hub pairing in deploy_frame.sh, tool/perf_gate.sh, a stable release signing key in CI
+- 🟡 7.1 ✅ tool/build_all.sh, tool/web_assets.sh, tool/e2e.sh, tool/icons/make_icons.sh, tool/deploy_frame.sh (ADB over LAN: FreeKiosk pinned + Device Owner + HOME, External App mode locked to Dearth, magic corner + PIN, auto-rotate, adaptive brightness, Doze exemptions, JT215M preset, Dearth APK per ABI from a release / file / local build, `--check`, `--reboot` verification) · ✅ FreeKiosk REST key handoff in deploy_frame.sh (2026-10-09) · ✅ tool/perf_gate.sh (2026-10-09) · ⬜ Hub pairing in deploy_frame.sh, a stable release signing key in CI
 - ✅ 7.2 GitHub Actions (`.github/workflows/build.yml`): analyze + unit tests, Playwright E2E, Android APKs, web, Linux, Windows, macOS, iOS (unsigned), Hub binaries (4 targets), multi-arch Hub image on GHCR, GitHub release on every push to main
 
 ### Phase 8 — Verification
@@ -225,6 +227,24 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
   no `eventTypes` filter, so Google birthday events are not filtered out.
   Other countries subscribe to an ICS holiday calendar; Nager.Date on the
   Hub was dropped by the owner (2026-10-09).
+- **2026-10-09** Perf gate (`tool/perf_gate.sh`). The live test binding
+  (`LiveTestWidgetsFlutterBinding.handleDrawFrame`) calls
+  `platformDispatcher.scheduleFrame()` after every frame under every
+  policy but `benchmark`, so an idle Home measured 41 fps and 26 % CPU
+  where the real app draws nothing (0.0 % in `top`, no SurfaceFlinger
+  frames). The gate's binding runs each draw phase under `benchmark` and
+  re-requests any frame the app asked for meanwhile: idle Home is now 0
+  frames, 0.1 % CPU. A `scheduleFrame` probe found nothing because that
+  call bypasses `SchedulerBinding.scheduleFrame`. Baseline (JT215M,
+  profile, Impeller GLES, 60 events/week): Home idle 0 fps; navigate build
+  p90 ~100 ms; agenda fling raster p90 26 ms; week paging build p90
+  216–228 ms; month open 314–370 ms; Toybox fling raster p90 41 ms; Bubble
+  Pop raster 18–20 ms (its share of frames over budget swings 28–82 % run
+  to run: frames sit at the budget); Paint 20 ms; photo crossfade raster
+  p90 ~50 ms; PSS 268 MB at the end (budget 220). With 100 events/week,
+  week paging was 333 ms (the gate flags that run against this baseline).
+  A backgrounded shell function's `$!` is the subshell, not `adb`: the
+  first runs left `adb logcat` readers behind.
 - **2026-10-09** Android platform channel on the JT215M. The frame boots
   at its ROM's build date (2025-09-29), not 1970 as noted on 10-03; the
   clock floor (2026-01-01) catches either. FreeKiosk's boot screen
@@ -531,3 +551,4 @@ _Every feature step below ships with unit tests **and** its Playwright journey s
 - 2026-10-09 — Solo mode's red build: the onboarding's new option pushed the demo button below the fold at 844×390, so the harness tapped nothing and the small-screen layout tests had no household (the harness scrolls to it); `moveToHub` read `hubApiProvider` from the session notifier that provider watches (Riverpod 3: dependency cycle; it opens its own client); Word Pop's E2E poll waited forever on a bubble locator that floated off between listing and reading (the trace had two taps in 90 s; it now reads every bubble at once and taps the point). The Hub image jobs hit Docker Hub's anonymous pull limit (429) twice, so the Dockerfile pulls the same official images from `public.ecr.aws/docker/library` (`ARG REGISTRY`).
 - 2026-10-09 — Settings reorganized (FR-SET-03; owner: "reorganize the settings area to make more sense"): four headed groups (Family · This display · Connected services · System); a search box keeps the sections where every word matches the title, summary or a setting's keyword, names what matched (also in the row's semantics label) and says when nothing does. Each setting now lives in one place: this display's idle switches (photo frame, its own "Start after" with a "Usual" choice that shows the household's minutes, night clock, keep awake) moved from Screen & sound to Photo frame & night beside every display's settings; photo sources got their own Photos page; the weather pace left Household for a new Weather page, which also gives the Hub's existing Weather Underground key, station (typed or picked from nearby ones) and 5-day forecast switch their first screen (FR-WX-01, FR-WX-04). The recipe key sheet became the shared `KeySheet`. Tests: 3 widget, 1 E2E journey.
 - 2026-10-09 — Android platform channel (3.2; owner: "continue"). Native (`MainActivity`): an `app.dearth/light` EventChannel (the light sensor), `setBrightness` (window `screenBrightness`), `wakeScreen` (a 5 s `ACQUIRE_CAUSES_WAKEUP` lock), `getFreeKiosk` (key + port, handed over as intent extras), `KioskWatch` (boot receiver + uptime alarms). Core: `brightness.dart` (`BrightnessCurve` per `BrightnessScene`, `AmbientLight` smoothing on a log scale, `DarkRoom` hysteresis, `BrightnessRamp` dead band + rate). App: `roomProvider` (1 s tick from the first reading), `nightNowProvider` (schedule or dark room), `DisplayController` sends the night to Off when the display asks for it and the schedule (not a dark room) will end it; `BrightnessController`, `ScreenPower` (FreeKiosk `screen/off`/`on` + the app's wake lock), `FrameStats` (frames over the display's budget, p95, worst) and RSS in telemetry, shown under Hub & devices; `ClockCheck` + `ClockLayer` and sync held until the clock is set. Settings: Screen & sound → Brightness (Follow the room / Android's; Dimmer / Normal / Brighter; live lux and level) and Kiosk (status, Restart this frame); Photo frame & night → At night (Photos / Dim clock / Screen off) and Night clock when the room goes dark. `deploy_frame.sh`: REST API on, key made once and kept in `~/.config/dearth/`, tested with `/api/health`, handed to Dearth; Dearth may draw over apps (KioskWatch); the `--reboot` check waits four minutes and names a stuck boot screen. Verified on the frame: brightness follows 110–128 lux (178–184/255; Dimmer 130), Settings shows "Connected · JT215M-H01", `screen/off` → Asleep and `screen/on` → Awake with Dearth in front, a reboot comes back with the key kept. Tests: core 9, app 3 display + 2 clock + 2 FreeKiosk + settings, E2E 1 (the clock cover). CI caught three things on the way: widget tests run as Android, so every app test subscribed to the light channel (an event channel reports a missing plugin as its own error: `lightReadings` asks for a sensor first); `ScreenPower` awaited `freeKioskProvider.future` with nobody listening (Riverpod 3 pauses it, so the panel would never have turned off; it keeps the provider alive now, and the morning calls the app's wake lock before FreeKiosk); and an `expect()` inside a `MockClient` handler runs during a pump and throws a guarded-call conflict (record, then assert).
+- 2026-10-09 — 7.1 `tool/perf_gate.sh` (SPEC §12.9; owner: "continue"). `integration_test/perf_test.dart` is the profile APK's entry point (FreeKiosk relaunches the app, so `flutter drive` can't drive it): the real app on an in-memory demo household at 10:00 with 300 more events, full motion; scenarios home_idle, navigate, agenda_fling, week_paging, month_open, toybox_scroll, bubbles, paint, screensaver (+ `--soak`); `FrameTiming` percentiles, frames over the display budget and over 50 ms, CPU from `/proc/self/stat`, RSS; one `PERF_RESULT` JSON line each on logcat. The script saves the installed APK, builds and installs the profile build, reads logcat until `PERF_DONE`, takes PSS, reinstalls the saved APK (also on failure), and `tool/perf/compare.py` prints each scenario against the §12.1 budgets and the checked-in baseline (`tool/perf/baseline-JT215M-H01.json`), failing on regressions with tolerances measured from three runs. `--only` for probes. Not in CI (needs the frame); run before a display release.

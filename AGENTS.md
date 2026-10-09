@@ -26,7 +26,7 @@ Read these first, in order:
 | `hub/dearth_hub` | Dart server: sync authority, pairing, blobs, jobs, integrations, admin API, web hosting. |
 | `apps/dearth_app` | The Flutter app for every platform. Feature-first folders under `lib/features/<feature>/`. |
 | `e2e/` | Playwright end-to-end suite against the web build and a test Hub. |
-| `tool/` | `check.sh`, `codegen.sh`, `build_all.sh`, `e2e.sh`, `dev_hub.sh`, `web_assets.sh`, `deploy_frame.sh` (sets up, checks or updates an Android wall display over ADB), `icons/` (the SVG source of every app icon and `make_icons.sh`). Planned: `perf_gate.sh`. |
+| `tool/` | `check.sh`, `codegen.sh`, `build_all.sh`, `e2e.sh`, `dev_hub.sh`, `web_assets.sh`, `deploy_frame.sh` (sets up, checks or updates an Android wall display over ADB), `icons/` (the SVG source of every app icon and `make_icons.sh`). `perf_gate.sh` (the frame perf gate, SPEC §12.9; `tool/perf/` holds its baselines). |
 | `skills/` | Task playbooks for agents, checked in with the code: `toybox-game/` (adding a Toybox game). |
 | `.github/` | `workflows/build.yml`: every push to `main` runs the gate and the E2E suite, builds every platform plus the Hub image, and publishes a GitHub release `v<version>-build.<run>`. `actions/setup`: shared Flutter, pub and LFS setup. |
 

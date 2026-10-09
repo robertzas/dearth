@@ -353,6 +353,7 @@ cd apps/dearth_app && flutter run -d chrome    # or -d linux, or an Android devi
 | Web database runtime (sqlite3.wasm, drift worker) | `tool/web_assets.sh` |
 | App icons from the SVG source | `tool/icons/make_icons.sh` |
 | Set up, check or update an Android wall display | `tool/deploy_frame.sh <ip>` (`--check` changes nothing) |
+| Performance on a real display, against its baseline | `tool/perf_gate.sh <ip>` (`--update-baseline`, `--only <scenario>`, `--soak <min>`) |
 
 Every push to `main` runs the gate and the E2E suite and builds every
 platform: Android, web, Linux, Windows, macOS, iOS, Hub binaries and a
