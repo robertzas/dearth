@@ -87,13 +87,17 @@ class Session {
 /// app-private database (web over LAN http has no WebCrypto, and Linux
 /// kiosks rarely run an unlocked keyring).
 class SessionStore {
-  SessionStore(this.db);
+  /// [secure] false keeps the token in [db] even on a phone or frame: the
+  /// perf gate's scenarios run as the same app as the household's Dearth,
+  /// and the Keystore entry they'd share is that Dearth's only key to its
+  /// Hub (a run once wiped it, leaving the frame unpaired).
+  SessionStore(this.db, {bool? secure}) : _useSecure = secure ?? AppEnv.isMobileNative;
   final DearthDb db;
 
   static const _secure = FlutterSecureStorage();
   static const _tokenKey = 'dearth.device_token';
 
-  bool get _useSecure => AppEnv.isMobileNative;
+  final bool _useSecure;
 
   Future<Session> load() async {
     final rawMode = await db.kvGet('session.mode');

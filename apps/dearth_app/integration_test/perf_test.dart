@@ -11,6 +11,7 @@ import 'package:dearth_app/app/router.dart';
 import 'package:dearth_app/core/data/household.dart';
 import 'package:dearth_app/core/env.dart';
 import 'package:dearth_app/core/providers.dart';
+import 'package:dearth_app/core/session.dart';
 import 'package:dearth_app/features/calendar/calendar_screen.dart';
 import 'package:dearth_app/features/calendar/calendar_state.dart';
 import 'package:dearth_app/features/toybox/game_host.dart';
@@ -99,6 +100,9 @@ Future<void> _run(WidgetTester tester, {required int soakMinutes}) async {
   final c = ProviderContainer(overrides: [
     envProvider.overrideWithValue(AppEnv(fakeNow: DateTime(now.year, now.month, now.day, 10))),
     dbProvider.overrideWithValue(db),
+    // Never the real Keystore: it holds the household Dearth's Hub token,
+    // and the demo below wipes the session store.
+    sessionStoreProvider.overrideWith((ref) => SessionStore(ref.watch(dbProvider), secure: false)),
     nodeIdProvider.overrideWithValue('dperf'),
   ]);
   await tester.pumpWidget(UncontrolledProviderScope(container: c, child: const DearthApp()));

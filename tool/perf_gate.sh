@@ -136,7 +136,7 @@ finish() {
     none) WAS="not set up" ;;
     *) WAS="unknown (it didn't answer)" ;;
   esac
-  AFTER="Dearth put back: $RESTORED$([ $RESET = 0 ] || printf '; rejoined: %s' "$REJOINED")"
+  AFTER="Dearth put back: $RESTORED$([ "$REJOINED" = "not needed" ] || printf '; the Hub: %s' "$REJOINED")"
   python3 -I - "$RUN.context.json" "$MODEL · $STARTED" "$RUN.md" "$RUN.jsonl" "$RUN.log" "$BASELINE" \
     "Device" "$MODEL ($SERIAL, $ABI)" "When" "$STARTED" "Scenarios built from" "$COMMIT$DIRTY" \
     "Installed Dearth" "${INSTALLED:-none}" "The display was" "$WAS" "Afterwards" "$AFTER" -- "${STEPS[@]}" <<'PY'
@@ -174,7 +174,7 @@ fail() {
   if declare -F put_back >/dev/null && { [ $SWAPPED = 1 ] || [ $RESET = 1 ]; }; then
     put_back
     step "Put the installed Dearth back: $RESTORED."
-    [ $RESET = 0 ] || step "Rejoined the Hub: $REJOINED."
+    [ "$REJOINED" = "not needed" ] || step "Rejoined the Hub: $REJOINED."
   fi
   finish
 }
@@ -250,6 +250,17 @@ fi
 
 # 5. Putting the display back, also when anything above fails.
 LOGCAT_PID="" PUT_BACK=0 SWAPPED=0 RESTORED="not needed"
+# Waits (up to ~3 min) for the display to sync live again; prints the
+# last phase it reported.
+wait_live() {
+  local sync=""
+  for _ in $(seq 1 18); do
+    sync=$(json "$(ask session 10 --es dearth_tool session)" sync 2>/dev/null || true)
+    [ "$sync" = live ] && break
+    sleep 5
+  done
+  printf '%s' "$sync"
+}
 rejoin() {
   local key="" result sync=""
   [ -f "$CONFIG/freekiosk-${SERIAL%%:*}.key" ] && key=$(cat "$CONFIG/freekiosk-${SERIAL%%:*}.key")
@@ -265,12 +276,7 @@ rejoin() {
   # What a fresh install loses besides its data: drawing over apps
   # (KioskWatch, see deploy_frame.sh).
   sh_ appops set "$APP" SYSTEM_ALERT_WINDOW allow >/dev/null
-  # Joined: wait for the snapshot and the live feed.
-  for _ in $(seq 1 18); do
-    sync=$(json "$(ask session 10 --es dearth_tool session)" sync 2>/dev/null || true)
-    [ "$sync" = live ] && break
-    sleep 5
-  done
+  sync=$(wait_live)
   rm -f "$RUN.rejoin"
   if [ "$sync" = live ]; then
     REJOINED="yes: \"$DEVICE_NAME\" is back on $HUB as the same device and syncing${key:+, with the FreeKiosk key handed back}"
@@ -292,7 +298,18 @@ put_back() {
     fi
     adb_ shell am start -n "$APP/.MainActivity" >/dev/null 2>&1 || true
   fi
-  [ $RESET = 0 ] || rejoin || true
+  if [ $RESET = 1 ]; then
+    rejoin || true
+  elif [ "$MODE" = hub ] && [ $SWAPPED = 1 ]; then
+    # Not reset: it must still be joined and syncing after the scenarios.
+    local sync
+    sync=$(wait_live)
+    if [ "$sync" = live ]; then
+      REJOINED="not needed (still joined and syncing)"
+    else
+      REJOINED="failed: still joined but not syncing after the run (last: ${sync:-no answer}); check Settings → Hub & devices"
+    fi
+  fi
 }
 trap 'put_back; [ ! -f "$RUN.rejoin" ] || echo "The display is still unpaired. Its rejoin code is in $RUN.rejoin (Hub, code): adb -s $SERIAL shell am start -n $APP/.MainActivity --es dearth_hub <Hub> --es dearth_enroll <code>" >&2' EXIT
 
@@ -382,5 +399,5 @@ fi
 say "  putting the display back…"
 put_back
 step "Put the installed Dearth back: $RESTORED."
-[ $RESET = 0 ] || step "Rejoined the Hub: $REJOINED."
+[ "$REJOINED" = "not needed" ] || step "The Hub: $REJOINED."
 finish
