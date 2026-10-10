@@ -527,7 +527,7 @@ jobs:
         with:
           tag_name: ${{ steps.v.outputs.tag }}
           target_commitish: ${{ github.sha }}
-          name: Dearth ${{ steps.v.outputs.version }} (build ${{ steps.v.outputs.build }})
+          name: Dearth ${{ steps.v.outputs.version }}
           body_path: notes.md
           generate_release_notes: true
           make_latest: 'true'

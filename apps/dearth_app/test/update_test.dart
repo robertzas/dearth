@@ -31,23 +31,30 @@ void main() {
       };
 
   group('FR-ADM-04: releases', () {
-    test('a CI build knows its run number; a build made anywhere else has none and never updates by itself', () {
-      expect(buildNumberOf('0.1.0-build.94'), 94);
-      expect(buildNumberOf('v0.2.0-build.1203'), 1203);
-      expect(buildNumberOf('0.1.0'), isNull);
-      expect(buildNumberOf('0.1.0-local.edc123b-dirty'), isNull);
+    test('releases are semantic versions; a build made anywhere else has none and never updates by itself', () {
+      expect(AppVersion.tryParse('0.1.97'), const AppVersion(0, 1, 97));
+      expect(AppVersion.tryParse('v1.2.3'), const AppVersion(1, 2, 3));
+      expect(AppVersion.tryParse('0.1.0-dev'), isNull);
+      expect(AppVersion.tryParse('0.1.0-local.edc123b-dirty'), isNull);
+      expect(AppVersion.tryParse('0.1'), isNull);
+      // Releases from before semantic versions: the frame ran 0.1.0-build.95.
+      expect(AppVersion.tryParse('0.1.0-build.95'), const AppVersion(0, 1, 95));
+      expect(const AppVersion(0, 1, 97) > AppVersion.tryParse('0.1.0-build.95')!, isTrue);
+      expect(const AppVersion(0, 2, 1) > const AppVersion(0, 1, 120), isTrue);
+      expect(const AppVersion(1, 0, 0) > const AppVersion(0, 9, 999), isTrue);
+      expect(const AppVersion(0, 1, 97) > const AppVersion(0, 1, 97), isFalse);
     });
 
     test('the release picks the APK built for this device’s ABI, with its checksum', () {
-      final r = AppRelease.fromGitHub(release('v0.1.0-build.95'), 'armeabi-v7a')!;
-      expect(r.build, 95);
-      expect(r.version, '0.1.0-build.95');
-      expect(r.apkUrl.path, endsWith('-android-armeabi-v7a.apk'));
+      final r = AppRelease.fromGitHub(release('v0.1.97'), 'armeabi-v7a')!;
+      expect(r.version, const AppVersion(0, 1, 97));
+      expect('${r.version}', '0.1.97');
+      expect(r.apkUrl.path, endsWith('dearth-0.1.97-android-armeabi-v7a.apk'));
       expect(r.size, 47129906);
       expect(r.sha256, '28df25b3fca6ffaa1cbb26efb4f8b873d45615409c41a02f6b54a9d3091e3be9');
-      expect(AppRelease.fromGitHub(release('v0.1.0-build.95', abis: ['arm64-v8a']), 'armeabi-v7a'), isNull, reason: 'no APK for this ABI');
-      expect(AppRelease.fromGitHub(release('v1.0.0'), 'armeabi-v7a'), isNull, reason: 'not a CI release');
-      expect(AppRelease.fromGitHub({...release('v0.1.0-build.96'), 'draft': true}, 'armeabi-v7a'), isNull);
+      expect(AppRelease.fromGitHub(release('v0.1.97', abis: ['arm64-v8a']), 'armeabi-v7a'), isNull, reason: 'no APK for this ABI');
+      expect(AppRelease.fromGitHub(release('vnext'), 'armeabi-v7a'), isNull, reason: 'not a release version');
+      expect(AppRelease.fromGitHub({...release('v0.1.98'), 'draft': true}, 'armeabi-v7a'), isNull);
     });
   });
 
@@ -72,9 +79,9 @@ void main() {
     });
 
     test('the silent install runs on after adbd returns and starts the new app', () {
-      final cmd = AppUpdater.silentInstallCommand('/data/user/0/app.dearth/cache/updates/dearth-95.apk', 47129906);
+      final cmd = AppUpdater.silentInstallCommand('/data/user/0/app.dearth/cache/updates/dearth-0.1.97.apk', 47129906);
       expect(cmd, startsWith('nohup sh -c '));
-      expect(cmd, contains('cat /data/user/0/app.dearth/cache/updates/dearth-95.apk | pm install -r -S 47129906'));
+      expect(cmd, contains('cat /data/user/0/app.dearth/cache/updates/dearth-0.1.97.apk | pm install -r -S 47129906'));
       expect(cmd, contains('am start -n app.dearth/.MainActivity'));
       expect(cmd, endsWith('&'));
     });
@@ -99,13 +106,13 @@ void main() {
     });
   });
 
-  testWidgets('FR-ADM-04: Settings → Updates shows a newer build, a grown-up installs it, and a frame can update nightly', (tester) async {
+  testWidgets('FR-ADM-04: Settings → Updates shows a newer version, a grown-up installs it, and a frame can update nightly', (tester) async {
     final handle = tester.ensureSemantics();
     final fake = _FakeUpdater(
       UpdateState(
         phase: UpdatePhase.available,
-        current: 94,
-        latest: AppRelease.fromGitHub(release('v0.1.0-build.95'), 'armeabi-v7a'),
+        current: AppVersion.tryParse('0.1.0-build.95'),
+        latest: AppRelease.fromGitHub(release('v0.1.97'), 'armeabi-v7a'),
         checkedAtMs: DateTime.utc(2026, 10, 10, 16).millisecondsSinceEpoch,
         silent: true,
       ),
@@ -113,7 +120,7 @@ void main() {
     final h = await AppHarness.demo(tester, overrides: [appUpdaterProvider.overrideWith(() => fake)]);
     h.container.read(routerProvider).go('/settings/updates');
     await h.settle();
-    expect(find.textContaining('Build 95 is available'), findsOneWidget);
+    expect(find.textContaining('Dearth 0.1.97 is available'), findsOneWidget);
     expect(byId('updates.mode.when-i-tap'), findsOneWidget);
 
     await tester.tap(byId('updates.install'));

@@ -379,7 +379,9 @@ cd apps/dearth_app && flutter run -d chrome    # or -d linux, or an Android devi
 Every push to `main` runs the gate and the E2E suite and builds every
 platform: Android, web, Linux, Windows, macOS, iOS, Hub binaries and a
 multi-arch Hub image on GHCR. It then publishes a release
-`v<version>-build.<n>` ([workflow](.github/workflows/build.yml)).
+`v<major>.<minor>.<run>`, a semantic version whose patch is the CI run
+number; bump major or minor in `apps/dearth_app/pubspec.yaml`
+([workflow](.github/workflows/build.yml)).
 
 **Android signing.** An Android app only updates in place when the new APK
 is signed with the same key as the installed one. Without a release key,

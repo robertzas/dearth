@@ -38,7 +38,7 @@ class AppEnv {
       reset: flag('reset', false),
       demoFaces: flag('faces', false),
       role: str('role', const String.fromEnvironment('DEARTH_ROLE')),
-      appVersion: const String.fromEnvironment('DEARTH_VERSION', defaultValue: '0.1.0'),
+      appVersion: const String.fromEnvironment('DEARTH_VERSION', defaultValue: '0.1.0-dev'),
     );
   }
 

@@ -2674,11 +2674,15 @@ key handoff (§13.9).
 
 Releases come from GitHub (FR-ADM-04): `releases/latest`, the asset
 `dearth-<version>-android-<abi>.apk` for the ABI of the installed APK,
-checked against the SHA-256 GitHub publishes for it. A release is newer
-when its CI run number (`-build.<n>`) is higher than this build's. Builds
-made anywhere else (`0.1.0-local.<sha>` from `deploy_frame.sh --build`,
-perf-gate profile builds) have no run number: they never update by
-themselves, and a grown-up's Install replaces them. Every build a display
+checked against the SHA-256 GitHub publishes for it. Releases are
+semantic versions `<major>.<minor>.<CI run number>` (major and minor from
+the app's pubspec; the Android versionCode's build part is the run
+number), and a release is newer when its version is higher. Releases from
+before 2026-10-10 (`0.1.0-build.<n>`) read as `0.1.<n>`. Builds made
+anywhere else (`0.1.0-local.<sha>` from `deploy_frame.sh --build`,
+`0.1.0-dev` without a version, perf-gate profile builds) are not release
+versions: they never update by themselves, and a grown-up's Install
+replaces them. Every build a display
 runs (CI releases, local release and profile builds) is signed with the
 one release key (README → Android signing), so each installs over the
 others.

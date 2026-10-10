@@ -1,6 +1,8 @@
 name: dearth_app
 description: Dearth — the family command center app (wall displays, tablets, phones, desktop, web).
 publish_to: none
+# Releases are semantic versions <major>.<minor>.<CI run number>
+# (.github/actions/version): bump major or minor here; CI sets the patch.
 version: 0.1.0+1
 resolution: workspace
 

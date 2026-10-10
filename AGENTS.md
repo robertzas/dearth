@@ -28,7 +28,7 @@ Read these first, in order:
 | `e2e/` | Playwright end-to-end suite against the web build and a test Hub. |
 | `tool/` | `check.sh`, `codegen.sh`, `build_all.sh`, `e2e.sh`, `dev_hub.sh`, `web_assets.sh`, `deploy_frame.sh` (sets up, checks or updates an Android wall display over ADB), `icons/` (the SVG source of every app icon and `make_icons.sh`). `perf_gate.sh` (the frame perf gate, SPEC §12.9; `tool/perf/` holds its baselines). |
 | `skills/` | Task playbooks for agents, checked in with the code: `toybox-game/` (adding a Toybox game). |
-| `.github/` | `workflows/build.yml`: every push to `main` runs the gate and the E2E suite, builds every platform plus the Hub image, and publishes a GitHub release `v<version>-build.<run>`. `actions/setup`: shared Flutter, pub and LFS setup. |
+| `.github/` | `workflows/build.yml`: every push to `main` runs the gate and the E2E suite, builds every platform plus the Hub image, and publishes a GitHub release `v<major>.<minor>.<run>` (semantic versions: major and minor from the app's pubspec, the patch is the run number). `actions/setup`: shared Flutter, pub and LFS setup. |
 
 ## Golden rules
 

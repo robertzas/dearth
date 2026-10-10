@@ -50,10 +50,10 @@ class _UpdatesSectionState extends ConsumerState<UpdatesSection> {
       UpdatePhase.idle => 'Not checked yet',
       UpdatePhase.checking => 'Checking…',
       UpdatePhase.upToDate => 'Up to date${checked == null ? '' : ' · $checked'}',
-      UpdatePhase.available => 'Build ${latest?.build} is available${checked == null ? '' : ' · $checked'}',
-      UpdatePhase.downloading => 'Downloading build ${latest?.build}… ${((u.progress ?? 0) * 100).round()} %',
-      UpdatePhase.ready => 'Build ${latest?.build} is downloaded and ready',
-      UpdatePhase.installing => 'Installing build ${latest?.build}. Dearth restarts by itself in a minute.',
+      UpdatePhase.available => 'Dearth ${latest?.version} is available${checked == null ? '' : ' · $checked'}',
+      UpdatePhase.downloading => 'Downloading ${latest?.version}… ${((u.progress ?? 0) * 100).round()} %',
+      UpdatePhase.ready => '${latest?.version} is downloaded and ready',
+      UpdatePhase.installing => 'Installing ${latest?.version}. Dearth restarts by itself in a minute.',
     };
 
     Future<void> install() async {
@@ -62,7 +62,7 @@ class _UpdatesSectionState extends ConsumerState<UpdatesSection> {
       if (u.silent) {
         final ok = await confirmDialog(
           context,
-          title: 'Install build ${latest?.build}?',
+          title: 'Install Dearth ${latest?.version}?',
           message: 'Dearth closes for about a minute while it updates, then comes back on its own.',
           confirmLabel: 'Install',
         );
@@ -107,7 +107,7 @@ class _UpdatesSectionState extends ConsumerState<UpdatesSection> {
                   spacing: t.space.sm,
                   runSpacing: t.space.sm,
                   children: [
-                    if (latest != null) DButton(id: 'updates.install', label: 'Install build ${latest.build}', icon: Icons.download_rounded, busy: busy, onPressed: install),
+                    if (latest != null) DButton(id: 'updates.install', label: 'Install ${latest.version}', icon: Icons.download_rounded, busy: busy, onPressed: install),
                     DButton(
                       id: 'updates.check',
                       label: 'Check now',

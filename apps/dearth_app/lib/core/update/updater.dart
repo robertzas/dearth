@@ -48,9 +48,9 @@ class UpdateState {
 
   final UpdatePhase phase;
 
-  /// This build's CI run number; null for a development build, which never
+  /// This build's release version; null for a development build, which never
   /// installs updates by itself.
-  final int? current;
+  final AppVersion? current;
 
   /// The newest release, when it's newer than this build.
   final AppRelease? latest;
@@ -99,14 +99,14 @@ class AppUpdater extends Notifier<UpdateState> {
   Timer? _watchdog;
   http.Client? _http;
   bool _busy = false;
-  int? _verified;
+  AppVersion? _verified;
 
   /// Builds that failed to install: never retried by themselves.
-  final Set<int> _failed = {};
+  final Set<AppVersion> _failed = {};
 
   @override
   UpdateState build() {
-    final current = buildNumberOf(ref.read(envProvider).appVersion);
+    final current = AppVersion.tryParse(ref.read(envProvider).appVersion);
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return UpdateState(phase: UpdatePhase.unsupported, current: current);
     ref.onDispose(() {
       _tick?.cancel();
@@ -178,11 +178,11 @@ class AppUpdater extends Notifier<UpdateState> {
     }
     final now = ref.read(appClockProvider).nowMs();
     final current = state.current;
-    if (release == null || (current != null && release.build <= current)) {
+    if (release == null || (current != null && !(release.version > current))) {
       state = state.copyWith(phase: UpdatePhase.upToDate, latest: null, checkedAtMs: now);
       return;
     }
-    state = state.copyWith(phase: _verified == release.build ? UpdatePhase.ready : UpdatePhase.available, latest: release, checkedAtMs: now);
+    state = state.copyWith(phase: _verified == release.version ? UpdatePhase.ready : UpdatePhase.available, latest: release, checkedAtMs: now);
     if (_mayInstallByItself(release)) {
       try {
         await _download(release);
@@ -195,7 +195,7 @@ class AppUpdater extends Notifier<UpdateState> {
   }
 
   bool _mayInstallByItself(AppRelease r) =>
-      state.silent && state.current != null && !_failed.contains(r.build) && ref.read(deviceSettingsProvider).updates != UpdateMode.manual;
+      state.silent && state.current != null && !_failed.contains(r.version) && ref.read(deviceSettingsProvider).updates != UpdateMode.manual;
 
   Future<void> _maybeAutoInstall() async {
     final r = state.latest;
@@ -224,8 +224,8 @@ class AppUpdater extends Notifier<UpdateState> {
   Future<File> _download(AppRelease r) async {
     final dir = Directory(p.join((await getTemporaryDirectory()).path, 'updates'));
     await dir.create(recursive: true);
-    final file = File(p.join(dir.path, 'dearth-${r.build}.apk'));
-    if (_verified == r.build && file.existsSync()) return file;
+    final file = File(p.join(dir.path, 'dearth-${r.version}.apk'));
+    if (_verified == r.version && file.existsSync()) return file;
     await for (final f in dir.list()) {
       if (f.path != file.path) await f.delete(recursive: true);
     }
@@ -253,7 +253,7 @@ class AppUpdater extends Notifier<UpdateState> {
       await file.delete();
       throw const FormatException('the APK doesn’t match its published checksum');
     }
-    _verified = r.build;
+    _verified = r.version;
     state = state.copyWith(phase: UpdatePhase.ready, progress: null);
     return file;
   }
@@ -277,11 +277,11 @@ class AppUpdater extends Notifier<UpdateState> {
       if (auto && !await _mayInstallNow()) return;
       if (state.silent) {
         state = state.copyWith(phase: UpdatePhase.installing, error: null);
-        await _saveAttempt(r.build);
+        await _saveAttempt(r.version);
         try {
           await LocalAdb().shell(silentInstallCommand(file.path, file.lengthSync()));
         } on AdbException catch (e) {
-          await _failedToInstall(r.build, '$e');
+          await _failedToInstall(r.version, '$e');
           return;
         }
         // Still running after the grace period: pm didn't replace us.
@@ -310,18 +310,18 @@ class AppUpdater extends Notifier<UpdateState> {
 
   Future<File> _attemptFile() async => File(p.join((await getApplicationSupportDirectory()).path, 'update.json'));
 
-  /// Remembers the build an install started for ([build], null once it's
-  /// settled) and the builds that failed.
-  Future<void> _saveAttempt(int? build) async {
+  /// Remembers the version an install started for ([version], null once
+  /// it's settled) and the versions that failed.
+  Future<void> _saveAttempt(AppVersion? version) async {
     try {
-      await (await _attemptFile()).writeAsString(jsonEncode({'attempt': ?build, 'failed': _failed.toList()}));
+      await (await _attemptFile()).writeAsString(jsonEncode({'attempt': ?version?.toString(), 'failed': [for (final v in _failed) '$v']}));
     } on Object catch (e) {
       _log.warning('could not save the update attempt', e);
     }
   }
 
-  /// After a start (or the install grace period): the build an install was
-  /// started for is running now, or that install failed. A failed build is
+  /// After a start (or the install grace period): the version an install was
+  /// started for is running now, or that install failed. A failed version is
   /// remembered, so the display doesn't try it again by itself.
   Future<void> _settleLastAttempt() async {
     final Map<String, Object?> saved;
@@ -332,12 +332,12 @@ class AppUpdater extends Notifier<UpdateState> {
     } on Object {
       return;
     }
-    _failed.addAll([for (final b in (saved['failed'] as List<Object?>?) ?? const []) (b! as num).toInt()]);
-    final attempt = (saved['attempt'] as num?)?.toInt();
+    _failed.addAll([for (final v in (saved['failed'] as List<Object?>?) ?? const []) ?AppVersion.tryParse('$v')]);
+    final attempt = AppVersion.tryParse('${saved['attempt'] ?? ''}');
     if (attempt == null) return;
     final current = state.current;
     if (current != null && current >= attempt) {
-      _log.info('updated to build $current');
+      _log.info('updated to $current');
       await _saveAttempt(null);
       final dir = Directory(p.join((await getTemporaryDirectory()).path, 'updates'));
       if (dir.existsSync()) await dir.delete(recursive: true);
@@ -353,11 +353,11 @@ class AppUpdater extends Notifier<UpdateState> {
     await _failedToInstall(attempt, why);
   }
 
-  Future<void> _failedToInstall(int build, String why) async {
-    _log.warning('build $build failed to install: $why');
-    _failed.add(build);
+  Future<void> _failedToInstall(AppVersion version, String why) async {
+    _log.warning('$version failed to install: $why');
+    _failed.add(version);
     await _saveAttempt(null);
-    state = state.copyWith(phase: state.latest == null ? UpdatePhase.idle : UpdatePhase.ready, error: 'Build $build didn’t install: $why');
+    state = state.copyWith(phase: state.latest == null ? UpdatePhase.idle : UpdatePhase.ready, error: '$version didn’t install: $why');
   }
 }
 
