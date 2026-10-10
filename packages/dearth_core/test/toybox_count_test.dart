@@ -198,4 +198,55 @@ void main() {
       expect(fingerResult(2), GameResult.miss);
     });
   });
+
+  group('FR-TOY-03 Animal Race', () {
+    test('the ladder: first or last of 3 → 1st–3rd → 1st–5th or last → all five in order', () {
+      for (var seed = 0; seed < 200; seed++) {
+        for (var level = 1; level <= 4; level++) {
+          final r = raceRound(level, Random(seed));
+          final lanes = level >= 3 ? 5 : 3;
+          expect(r.lanes, lanes);
+          expect(r.racers.toSet().length, lanes, reason: 'distinct racers');
+          expect(r.racers, everyElement(inInclusiveRange(0, kRacers.length - 1)));
+          expect(r.places..sort(), [for (var l = 1; l <= lanes; l++) l], reason: 'a permutation of the places');
+          switch (level) {
+            case 1:
+              expect(r.asks, hasLength(1));
+              expect(r.asks.single, anyOf(1, 0), reason: 'first or last');
+            case 2:
+              expect(r.asks, hasLength(1));
+              expect(r.asks.single, inInclusiveRange(1, 3));
+            case 3:
+              expect(r.asks, hasLength(1));
+              expect(r.asks.single, anyOf(0, 1, 2, 3, 4, 5));
+            default:
+              expect(r.asks, [1, 2, 3, 4, 5]);
+          }
+        }
+      }
+    });
+
+    test('never the same first ask and winner twice in a row', () {
+      for (var level = 1; level <= 4; level++) {
+        RaceRound? last;
+        for (var i = 0; i < 200; i++) {
+          final r = raceRound(level, Random(level * 1000 + i), last: last);
+          if (last != null) {
+            final sameAsk = r.asks.first == last.asks.first;
+            final sameWinner = r.racers[r.places.indexOf(1)] == last.racers[last.places.indexOf(1)];
+            expect(sameAsk && sameWinner, isFalse, reason: 'level $level round $i');
+          }
+          last = r;
+        }
+      }
+    });
+
+    test('places as words and labels', () {
+      expect([for (var p = 0; p <= 5; p++) ordinal(p)], ['last', '1st', '2nd', '3rd', '4th', '5th']);
+      expect(ordinalWord(2), 'second');
+      expect(raceResult(1), GameResult.helped);
+      expect(kRacers, hasLength(10));
+      expect(kRacers.map((r) => r.$1).toSet().length, 10);
+    });
+  });
 }

@@ -101,6 +101,7 @@ const List<GameInfo> kExpansionGames = [
   GameInfo('creaturecount', 'Creature Count', '🐙', minMonths: 30, skills: ['Counting out a set', 'Reading numerals', 'Counting two things'], levels: 4, added: '2026-10-10'),
   GameInfo('snacksnap', 'Snack Snap', '🥨', minMonths: 30, skills: ['Seeing amounts at a glance', 'Matching amounts to numbers', 'Ten-frames'], levels: 4, added: '2026-10-10'),
   GameInfo('fingers', 'Finger Count', '🖐️', minMonths: 30, skills: ['Fingers as numbers', 'Counting to ten', 'Five and some more'], levels: 4, added: '2026-10-10'),
+  GameInfo('race', 'Animal Race', '🏁', minMonths: 30, skills: ['First, second, third', 'Last', 'Putting in order'], levels: 4, added: '2026-10-10'),
 ];
 
 GameInfo? gameById(String id) => kGames.where((g) => g.id == id).firstOrNull;

@@ -15,6 +15,7 @@ import 'hear.dart';
 import 'hop.dart';
 import 'lettercreature.dart';
 import 'lettermonster.dart';
+import 'race.dart';
 import 'rocket.dart';
 import 'sight.dart';
 import 'spell.dart';
@@ -190,6 +191,15 @@ String fingersYayClip(int n) => 'fingers_yay_$n';
 /// 6–10: "Five and three more make eight!"
 String fingersMakeClip(int n) => 'fingers_make_$n';
 
+/// Animal Race: "Who came first?" … "Who came fifth?", "Who came last?"
+String raceAskClip(int place) => 'race_ask_${place == 0 ? 'last' : place}';
+
+/// A wrong animal: "I came third!"
+String raceCameClip(int place) => 'race_came_$place';
+
+/// A ribbon pins on: "First place!"
+String racePlaceClip(int place) => 'race_place_$place';
+
 /// What Letter Monster wants: "I want the letter B!", "I want the letter
 /// that says buh!", or a picture's first sound ([firstSoundClip]).
 String letterMonsterAskClip(LetterMonsterRound r) => switch (r.ask) {
@@ -284,6 +294,7 @@ abstract final class VoiceLine {
   static const fingersFive = 'fingers_five';
   static const fingersWhich = 'fingers_which';
   static const fingersHighFive = 'fingers_highfive';
+  static const raceGo = 'race_go';
   static const busStopAsk = 'busstop_ask';
   static const rocketBlastOff = 'rocket_blastoff';
   static const trainNext = 'train_next';
@@ -550,6 +561,13 @@ Map<String, String> _lines() {
   lines[VoiceLine.fingersFive] = 'Five! A whole hand!';
   lines[VoiceLine.fingersWhich] = 'How many fingers?';
   lines[VoiceLine.fingersHighFive] = 'Then give me a high five!';
+  for (var place = 1; place <= 5; place++) {
+    lines[raceAskClip(place)] = 'Who came ${ordinalWord(place)}?';
+    lines[raceCameClip(place)] = 'I came ${ordinalWord(place)}!';
+    lines[racePlaceClip(place)] = '${_cap(ordinalWord(place))} place!';
+  }
+  lines[raceAskClip(0)] = 'Who came last?';
+  lines[VoiceLine.raceGo] = 'Ready, set, go!';
   for (final l in kLetterSounds) {
     lines[letterMonsterAskClip(LetterMonsterRound(LetterMonsterAsk.name, l.letter, [l.letter]))] = 'I want the letter ${l.letter}!';
     if (l.starts) lines[letterMonsterAskClip(LetterMonsterRound(LetterMonsterAsk.sound, l.letter, [l.letter]))] = 'I want the letter that says ${_sound(l)}!';

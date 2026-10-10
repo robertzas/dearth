@@ -299,6 +299,7 @@ void main() {
         for (final t in SeqTrack.values) t.emoji,
         for (final w in DressWeather.values) w.emoji,
         for (final i in DressItem.values) i.emoji,
+        for (final r in kRacers) r.$1,
       ];
       expect([for (final p in pictures) if (!draws(p)) p], isEmpty);
     });

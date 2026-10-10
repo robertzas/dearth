@@ -51,6 +51,7 @@ export 'src/toybox/hop.dart';
 export 'src/toybox/hundred.dart';
 export 'src/toybox/lettercreature.dart';
 export 'src/toybox/lettermonster.dart';
+export 'src/toybox/race.dart';
 export 'src/toybox/rocket.dart';
 export 'src/toybox/rounds.dart';
 export 'src/toybox/sequencer.dart';

@@ -17,7 +17,7 @@ at a time.
 | 1 | Creature Count | `creaturecount` | ✅ built and pushed 2026-10-10 | Build-a-Creature | Counting out a set |
 | 2 | Snack Snap | `snacksnap` | ✅ built and pushed 2026-10-10 | Feed the Monster | Seeing amounts at a glance |
 | 3 | Finger Count | `fingers` | ✅ built and pushed 2026-10-10 | Number Tracing | Fingers as numbers |
-| 4 | Animal Race | `race` | ⬜ not started | Who Has More? | First, second, third |
+| 4 | Animal Race | `race` | ✅ built and pushed 2026-10-10 | Who Has More? | First, second, third |
 | 5 | Bead Slider | `beads` | ⬜ not started | Tallies | Fives and tens |
 | 6 | Fair Share | `share` | ⬜ not started | Feed the Monster | Sharing equally |
 

@@ -46,4 +46,19 @@ test.describe('Toybox third set', () => {
     await expectText(tid(page, 'fingers.ask'), /^Yay! /);
     await expectCheered(page);
   });
+
+  test('FR-TOY-03: Animal Race — she taps the animal that came where the voice asks', async ({ page }) => {
+    await openToyboxGame(page, 'race');
+    // The race runs before the question.
+    await expectText(tid(page, 'race.ask'), /^Who came (\d)(st|nd|rd|th)\?$|^Who came last\?$/, 30000);
+    const asked = (await textOf(tid(page, 'race.ask'))).match(/^Who came (?:last|(\d)(?:st|nd|rd|th))\?$/)!;
+    const animals = await idsUnder(page, 'race.animal.');
+    const labelled = await Promise.all(animals.map(async (id) => [id, await textOf(tid(page, id))] as const));
+    const target = asked[1]
+      ? labelled.find(([, label]) => label.endsWith(`came ${asked[1]}${asked[2] ?? ''}`))!
+      : labelled.reduce((a, b) => (Number(a[1].match(/came (\d)/)![1]) > Number(b[1].match(/came (\d)/)![1]) ? a : b));
+    await tap(tid(page, target[0]));
+    await expectText(tid(page, 'race.ask'), /^Yes! /);
+    await expectCheered(page);
+  });
 });

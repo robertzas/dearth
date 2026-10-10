@@ -1,6 +1,7 @@
 import 'package:dearth_app/core/sound.dart';
 import 'package:dearth_app/features/toybox/games/creaturecount.dart';
 import 'package:dearth_app/features/toybox/games/fingers.dart';
+import 'package:dearth_app/features/toybox/games/race.dart';
 import 'package:dearth_app/features/toybox/games/snacksnap.dart';
 import 'package:dearth_core/dearth_core.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,7 +18,20 @@ void main() {
     testWidgets('every game of the third set lays out on a ${size.width.toInt()}×${size.height.toInt()} screen at its busiest level', (tester) async {
       await expectGamesLayOut(
         tester,
-        const [('creaturecount', 1), ('creaturecount', 3), ('creaturecount', 4), ('snacksnap', 1), ('snacksnap', 3), ('snacksnap', 4), ('fingers', 1), ('fingers', 3), ('fingers', 4)],
+        const [
+          ('creaturecount', 1),
+          ('creaturecount', 3),
+          ('creaturecount', 4),
+          ('snacksnap', 1),
+          ('snacksnap', 3),
+          ('snacksnap', 4),
+          ('fingers', 1),
+          ('fingers', 3),
+          ('fingers', 4),
+          ('race', 1),
+          ('race', 3),
+          ('race', 4),
+        ],
         size: size,
       );
     });
@@ -496,4 +510,104 @@ void main() {
       handle.dispose();
     });
   });
+
+  group('Animal Race', () {
+    RaceGameState game(WidgetTester tester) => tester.state<RaceGameState>(find.byType(RaceGame));
+
+    /// Runs the race out in frames: ticker-driven games crawl in tests.
+    Future<void> run(RaceGameState s, WidgetTester tester) async {
+      for (var guard = 0; s.debugRacing && guard < 600; guard++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      expect(s.debugRacing, isFalse);
+    }
+
+    testWidgets('FR-TOY-03: the race runs, then the right animal is ribboned', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'race', sound: sound, level: 2);
+      final s = game(tester);
+      final r = s.debugRound;
+      expectNoFallbackText(byId('screen.game'));
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(sound.said.first, VoiceLine.raceGo);
+      expect(labelOf(tester, 'race.animal.0'), '${_cap(kRacers[r.racers[0]].$2)}, racing');
+      await run(s, tester);
+      final want = r.asks.single;
+      expect(sound.said, contains(raceAskClip(want)));
+      expect(labelOf(tester, 'race.ask'), 'Who came ${ordinal(want)}?');
+      final lane = r.places.indexOf(want);
+      final place = r.places[lane];
+      await tester.tap(byId('race.animal.$lane'));
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(sound.said, contains(racePlaceClip(place)));
+      expect(s.debugRibbons[lane], place);
+      expect(labelOf(tester, 'race.animal.$lane'), '${_cap(kRacers[r.racers[lane]].$2)}, came ${ordinal(place)}');
+      expect(labelOf(tester, 'race.ask'), 'Yes! ${ordinalWord(place)}');
+      await tester.pump(const Duration(seconds: 3));
+      await h.settle();
+      expect(await toyboxRounds(h), [('race', 2, 'win')]);
+      await tester.pump(const Duration(seconds: 12));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('a wrong animal says its own place; two slips light the winner', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'race', sound: sound, level: 2);
+      final s = game(tester);
+      final r = s.debugRound;
+      final want = r.asks.single;
+      await run(s, tester);
+      final right = r.places.indexOf(want);
+      final wrong = [for (var l = 0; l < r.lanes; l++) if (l != right) l];
+      for (final lane in wrong) {
+        await tester.tap(byId('race.animal.$lane'));
+        await tester.pump(const Duration(milliseconds: 150));
+      }
+      expect(sound.said, containsAllInOrder([for (final lane in wrong) raceCameClip(r.places[lane])]));
+      expect(sound.played.where((e) => e.$1 == Sfx.nope), hasLength(r.lanes - 1));
+      expect(s.debugHint, isTrue);
+      await tester.tap(byId('race.animal.$right'));
+      await tester.pump(const Duration(seconds: 3));
+      await h.settle();
+      expect(await toyboxRounds(h), [('race', 2, 'miss')]);
+      await tester.pump(const Duration(seconds: 12));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('the podium: all five in order is one round; a slip in between is helped', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'race', sound: sound, level: 4);
+      final s = game(tester);
+      final r = s.debugRound;
+      expect(r.asks, [1, 2, 3, 4, 5]);
+      await run(s, tester);
+      // One wrong tap while the first place is asked.
+      final notFirst = [for (var l = 0; l < r.lanes; l++) if (l != r.places.indexOf(1)) l];
+      await tester.tap(byId('race.animal.${notFirst.first}'));
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(sound.said.last, raceCameClip(r.places[notFirst.first]));
+      // Then the five, in order.
+      for (final want in r.asks) {
+        final lane = r.places.indexOf(want);
+        await tester.tap(byId('race.animal.$lane'));
+        await tester.pump(afterVoice(racePlaceClip(want)) + const Duration(milliseconds: 100));
+      }
+      expect(s.debugSolved, isTrue);
+      expect(s.debugRibbons.length, 5);
+      expect(labelOf(tester, 'race.ask'), 'Yes! All in order');
+      await tester.pump(const Duration(seconds: 3));
+      await h.settle();
+      expect(await toyboxRounds(h), [('race', 4, 'helped')]);
+      await tester.pump(const Duration(seconds: 12));
+      await h.shutdown();
+      handle.dispose();
+    });
+  });
 }
+
+String _cap(String s) => '${s[0].toUpperCase()}${s.substring(1)}';

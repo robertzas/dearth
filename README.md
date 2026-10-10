@@ -107,8 +107,9 @@ back.
   two that make five), Letter Creatures (she builds a creature from parts picked by their first sound), Creature Count (a bare
   creature asks for eyes, legs, horns or spots; she adds them one at a time, each saying the count, and makes it dance to check),
   Snack Snap (plates of treats in rows, dice pips or ten-frames; she taps the one the monster asks for, flashed and covered at the
-  top level) and Finger Count (a big cartoon hand asks her to raise fingers — a whole hand at a tap on the palm for 6–10 — then a
-  high five checks; at the top the hand shows fingers and she picks the number). The letter, word
+  top level), Finger Count (a big cartoon hand asks her to raise fingers — a whole hand at a tap on the palm for 6–10 — then a
+  high five checks; at the top the hand shows fingers and she picks the number) and Animal Race (animals race across their lanes
+  and coast to a stop in order; she answers "who came second?", ribbons all five at the top). The letter, word
   and number games talk: every line is a clip bundled with the app, so they
   work on a display with no text-to-speech. Every game is on for every kid, the ones that suit their age first, and every game
   adapts: three wins in a row go up a level, three misses ease off, and

@@ -32,6 +32,7 @@ import 'music.dart';
 import 'oddone.dart';
 import 'paint.dart';
 import 'patterns.dart';
+import 'race.dart';
 import 'rhymes.dart';
 import 'rocket.dart';
 import 'sequencer.dart';
@@ -106,4 +107,5 @@ final Map<String, GameBuilder> kGameBuilders = {
   'creaturecount': CreatureCountGame.new,
   'snacksnap': SnackSnapGame.new,
   'fingers': FingerGame.new,
+  'race': RaceGame.new,
 };
