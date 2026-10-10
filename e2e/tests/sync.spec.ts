@@ -52,4 +52,16 @@ test.describe('Sync', () => {
     await expect(tid(a, rowId)).toHaveCount(0, { timeout: 15_000 });
     await expectText(tid(b, 'home.sync'), 'Unpaired', 15_000);
   });
+
+  test('FR-ADM-04: Settings → Updates shows the Hub’s version; a Hub without its updater only tells', async ({ browser, baseURL }, info) => {
+    test.skip(info.project.name !== 'wall-l', 'Hub journeys run once');
+    const a = await pairedPage(browser, baseURL!);
+    await goTo(a, 'settings');
+    await tap(await scrollTo(a, 'settings.nav.updates'));
+    await expectText(tid(a, 'updates.hub.status'), /Dearth Hub \S+/);
+    await expect(tid(a, 'updates.hub.check')).toBeVisible();
+    // The test Hub runs without the Watchtower beside it (compose.yml).
+    await expect(tid(a, 'updates.hub.install')).toHaveCount(0);
+    await expect(tid(a, 'updates.hub.mode.nightly')).toHaveCount(0);
+  });
 });

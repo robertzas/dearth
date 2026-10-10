@@ -2,6 +2,7 @@
 #
 #   cp .env.example .env    # set DEARTH_PUBLIC_URL, DEARTH_ADMIN_PASSWORD, …
 #   openssl rand -hex 32 > dearth_key
+#   openssl rand -hex 32 > dearth_update_token
 #   docker compose up -d
 services:
   dearth:
@@ -14,6 +15,12 @@ services:
       DEARTH_SECRET_KEY_FILE: /run/secrets/dearth_key
       DEARTH_PHOTO_DIRS: /photos
       DEARTH_MUSIC_DIRS: /music
+      # The updater below (Settings → Updates, SPEC §15.3).
+      DEARTH_UPDATER_URL: http://updater:8080
+      DEARTH_UPDATER_TOKEN_FILE: /run/secrets/dearth_update_token
+    labels:
+      # The only container the updater may replace.
+      com.centurylinklabs.watchtower.enable: "true"
     volumes:
       - dearth-data:/data
       # Optional: folders the Hub may read photos/music from (read-only).
@@ -23,6 +30,27 @@ services:
       - "${DEARTH_HTTP_PORT:-8080}:8080"
     secrets:
       - dearth_key
+      - dearth_update_token
+
+  # Installs Hub updates, only when the Hub asks (SPEC §15.3): the Hub
+  # checks GitHub for new releases and decides when (a grown-up's tap,
+  # nightly, or as soon as one is out); this pulls the image (the `latest`
+  # tag, or whatever DEARTH_IMAGE names) and recreates the container above
+  # with the same settings and data. It never polls by itself, and its API
+  # isn't published outside this compose network.
+  updater:
+    image: nickfedor/watchtower:1.23.0
+    container_name: dearth-updater
+    restart: unless-stopped
+    environment:
+      WATCHTOWER_HTTP_API_ENDPOINTS: update
+      WATCHTOWER_HTTP_API_TOKEN: /run/secrets/dearth_update_token
+      WATCHTOWER_LABEL_ENABLE: "true"
+      WATCHTOWER_CLEANUP: "true"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    secrets:
+      - dearth_update_token
 
 volumes:
   dearth-data: {}
@@ -30,3 +58,5 @@ volumes:
 secrets:
   dearth_key:
     file: ./dearth_key
+  dearth_update_token:
+    file: ./dearth_update_token

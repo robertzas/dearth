@@ -1515,7 +1515,10 @@ only**.
   after start, then every four hours, and when Settings → Updates opens),
   shows a newer build there, and a grown-up installs it. A display that can
   install silently can also install by itself, nightly or when idle.
-  Install mechanics depend on the device (§15.3). (The owner chose GitHub
+  Install mechanics depend on the device (§15.3). The Hub updates itself
+  the same way: it checks GitHub every hour, shows its version in
+  Settings → Updates, and installs when a grown-up taps, nightly or right
+  away, as the household chose. (The owner chose GitHub
   over a Hub-hosted feed on 2026-10-10: it works in demo, Solo and Hub
   modes, and displays update without waiting for a newer Hub. It is the
   one network call the app makes outside the Hub, besides the FreeKiosk
@@ -2535,6 +2538,7 @@ generated from the shelf routes and committed.
 | Photos | `POST /photos/sources/{id}/refresh` · `POST /photos/google/picker` (new session) · `GET /photos/google/picker/{id}` |
 | Smart home | `POST /ha/call` (ACL-checked) · `GET /ha/camera/{entity}` (snapshot) |
 | Devices | `POST /devices/{id}/command` (wake, sleep, reload, screenshot, chime, announce, timer) · `GET /devices/{id}/screenshot/latest` · `GET /devices/{id}/logs` |
+| Updates | `GET /api/admin/update` (version, latest, mode, can install) · `POST /api/admin/update/check` · `POST /api/admin/update/install` |
 | Admin | `GET/PUT /admin/settings` · `/admin/integrations/*` · `POST /admin/backup` · `POST /admin/export` · `POST /admin/import` |
 | Web | `/` (Flutter web app, PWA manifest, service worker, COOP/COEP headers) |
 
@@ -2549,6 +2553,7 @@ generated from the shelf routes and committed.
 | Chore & routine materialization | Hourly + at local midnight (household TZ) |
 | Spoonacular budget reset (remembered recipes are kept indefinitely, §13.6) | Daily |
 | Backups | Nightly 03:30 local |
+| Hub update check (GitHub releases; installs per the household's choice, §15.3) | Hourly |
 | HA connection | Persistent with reconnect backoff |
 | Blob store GC (unreferenced, older than 7 d) | Weekly |
 
@@ -2694,6 +2699,7 @@ others.
 | Developer path | `tool/deploy_frame.sh` installs the latest release, `--apk` a given one, `--build` a local build (keeping the installed build number, so it installs over a newer release). |
 | Dearth as Device Owner/launcher (M5, optional) | Silent `PackageInstaller` sessions without ADB, with staged rollout (one frame first) and automatic rollback if the new version fails to report healthy within 10 min. |
 | iPhone | The PWA updates on reload. |
+| The Hub (Docker, `compose.yml`) | The Hub knows its version (`DEARTH_VERSION`, set in the image) and checks GitHub hourly (`HubUpdateJob`). Settings → Updates on an admin device shows it; a grown-up taps **Update the Hub**, or the household picks **Nightly** (3–5 am household time) or **Right away** (setting `hub.updates`). A process can't replace itself, so the Hub asks the Watchtower beside it (`nickfedor/watchtower`, the maintained fork; only its token-protected `POST /v1/update` is on, it never polls by itself, and `--label-enable` limits it to the Hub's container), which pulls the image's tag and recreates the container with the same settings and volume. CI moves `latest` before it publishes the release, so the image found is the release seen. A Hub still answering on the old version 15 minutes later, or restarted on it, marks that release failed and doesn't try it again by itself. A Hub without the updater (an older `compose.yml`, the archives, the Hub built into the app) only reports new releases. |
 
 Releases skip the frame perf gate (§12.9), which needs the frame and a
 person to run it: a display set to update by itself runs whatever passed

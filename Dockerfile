@@ -36,7 +36,10 @@ COPY --from=hub-build /out/bundle /app
 # dist/ always exists (dist/.keep); dist/web is the Flutter web build when present.
 COPY dist/ /tmp/dist/
 RUN if [ -f /tmp/dist/web/index.html ]; then cp -r /tmp/dist/web/. /app/web/; fi && rm -rf /tmp/dist
-ENV DEARTH_DATA_DIR=/data \
+# The release version (CI passes a semantic version): the Hub reports it
+# and compares it with GitHub's latest release (SPEC §15.3).
+ENV DEARTH_VERSION=${VERSION} \
+    DEARTH_DATA_DIR=/data \
     DEARTH_WEB_DIR=/app/web \
     DEARTH_PORT=8080
 USER dearth

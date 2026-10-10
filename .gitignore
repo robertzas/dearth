@@ -41,6 +41,7 @@ hub/dearth_hub/data/
 .env.*
 !.env.example
 dearth_key
+dearth_update_token
 
 # --- Tooling output ----------------------------------------------------------------
 /dist/*

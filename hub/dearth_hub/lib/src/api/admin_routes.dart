@@ -56,6 +56,28 @@ void mountAdminRoutes(Router r, HubContext ctx) {
     });
   });
 
+  // ── Hub updates (FR-ADM-04, SPEC §15.3) ──────────────────────────────────
+  r.get('/api/admin/update', (Request req) async {
+    await requireAdmin(req, ctx.auth);
+    return jsonOk(await ctx.updates.status());
+  });
+
+  r.post('/api/admin/update/check', (Request req) async {
+    await requireAdmin(req, ctx.auth);
+    if (!ctx.config.fakeProviders) await ctx.updates.check();
+    return jsonOk(await ctx.updates.status());
+  });
+
+  r.post('/api/admin/update/install', (Request req) async {
+    await requireAdmin(req, ctx.auth);
+    try {
+      await ctx.updates.install();
+    } on StateError catch (e) {
+      throw HttpError(409, 'cannot_update', e.message);
+    }
+    return jsonOk(await ctx.updates.status());
+  });
+
   r.post('/api/admin/pair/approve', (Request req) async {
     await requireAdmin(req, ctx.auth);
     final b = await readJson(req);

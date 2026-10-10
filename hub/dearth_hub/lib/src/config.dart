@@ -23,6 +23,8 @@ class HubConfig {
     this.contact = 'dearth-hub',
     this.jobsEnabled = true,
     this.useVips = true,
+    this.updaterUrl,
+    this.updaterToken,
   });
 
   /// Reads `DEARTH_*` variables. A missing secret key is generated once and
@@ -71,6 +73,11 @@ class HubConfig {
       autoApprove: flag('DEARTH_AUTO_APPROVE'),
       contact: get('DEARTH_CONTACT') ?? 'dearth-hub',
       jobsEnabled: !flag('DEARTH_DISABLE_JOBS'),
+      updaterUrl: get('DEARTH_UPDATER_URL')?.replaceFirst(RegExp(r'/+$'), ''),
+      updaterToken: get('DEARTH_UPDATER_TOKEN') ?? switch (get('DEARTH_UPDATER_TOKEN_FILE')) {
+        final String f when File(f).existsSync() => File(f).readAsStringSync().trim(),
+        _ => null,
+      },
     );
   }
 
@@ -112,6 +119,14 @@ class HubConfig {
   /// built into the app (SPEC §7.2 Solo mode) turns this off: phones and
   /// frames have no `vips`, and iOS can't start processes at all.
   final bool useVips;
+
+  /// The Watchtower beside the Hub in `compose.yml`, which pulls the new
+  /// image and recreates the Hub's container when the Hub asks (SPEC
+  /// §15.3), and its HTTP API token. Without them the Hub can tell that a
+  /// release is out but not install it.
+  final String? updaterUrl;
+  final String? updaterToken;
+  bool get canSelfUpdate => updaterUrl != null && updaterToken != null;
 
   String get blobDir => p.join(dataDir, 'blobs');
   String get backupDir => p.join(dataDir, 'backups');

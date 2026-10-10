@@ -25,6 +25,7 @@ import 'jobs/google_job.dart';
 import 'jobs/google_tasks_job.dart';
 import 'jobs/photos_job.dart';
 import 'jobs/scheduler.dart';
+import 'jobs/update_job.dart';
 import 'kernel.dart';
 import 'recipes_service.dart';
 import 'storage.dart';
@@ -65,13 +66,15 @@ class DearthHub {
     final blobs = BlobStore(db, config.blobDir, useVips: config.useVips);
     final integrations = Integrations(kernel: kernel, vault: vault, config: config, fetcher: f, jobs: jobs);
     final google = GoogleCalendarJob(integrations, jobs, onTrigger: () => scheduler.runNow('google-calendar', delay: const Duration(seconds: 2)));
+    final updates = HubUpdateJob(integrations, config);
     scheduler
       ..register(WeatherJob(integrations))
       ..register(IcsJob(integrations, jobs))
       ..register(google)
       ..register(GoogleTasksJob(integrations, jobs, onTrigger: () => scheduler.runNow('google-tasks', delay: const Duration(seconds: 2))))
       ..register(PhotosJob(integrations, blobs, jobs, config))
-      ..register(MaintenanceJob(kernel, blobs, config));
+      ..register(MaintenanceJob(kernel, blobs, config))
+      ..register(updates);
 
     // Re-run integrations when the relevant data changes on any device.
     kernel.addListener((ops, origin) {
@@ -80,6 +83,8 @@ class DearthHub {
         if (t == 'households' && (o.op.fields.containsKey('lat') || o.op.fields.containsKey('timezone'))) scheduler.runNow('weather');
         if (t == 'calendar_sources' && origin.deviceId != DeviceIdentity.hub.deviceId) scheduler.runNow('ics');
         if (t == 'photo_sources' && origin.deviceId != DeviceIdentity.hub.deviceId) scheduler.runNow('photos');
+        // A new choice of when to update may mean now.
+        if (t == 'settings' && o.op.rowId.endsWith(SettingKeys.hubUpdates)) scheduler.runNow('hub-update');
       }
     });
 
@@ -95,6 +100,7 @@ class DearthHub {
       scheduler: scheduler,
       jobs: jobs,
       google: google,
+      updates: updates,
       fetcher: f,
       vault: vault,
     );
@@ -157,6 +163,7 @@ class DearthHub {
 
   Future<void> stop() async {
     context.scheduler.stop();
+    context.updates.dispose();
     await context.connections.closeAll();
     await server?.close(force: true);
     context.fetcher.close();

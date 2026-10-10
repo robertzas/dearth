@@ -94,7 +94,7 @@ final List<SettingsSection> kSettingsSections = [
       keywords: const ['Forecast', 'Weather updates', 'Weather Underground', 'Weather station', 'API key']),
   SettingsSection('hub', SettingsGroupKind.system, 'Hub & devices', 'How this device runs, other screens', Icons.hub_rounded, (_) => const HubSection(),
       keywords: const ['Sync', 'Pairing', 'Devices', 'Enrollment code', 'On its own', 'Move to a Hub', 'Demo', 'Toybox mode', 'Disconnect']),
-  SettingsSection('updates', SettingsGroupKind.system, 'Updates', 'New versions of the app', Icons.system_update_rounded, (_) => const UpdatesSection(),
+  SettingsSection('updates', SettingsGroupKind.system, 'Updates', 'New versions of the app and the Hub', Icons.system_update_rounded, (_) => const UpdatesSection(),
       keywords: const ['Update', 'Install', 'New version', 'Release', 'Nightly', 'GitHub']),
   SettingsSection('about', SettingsGroupKind.system, 'About', 'Version and licenses', Icons.info_outline_rounded, (_) => const AboutSection(),
       keywords: const ['Version', 'Licenses', 'Source code']),
@@ -122,8 +122,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final t = DTheme.of(context);
     final wide = !t.isPhone && MediaQuery.sizeOf(context).width >= 1000 * t.scale;
     final toyboxOnly = ref.watch(sessionProvider.select((s) => s.isToybox));
-    // Updates only where the app can install them (Android).
-    final updates = ref.watch(appUpdaterProvider.select((u) => u.phase != UpdatePhase.unsupported));
+    // Updates where the app installs them (Android), or for the Hub.
+    final updates = ref.watch(appUpdaterProvider.select((u) => u.phase != UpdatePhase.unsupported)) || ref.watch(sessionProvider.select(showsHubUpdates));
     final sections = [
       for (final s in kSettingsSections)
         if ((!toyboxOnly || kToyboxOnlySettings.contains(s.id)) && (s.id != 'updates' || updates)) s,

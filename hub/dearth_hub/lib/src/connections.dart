@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:dearth_core/dearth_core.dart';
@@ -12,7 +13,10 @@ import 'kernel.dart';
 
 final _log = Logger('connections');
 
-const hubVersion = '0.1.0';
+/// This Hub's release version: the image sets `DEARTH_VERSION` (the
+/// Dockerfile's `VERSION`, a semantic version from CI); anything else is a
+/// development build, which never updates by itself.
+final String hubVersion = Platform.environment['DEARTH_VERSION'] ?? '0.1.0-dev';
 
 /// All live device WebSockets (SPEC §8.4.3, §8.6).
 class ConnectionHub {

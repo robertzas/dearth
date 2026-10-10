@@ -70,6 +70,7 @@ export 'src/toybox/whosthat.dart';
 export 'src/toybox/wordpop.dart';
 export 'src/toybox/words.dart';
 export 'src/toybox/zoo.dart';
+export 'src/update/app_version.dart';
 export 'src/util/ids.dart';
 export 'src/util/json.dart';
 export 'src/util/pin.dart';

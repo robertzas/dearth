@@ -7,6 +7,7 @@ import '../connections.dart';
 import '../integrations.dart';
 import '../jobs/google_job.dart';
 import '../jobs/scheduler.dart';
+import '../jobs/update_job.dart';
 import '../kernel.dart';
 import '../recipes_service.dart';
 import '../storage.dart';
@@ -24,6 +25,7 @@ class HubContext {
     required this.scheduler,
     required this.jobs,
     required this.google,
+    required this.updates,
     required this.fetcher,
     required this.vault,
   }) : startedMs = DateTime.now().millisecondsSinceEpoch;
@@ -38,6 +40,7 @@ class HubContext {
   final Scheduler scheduler;
   final JobStore jobs;
   final GoogleCalendarJob google;
+  final HubUpdateJob updates;
   final Fetcher fetcher;
   final SecretVault vault;
   final int startedMs;

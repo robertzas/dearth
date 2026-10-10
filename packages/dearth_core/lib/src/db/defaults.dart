@@ -45,6 +45,10 @@ abstract final class SettingKeys {
   /// holidays: bool, country: 'US', observances: bool}`.
   static const calendarVirtual = 'calendar.virtual';
   static const onboarding = 'household.onboarding';
+
+  /// When the Hub installs a new release (SPEC §15.3): `{mode:
+  /// manual | nightly | auto}` ([HubUpdateMode]).
+  static const hubUpdates = 'hub.updates';
 }
 
 /// Ops creating the household skeleton (idempotent: re-running only

@@ -228,6 +228,7 @@ curl -fsSLO https://raw.githubusercontent.com/robertzas/dearth/main/compose.yml
 curl -fsSL -o .env https://raw.githubusercontent.com/robertzas/dearth/main/.env.example
 $EDITOR .env                          # public URL, admin password, time zone, folders
 openssl rand -hex 32 > dearth_key     # encrypts stored integration secrets: back it up
+openssl rand -hex 32 > dearth_update_token   # lets the Hub ask its updater for a new version
 docker compose up -d
 ```
 
@@ -245,6 +246,21 @@ To skip step 3, create a one-time enrollment code in **Settings → Hub &
 devices → Add a display with a code**, or run `/app/bin/dearth_hub enroll`
 in the container.
 
+**Updating the Hub.** The Hub looks for a new release every hour.
+**Settings → Updates** shows its version, and a grown-up taps **Update the
+Hub**, or picks **Nightly** (3–5 am) or **Right away**. The compose file
+runs a [Watchtower](https://github.com/nicholas-fedor/watchtower) beside
+the Hub that does nothing until the Hub asks it. Then it pulls the image
+and recreates the Hub's container with the same settings and data, and
+displays reconnect by themselves. A Hub set up from an older
+`compose.yml` can't update itself yet. Bring it up to date once:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/robertzas/dearth/main/compose.yml
+openssl rand -hex 32 > dearth_update_token
+docker compose pull && docker compose up -d
+```
+
 <details>
 <summary>Hub without Docker</summary>
 
@@ -255,6 +271,9 @@ binary and the web app:
 tar -xzf dearth-hub-…-linux-x64.tar.gz -C /opt/dearth
 DEARTH_DATA_DIR=/var/lib/dearth DEARTH_ADMIN_PASSWORD=… /opt/dearth/bin/dearth_hub serve
 ```
+
+This Hub can tell you about new releases but can't install them: update
+it by unpacking the new archive the same way.
 
 </details>
 
