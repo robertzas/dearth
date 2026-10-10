@@ -206,6 +206,9 @@ String beadsShowClip(int n) => 'beads_show_$n';
 /// Right: "Five and two make seven!" / "Ten and four make fourteen!"
 String beadsYayClip(int n) => 'beads_yay_$n';
 
+/// Fair Share: "Three each! Fair and square!"
+String shareEachClip(int n) => 'share_each_$n';
+
 /// What Letter Monster wants: "I want the letter B!", "I want the letter
 /// that says buh!", or a picture's first sound ([firstSoundClip]).
 String letterMonsterAskClip(LetterMonsterRound r) => switch (r.ask) {
@@ -304,6 +307,10 @@ abstract final class VoiceLine {
   static const beadsMore = 'beads_more';
   static const beadsFewer = 'beads_fewer';
   static const beadsWhich = 'beads_which';
+  static const shareAsk = 'share_ask';
+  static const shareFewer = 'share_fewer';
+  static const shareMore = 'share_more';
+  static const shareLeft = 'share_left';
   static const busStopAsk = 'busstop_ask';
   static const rocketBlastOff = 'rocket_blastoff';
   static const trainNext = 'train_next';
@@ -590,6 +597,13 @@ Map<String, String> _lines() {
   lines[VoiceLine.beadsMore] = 'More beads, please!';
   lines[VoiceLine.beadsFewer] = 'Too many beads!';
   lines[VoiceLine.beadsWhich] = 'How many beads?';
+  for (var n = 1; n <= 6; n++) {
+    lines[shareEachClip(n)] = '${_cap(numberWord(n))} each! Fair and square!';
+  }
+  lines[VoiceLine.shareAsk] = 'Share the cupcakes so everyone has the same!';
+  lines[VoiceLine.shareFewer] = 'Hey! I have fewer!';
+  lines[VoiceLine.shareMore] = 'There are more to share!';
+  lines[VoiceLine.shareLeft] = 'One left over, for later!';
   for (final l in kLetterSounds) {
     lines[letterMonsterAskClip(LetterMonsterRound(LetterMonsterAsk.name, l.letter, [l.letter]))] = 'I want the letter ${l.letter}!';
     if (l.starts) lines[letterMonsterAskClip(LetterMonsterRound(LetterMonsterAsk.sound, l.letter, [l.letter]))] = 'I want the letter that says ${_sound(l)}!';

@@ -305,4 +305,64 @@ void main() {
       expect(beadResult(2), GameResult.miss);
     });
   });
+
+  group('FR-TOY-03 Fair Share', () {
+    test('the ladder: two monsters to six, two to ten, three to twelve, then one left over', () {
+      for (var seed = 0; seed < 200; seed++) {
+        for (var level = 1; level <= 4; level++) {
+          final r = shareRound(level, Random(seed));
+          switch (level) {
+            case 1:
+              expect(r.monsters, 2);
+              expect(r.treats, anyOf(2, 4, 6));
+              expect(r.left, 0, reason: 'no leftover below the top');
+            case 2:
+              expect(r.monsters, 2);
+              expect(r.treats, anyOf(4, 6, 8, 10));
+              expect(r.left, 0);
+            case 3:
+              expect(r.monsters, 3);
+              expect(r.treats, anyOf(3, 6, 9, 12));
+              expect(r.left, 0);
+            default:
+              expect(r.left, 1, reason: 'the top level always leaves one over');
+              if (r.monsters == 2) {
+                expect(r.treats, anyOf(5, 7, 9));
+              } else {
+                expect(r.monsters, 3);
+                expect(r.treats, anyOf(4, 7, 10));
+              }
+          }
+          expect(r.each, r.treats ~/ r.monsters);
+        }
+      }
+    });
+
+    test('never the same round twice in a row', () {
+      for (var level = 1; level <= 4; level++) {
+        ShareRound? last;
+        for (var i = 0; i < 200; i++) {
+          final r = shareRound(level, Random(level * 1000 + i), last: last);
+          if (last != null) {
+            expect((r.monsters, r.treats), isNot((last.monsters, last.treats)), reason: 'level $level round $i');
+          }
+          last = r;
+        }
+      }
+    });
+
+    test('what the bell finds', () {
+      const round = ShareRound(3, 9);
+      expect(shareCheck(round, [3, 3, 3], 0), ShareCheck.fair);
+      const leftover = ShareRound(2, 7);
+      expect(shareCheck(leftover, [3, 3], 1), ShareCheck.fair, reason: 'fair with the leftover on the tray');
+      expect(shareCheck(round, [3, 3, 3], 3), ShareCheck.moreToShare, reason: 'equal plates, but the tray holds more than the leftover');
+      expect(shareCheck(round, [4, 3, 2], 0), ShareCheck.unequal);
+      expect(shareCheck(leftover, [4, 2], 1), ShareCheck.unequal, reason: 'unequal comes before a tray that still holds more');
+      expect(fewestPlate([3, 1, 1]), 1, reason: 'the first of the fewest');
+      expect(fewestPlate([2, 3]), 0);
+      expect(shareResult(0), GameResult.win);
+      expect(shareResult(1), GameResult.helped);
+    });
+  });
 }

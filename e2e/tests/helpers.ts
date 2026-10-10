@@ -35,6 +35,15 @@ export async function tap(target: Locator): Promise<void> {
   await el.click({ force: true });
 }
 
+/** Taps [target] at (fx, fy) of its box, for when a finger aims at a part
+ *  of it — its centre can be covered by something tappable of its own. */
+export async function tapAt(target: Locator, fx: number, fy: number): Promise<void> {
+  const el = target.first();
+  await el.waitFor({ state: 'visible' });
+  const box = (await el.boundingBox())!;
+  await el.click({ force: true, position: { x: fx * box.width, y: fy * box.height } });
+}
+
 /** The text a semantics node exposes (aria-label and/or text content). */
 export async function textOf(target: Locator): Promise<string> {
   return target.first().evaluate((e) => [e.getAttribute('aria-label'), e.textContent].filter(Boolean).join(' '));

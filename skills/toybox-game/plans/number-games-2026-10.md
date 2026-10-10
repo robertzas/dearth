@@ -19,7 +19,7 @@ at a time.
 | 3 | Finger Count | `fingers` | ✅ built and pushed 2026-10-10 | Number Tracing | Fingers as numbers |
 | 4 | Animal Race | `race` | ✅ built and pushed 2026-10-10 | Who Has More? | First, second, third |
 | 5 | Bead Slider | `beads` | ✅ built and pushed 2026-10-10 | Tallies | Fives and tens |
-| 6 | Fair Share | `share` | ⬜ not started | Feed the Monster | Sharing equally |
+| 6 | Fair Share | `share` | ✅ built and pushed 2026-10-10 | Feed the Monster | Sharing equally |
 
 Build them in this order. Games 1–3 are for her age now (2½); 4–6 are a
 little older.

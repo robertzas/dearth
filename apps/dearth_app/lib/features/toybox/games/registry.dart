@@ -39,6 +39,7 @@ import 'rocket.dart';
 import 'sequencer.dart';
 import 'shadows.dart';
 import 'shapes.dart';
+import 'share.dart';
 import 'sight.dart';
 import 'sizes.dart';
 import 'snacksnap.dart';
@@ -110,4 +111,5 @@ final Map<String, GameBuilder> kGameBuilders = {
   'fingers': FingerGame.new,
   'race': RaceGame.new,
   'beads': BeadGame.new,
+  'share': ShareGame.new,
 };

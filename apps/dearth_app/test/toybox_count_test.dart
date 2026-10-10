@@ -3,6 +3,7 @@ import 'package:dearth_app/features/toybox/games/beads.dart';
 import 'package:dearth_app/features/toybox/games/creaturecount.dart';
 import 'package:dearth_app/features/toybox/games/fingers.dart';
 import 'package:dearth_app/features/toybox/games/race.dart';
+import 'package:dearth_app/features/toybox/games/share.dart';
 import 'package:dearth_app/features/toybox/games/snacksnap.dart';
 import 'package:dearth_core/dearth_core.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -35,6 +36,9 @@ void main() {
           ('beads', 1),
           ('beads', 3),
           ('beads', 4),
+          ('share', 1),
+          ('share', 3),
+          ('share', 4),
         ],
         size: size,
       );
@@ -751,6 +755,150 @@ void main() {
       await tester.pump(const Duration(seconds: 3));
       await h.settle();
       expect(await toyboxRounds(h), [('beads', 4, 'helped')]);
+      await tester.pump(const Duration(seconds: 12));
+      await h.shutdown();
+      handle.dispose();
+    });
+  });
+
+  group('Fair Share', () {
+    ShareGameState game(WidgetTester tester) => tester.state<ShareGameState>(find.byType(ShareGame));
+
+    /// Lets the ask (and the once-a-session bell line) finish.
+    Future<void> intro(WidgetTester tester) async {
+      await tester.pump(const Duration(milliseconds: 700));
+      await tester.pump(afterVoice(VoiceLine.shareAsk) + const Duration(milliseconds: 100));
+      await tester.pump(afterVoice(VoiceLine.cookiesBell) + const Duration(milliseconds: 100));
+    }
+
+    /// A tap on the plate's rim, below its cupcakes: the centre can be
+    /// covered by a cupcake of its own.
+    Future<void> give(WidgetTester tester, int i) async {
+      final rect = tester.getRect(byId('share.plate.$i'));
+      await tester.tapAt(rect.bottomCenter - Offset(0, rect.height * 0.12));
+      await tester.pump(const Duration(milliseconds: 350));
+    }
+
+    testWidgets('FR-TOY-03: share them evenly and the bell finds it fair', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'share', sound: sound, level: 1);
+      final r = game(tester).debugRound;
+      expectNoFallbackText(byId('screen.game'));
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(sound.said.first, VoiceLine.shareAsk);
+      expect(labelOf(tester, 'share.ask'), 'Share ${r.treats} cupcakes');
+      await tester.pump(afterVoice(VoiceLine.shareAsk) + const Duration(milliseconds: 100));
+      expect(sound.said.last, VoiceLine.cookiesBell, reason: 'the bell is explained once a session');
+      await tester.pump(afterVoice(VoiceLine.cookiesBell));
+      for (var k = 0; k < r.treats; k++) {
+        await give(tester, k % r.monsters);
+      }
+      expect(game(tester).debugPlates, [for (var i = 0; i < r.monsters; i++) r.each]);
+      expect(game(tester).debugTray, r.left);
+      expect(sound.said, contains(numberClip(1)));
+      expect(labelOf(tester, 'share.plate.0'), 'Plate 1: ${r.each} cupcake${r.each == 1 ? '' : 's'}');
+      expect(labelOf(tester, 'share.tray'), 'Tray: ${r.left} cupcake${r.left == 1 ? '' : 's'}');
+      // The tray is empty: another give is a boing, not a slip.
+      await give(tester, 0);
+      expect(game(tester).debugPlates[0], r.each);
+      expect(sound.played.where((e) => e.$1 == Sfx.boing), hasLength(1));
+      await tester.tap(byId('share.bell'));
+      await tester.pump(const Duration(milliseconds: 1200));
+      expect(sound.said.last, shareEachClip(r.each));
+      expect(labelOf(tester, 'share.ask'), '${r.each} each!');
+      expect(sound.played.where((e) => e.$1 == Sfx.munch), hasLength(r.each * r.monsters), reason: 'everyone eats');
+      await tester.pump(const Duration(seconds: 3));
+      await h.settle();
+      expect(await toyboxRounds(h), [('share', 1, 'win')]);
+      await tester.pump(const Duration(seconds: 12));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('unequal: the one with fewest complains, and fixing it is helped', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'share', sound: sound, level: 1);
+      final r = game(tester).debugRound;
+      await intro(tester);
+      for (var k = 0; k < r.treats; k++) {
+        await give(tester, k % r.monsters);
+      }
+      // Move one from plate 1 to plate 0: not fair.
+      await tester.tap(byId('share.cupcake.1.0'));
+      await tester.pump(const Duration(milliseconds: 350));
+      expect(game(tester).debugPlates[1], r.each - 1);
+      await give(tester, 0);
+      await tester.tap(byId('share.bell'));
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(sound.said.last, VoiceLine.shareFewer);
+      expect(sound.played.where((e) => e.$1 == Sfx.nope), hasLength(1));
+      expect(game(tester).debugPlates, isNot(equals([for (var i = 0; i < r.monsters; i++) r.each])), reason: 'the cupcakes stay to fix');
+      // Put it back: one each again, and the bell finds it fair.
+      await tester.tap(byId('share.cupcake.0.0'));
+      await tester.pump(const Duration(milliseconds: 350));
+      await give(tester, 1);
+      await tester.tap(byId('share.bell'));
+      await tester.pump(const Duration(seconds: 3));
+      await h.settle();
+      expect(await toyboxRounds(h), [('share', 1, 'helped')]);
+      await tester.pump(const Duration(seconds: 12));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('equal plates but the tray still holds more to share', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'share', sound: sound, level: 2);
+      final r = game(tester).debugRound;
+      await intro(tester);
+      for (var k = 0; k < 2; k++) {
+        await give(tester, k % r.monsters);
+      }
+      expect(game(tester).debugTray, r.treats - 2, reason: 'most of the cupcakes still on the tray');
+      await tester.tap(byId('share.bell'));
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(sound.said.last, VoiceLine.shareMore);
+      expect(sound.played.where((e) => e.$1 == Sfx.nope), hasLength(1));
+      // Ring again: two slips, and the plates show their fair share.
+      await tester.tap(byId('share.bell'));
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(game(tester).debugHint, isTrue);
+      // Finish the sharing: fair, but a miss after two slips.
+      for (var k = 2; k < r.treats; k++) {
+        await give(tester, k % r.monsters);
+      }
+      await tester.tap(byId('share.bell'));
+      await tester.pump(const Duration(seconds: 3));
+      await h.settle();
+      expect(await toyboxRounds(h), [('share', 2, 'miss')]);
+      await tester.pump(const Duration(seconds: 12));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('the top level leaves one over, for later', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'share', sound: sound, level: 4);
+      final r = game(tester).debugRound;
+      expect(r.left, 1);
+      await intro(tester);
+      for (var k = 0; k < r.treats - 1; k++) {
+        await give(tester, k % r.monsters);
+      }
+      expect(game(tester).debugTray, 1);
+      await tester.tap(byId('share.bell'));
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(labelOf(tester, 'share.ask'), '${r.each} each, 1 left over');
+      expect(sound.said, contains(shareEachClip(r.each)));
+      await tester.pump(afterVoice(shareEachClip(r.each)) + const Duration(milliseconds: 100));
+      expect(sound.said.last, VoiceLine.shareLeft);
+      await tester.pump(const Duration(seconds: 3));
+      await h.settle();
+      expect(await toyboxRounds(h), [('share', 4, 'win')]);
       await tester.pump(const Duration(seconds: 12));
       await h.shutdown();
       handle.dispose();

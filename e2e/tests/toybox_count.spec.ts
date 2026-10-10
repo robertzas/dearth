@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { expectCheered, expectText, idsUnder, openToyboxGame, tap, textOf, tid } from './helpers';
+import { expectCheered, expectText, idsUnder, openToyboxGame, tap, tapAt, textOf, tid } from './helpers';
 
 // The Toybox's third set, six number games built on her longest-played
 // games (SPEC FR-TOY-03), played from what the screen shows (labels). The
@@ -71,6 +71,22 @@ test.describe('Toybox third set', () => {
     await expectText(tid(page, 'beads.row.0'), `Top row: ${n} ${n === 1 ? 'bead' : 'beads'} across`);
     await tap(tid(page, 'beads.bell'));
     await expectText(tid(page, 'beads.ask'), /^Yay! /);
+    await expectCheered(page);
+  });
+
+  test('FR-TOY-03: Fair Share — she shares the cupcakes out evenly and rings the bell', async ({ page }) => {
+    await openToyboxGame(page, 'share');
+    await expectText(tid(page, 'share.ask'), /^Share (\d+) cupcakes$/);
+    const n = Number((await textOf(tid(page, 'share.ask'))).match(/^Share (\d+) cupcakes$/)![1]);
+    const plates = await idsUnder(page, 'share.plate.');
+    // Round robin, one each, until the tray is empty.
+    for (let given = 0; given < n; given++) {
+      // The plate's rim, below its cupcakes: the centre is covered.
+      await tapAt(tid(page, `share.plate.${given % plates.length}`), 0.5, 0.9);
+      await expectText(tid(page, 'share.tray'), `Tray: ${n - given - 1} ${n - given - 1 === 1 ? 'cupcake' : 'cupcakes'}`);
+    }
+    await tap(tid(page, 'share.bell'));
+    await expectText(tid(page, 'share.ask'), / each/);
     await expectCheered(page);
   });
 });

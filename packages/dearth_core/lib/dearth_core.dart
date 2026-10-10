@@ -56,6 +56,7 @@ export 'src/toybox/race.dart';
 export 'src/toybox/rocket.dart';
 export 'src/toybox/rounds.dart';
 export 'src/toybox/sequencer.dart';
+export 'src/toybox/share.dart';
 export 'src/toybox/sight.dart';
 export 'src/toybox/snacksnap.dart';
 export 'src/toybox/spell.dart';

@@ -1249,8 +1249,8 @@ her thinking* from age 2 to 5, adapt to her level, and respect family limits.
      at the top level;      Finger Count — fingers as numbers, five and some
      more on two hands; Animal Race — first, second, third and last as a
      race she ribbons; Bead Slider — the counting rack, fives and tens
-     to twenty; sharing equally with a remainder (Fair Share follows as
-     it is built)
+     to twenty; Fair Share — sharing cupcakes equally between the
+     monsters, one left over at the top
 
 
 - **FR-TOY-04 [M3]** **Adaptive difficulty:** each game tracks success rate,
@@ -2963,6 +2963,7 @@ points, not limits.
 | Finger Count | 2.5+ | Fingers as numbers, five and some more | A big cartoon hand: "Show me three fingers!" She raises fingers (in order at first, then any; two hands for 6–10, a tap on the palm raising a whole hand: "Five! A whole hand!") and gives it a high five to check: "Three fingers!" or "More fingers!"/"Too many fingers!"; two slips outline the fingers. At the top the hand shows fingers and she picks the number | 1–5 in order → 1–5 any fingers → 6–10 on two hands → read the hands | M4 |
 | Animal Race | 2.5+ | First, second, third, last | Three animals (then five) race across their lanes and coast to a stop in finishing order. "Who came second?" She taps the animal: a ribbon pins on ("Second place!"); another one says its own place ("I came third!"); two slips light the right one; the speaker replays the race. At the top she ribbons all five, first to fifth | first or last of 3 → 1st–3rd → 1st–5th of 5 → all five in order | M4 |
 | Bead Slider | 2.5+ | Fives and tens, counting to twenty | A counting rack (rekenrek): rows of ten beads, five red and five white. "Show seven!" A tap or a swipe slides beads across (each change says the total) and the bell checks: "Five and two make seven!", or "More beads, please!"/"Too many beads!"; two slips mark where to stop. At the top beads are already across and she picks the number | 1–5 on one row → 3–10 → 11–20 on two rows → read the rack | M4 |
+| Fair Share | 2.5+ | Sharing equally, left over | Two or three monsters with empty plates and a tray of cupcakes: "Share the cupcakes so everyone has the same!" A tap on a plate gives it one (and says how many it has), a tap on a cupcake takes it back, and the bell checks: "Three each! Fair and square!"; "Hey! I have fewer!" or "There are more to share!" when it isn't; two slips show each plate's share. At the top one is left over: "One left over, for later!" | 2 monsters, up to 6 → up to 10 → 3 monsters, up to 12 → one left over | M4 |
 
 ### Appendix C: Chores & rewards by age
 
