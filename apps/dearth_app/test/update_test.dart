@@ -78,6 +78,13 @@ void main() {
       expect(may(UpdateMode.nightly, minute: 5 * 60), isFalse);
     });
 
+    test('the download’s progress takes any number (a whole 0 broke the first download on the frame)', () {
+      const s = UpdateState(phase: UpdatePhase.available);
+      expect(s.copyWith(phase: UpdatePhase.downloading, progress: 0).progress, 0.0);
+      expect(s.copyWith(progress: 0.5).progress, 0.5);
+      expect(s.copyWith(progress: 0.5).copyWith(phase: UpdatePhase.ready, progress: null).progress, isNull);
+    });
+
     test('the silent install runs on after adbd returns and starts the new app', () {
       final cmd = AppUpdater.silentInstallCommand('/data/user/0/app.dearth/cache/updates/dearth-0.1.97.apk', 47129906);
       expect(cmd, startsWith('nohup sh -c '));

@@ -67,7 +67,7 @@ class UpdateState {
         phase: phase ?? this.phase,
         current: current,
         latest: identical(latest, _keep) ? this.latest : latest as AppRelease?,
-        progress: identical(progress, _keep) ? this.progress : progress as double?,
+        progress: identical(progress, _keep) ? this.progress : (progress as num?)?.toDouble(),
         error: identical(error, _keep) ? this.error : error as String?,
         checkedAtMs: checkedAtMs ?? this.checkedAtMs,
         silent: silent ?? this.silent,
@@ -229,7 +229,7 @@ class AppUpdater extends Notifier<UpdateState> {
     await for (final f in dir.list()) {
       if (f.path != file.path) await f.delete(recursive: true);
     }
-    state = state.copyWith(phase: UpdatePhase.downloading, progress: 0, error: null);
+    state = state.copyWith(phase: UpdatePhase.downloading, progress: 0.0, error: null);
     final res = await _client.send(http.Request('GET', r.apkUrl)).timeout(const Duration(seconds: 30));
     if (res.statusCode != 200) throw HttpException('GitHub answered ${res.statusCode}');
     final total = res.contentLength ?? r.size;
