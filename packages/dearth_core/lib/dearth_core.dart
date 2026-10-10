@@ -38,6 +38,7 @@ export 'src/toybox/busstop.dart';
 export 'src/toybox/compare.dart';
 export 'src/toybox/cookies.dart';
 export 'src/toybox/creature.dart';
+export 'src/toybox/creaturecount.dart';
 export 'src/toybox/dots.dart';
 export 'src/toybox/dressup.dart';
 export 'src/toybox/expansion.dart';

@@ -14,7 +14,7 @@ at a time.
 
 | # | Game | id | Status | Built on (her favorite) | Teaches |
 |---|---|---|---|---|---|
-| 1 | Creature Count | `creaturecount` | ⬜ not started | Build-a-Creature | Counting out a set |
+| 1 | Creature Count | `creaturecount` | ✅ built and pushed 2026-10-10 | Build-a-Creature | Counting out a set |
 | 2 | Snack Snap | `snacksnap` | ⬜ not started | Feed the Monster | Seeing amounts at a glance |
 | 3 | Finger Count | `fingers` | ⬜ not started | Number Tracing | Fingers as numbers |
 | 4 | Animal Race | `race` | ⬜ not started | Who Has More? | First, second, third |
@@ -24,18 +24,18 @@ at a time.
 Build them in this order. Games 1–3 are for her age now (2½); 4–6 are a
 little older.
 
-**Open questions for the owner** (asked 2026-10-09, not yet answered; ask
-again if this file still says "not answered"):
+**Open questions for the owner — answered 2026-10-10** (the owner said
+"build in the games in <this file>"):
 
-1. Are these six right? (Fair Share is the most complex; Animal Race is
-   the easiest to swap out.)
+1. Are these six right? **Yes** — build the six as planned.
 2. Should games 4–6 be visible for her now, or only at their ages?
+   **Visible for Ava now**: `minMonths: 30` for all six, overriding the
+   36/42 below (Animal Race, Bead Slider, Fair Share). Appendix B rows
+   say 2½+.
 3. Build all six chained with one report at the end, or one at a time
    with a stop after each for the owner to try it on the frame?
-
-**Until the owner answers question 3, build one game, deploy it, and
-stop** (the default rule in `skills/toybox-game/SKILL.md`, "One game per
-task").
+   **All six chained**, one report at the end. Keep CI green between
+   games; deploy + perf gate + report once at the end.
 
 ---
 

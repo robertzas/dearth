@@ -104,7 +104,8 @@ back.
   are on it now?), Word Pop (she pops the bubbles that say the word the voice asks for), Rocket Countdown (she taps
   the stars from ten down to one, and the rocket blasts off), Alphabet Train (the letter that comes next, or the one
   missing, goes into the empty carriage), Number Fishing (she catches the fish with the number called, the biggest, or
-  two that make five) and Letter Creatures (she builds a creature from parts picked by their first sound). The letter, word
+  two that make five), Letter Creatures (she builds a creature from parts picked by their first sound) and Creature Count (a bare
+  creature asks for eyes, legs, horns or spots; she adds them one at a time, each saying the count, and makes it dance to check). The letter, word
   and number games talk: every line is a clip bundled with the app, so they
   work on a display with no text-to-speech. Every game is on for every kid, the ones that suit their age first, and every game
   adapts: three wins in a row go up a level, three misses ease off, and

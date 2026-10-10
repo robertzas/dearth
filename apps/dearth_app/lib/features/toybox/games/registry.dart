@@ -9,6 +9,7 @@ import 'compare.dart';
 import 'cookies.dart';
 import 'counting.dart';
 import 'creature.dart';
+import 'creaturecount.dart';
 import 'differences.dart';
 import 'dots.dart';
 import 'dressup.dart';
@@ -100,4 +101,5 @@ final Map<String, GameBuilder> kGameBuilders = {
   'train': TrainGame.new,
   'fishing': FishingGame.new,
   'lettercreature': LetterCreatureGame.new,
+  'creaturecount': CreatureCountGame.new,
 };

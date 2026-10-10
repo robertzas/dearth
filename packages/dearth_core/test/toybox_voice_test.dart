@@ -259,6 +259,12 @@ void main() {
         for (var n = 1; n <= kTallyMax; n++) tallyBunniesClip(n),
         for (var n = 1; n <= kCookiePlate; n++) ...[cookieAskClip(n), cookieYumClip(n), cookieMoreClip(n), cookieFewerClip(n)],
         VoiceLine.cookiesBell,
+        for (final p in CountPart.values) ...[
+          for (var n = 1; n <= kCountPartMax[p]!; n++) ...[ccountAskClip(p, n), ccountYayClip(p, n)],
+          for (var n = 1; n <= 4; n++) ccountAndClip(p, n),
+          ccountManyClip(p), ccountMoreClip(p), ccountFewerClip(p),
+        ],
+        VoiceLine.ccountDance,
         for (var n = 1; n <= kBusStopMax; n++) ...[busStartClip(n), busNowClip(n)],
         for (var n = 1; n <= 4; n++) busOnClip(n),
         for (var n = 1; n <= 3; n++) busOffClip(n),

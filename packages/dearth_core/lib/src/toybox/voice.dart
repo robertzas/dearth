@@ -6,6 +6,7 @@ import 'busstop.dart';
 import 'compare.dart';
 import 'cookies.dart';
 import 'creature.dart';
+import 'creaturecount.dart';
 import 'dots.dart';
 import 'dressup.dart';
 import 'fishing.dart';
@@ -153,6 +154,24 @@ String cookieMoreClip(int n) => 'cookies_more_$n';
 /// Too many: "Too many! I want five."
 String cookieFewerClip(int n) => 'cookies_fewer_$n';
 
+/// Creature Count: "Give it three eyes!"
+String ccountAskClip(CountPart p, int n) => 'ccount_ask_${p.name}_$n';
+
+/// The second part at level 3: "And two legs!"
+String ccountAndClip(CountPart p, int n) => 'ccount_and_${p.name}_$n';
+
+/// Level 4: "Give it this many spots!"
+String ccountManyClip(CountPart p) => 'ccount_many_${p.name}';
+
+/// Too few: "More eyes, please!"
+String ccountMoreClip(CountPart p) => 'ccount_more_${p.name}';
+
+/// Too many: "Too many eyes!"
+String ccountFewerClip(CountPart p) => 'ccount_fewer_${p.name}';
+
+/// Right: "Yay! Three eyes!"
+String ccountYayClip(CountPart p, int n) => 'ccount_yay_${p.name}_$n';
+
 /// What Letter Monster wants: "I want the letter B!", "I want the letter
 /// that says buh!", or a picture's first sound ([firstSoundClip]).
 String letterMonsterAskClip(LetterMonsterRound r) => switch (r.ask) {
@@ -240,6 +259,7 @@ abstract final class VoiceLine {
   static const whoYes = 'who_yes';
   static const whoYesYou = 'who_yes_you';
   static const cookiesBell = 'cookies_bell';
+  static const ccountDance = 'ccount_dance';
   static const busStopAsk = 'busstop_ask';
   static const rocketBlastOff = 'rocket_blastoff';
   static const trainNext = 'train_next';
@@ -471,6 +491,21 @@ Map<String, String> _lines() {
     lines[cookieMoreClip(n)] = 'More, please! I want ${numberWord(n)}.';
     lines[cookieFewerClip(n)] = 'Too many! I want ${numberWord(n)}.';
   }
+  for (final p in CountPart.values) {
+    final (one, many) = kCountPartWords[p]!;
+    String words(int n) => n == 1 ? 'one $one' : '${numberWord(n)} $many';
+    for (var n = 1; n <= kCountPartMax[p]!; n++) {
+      lines[ccountAskClip(p, n)] = 'Give it ${words(n)}!';
+      lines[ccountYayClip(p, n)] = 'Yay! ${_cap(words(n))}!';
+    }
+    for (var n = 1; n <= 4; n++) {
+      lines[ccountAndClip(p, n)] = 'And ${words(n)}!';
+    }
+    lines[ccountManyClip(p)] = 'Give it this many $many!';
+    lines[ccountMoreClip(p)] = 'More $many, please!';
+    lines[ccountFewerClip(p)] = 'Too many $many!';
+  }
+  lines[VoiceLine.ccountDance] = 'Then make it dance!';
   for (final l in kLetterSounds) {
     lines[letterMonsterAskClip(LetterMonsterRound(LetterMonsterAsk.name, l.letter, [l.letter]))] = 'I want the letter ${l.letter}!';
     if (l.starts) lines[letterMonsterAskClip(LetterMonsterRound(LetterMonsterAsk.sound, l.letter, [l.letter]))] = 'I want the letter that says ${_sound(l)}!';

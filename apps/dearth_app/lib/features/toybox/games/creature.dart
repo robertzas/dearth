@@ -270,6 +270,13 @@ const List<_Body> _bodies = [
   _Body(0.31, 0.85, 0.23, 0.77, 0.54),
 ];
 
+/// A body's edges and face line, as fractions of the canvas (Creature Count
+/// places parts on them).
+({double top, double bottom, double left, double right, double faceY}) creatureBodyBox(int shape) {
+  final b = _bodies[shape];
+  return (top: b.top, bottom: b.bottom, left: b.left, right: b.right, faceY: b.faceY);
+}
+
 /// Draws a creature, part by part: tail behind, then legs, body, arms, top
 /// and face. While dancing it bounces, squashes and sways, and waves its
 /// arms. [CreaturePainter.icon] draws one part on a plain round body, for
@@ -575,6 +582,9 @@ class CreaturePainter extends CustomPainter {
 
   static final _paths = <(int, double), Path>{};
   static final _puffs = <(int, double), Path>{};
+
+  /// Body [shape]'s outline at canvas size [s] (cached).
+  static Path bodyPath(int shape, double s) => _bodyPath(shape, s);
 
   /// The fluffy tail, eight circles unioned (made once, like the bodies).
   static Path _puff(int body, double s) {

@@ -96,6 +96,9 @@ const List<GameInfo> kExpansionGames = [
   GameInfo('train', 'Alphabet Train', '🚂', minMonths: 42, skills: ['Alphabet order', 'Letter names', 'Small letters'], levels: 4, added: '2026-10-08'),
   GameInfo('fishing', 'Number Fishing', '🎣', minMonths: 42, skills: ['Reading numerals', 'Biggest number', 'Pairs that make five'], levels: 4, added: '2026-10-08'),
   GameInfo('lettercreature', 'Letter Creatures', '🐲', minMonths: 42, skills: ['First sounds', 'Letter sounds', 'Creativity'], levels: 3, added: '2026-10-08'),
+  // Six number games built on her longest-played games (added 2026-10-10; the
+  // owner chose minMonths 30 for all six, Ava's age, so she sees every one).
+  GameInfo('creaturecount', 'Creature Count', '🐙', minMonths: 30, skills: ['Counting out a set', 'Reading numerals', 'Counting two things'], levels: 4, added: '2026-10-10'),
 ];
 
 GameInfo? gameById(String id) => kGames.where((g) => g.id == id).firstOrNull;
