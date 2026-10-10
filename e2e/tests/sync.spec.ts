@@ -57,7 +57,9 @@ test.describe('Sync', () => {
     test.skip(info.project.name !== 'wall-l', 'Hub journeys run once');
     const a = await pairedPage(browser, baseURL!);
     await goTo(a, 'settings');
-    await tap(await scrollTo(a, 'settings.nav.updates'));
+    // The section list is lazy and Updates is near its end: search for it.
+    await typeInto(a, 'settings.search', 'updates');
+    await tap(tid(a, 'settings.nav.updates'));
     await expectText(tid(a, 'updates.hub.status'), /Dearth Hub \S+/);
     await expect(tid(a, 'updates.hub.check')).toBeVisible();
     // The test Hub runs without the Watchtower beside it (compose.yml).
