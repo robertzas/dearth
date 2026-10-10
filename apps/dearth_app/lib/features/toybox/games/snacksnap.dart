@@ -275,7 +275,8 @@ class SnackSnapGameState extends State<SnackSnapGame> with TickerProviderStateMi
               children: [
                 for (final d in '${r.want}'.split('')) GlyphView(d, height: 52 * t.scale, color: const Color(0xFF6B4FB8)),
                 SizedBox(width: t.space.sm),
-                DEmoji('🥨', size: 44 * t.scale),
+                // The treat the plates hold, so the ask matches them.
+                SizedBox.square(dimension: 40 * t.scale, child: const CustomPaint(painter: _TreatPainter())),
               ],
             ),
           ),
@@ -351,7 +352,8 @@ class _Layout {
   double treatSize(SnackPlate p) => plates.first.width * (p.pattern == SnackPattern.frame ? 0.14 : 0.18);
 }
 
-/// A pretzel: a fat brown ring with a dark edge and a glint of glaze.
+/// A ring-shaped treat (an oat ring): a fat golden ring with a dark edge
+/// and a glint of glaze.
 void _paintTreat(Canvas canvas, Offset c, double r) {
   canvas
     ..drawCircle(c, r, Paint()..color = const Color(0xFF8A5A2B))
@@ -418,33 +420,37 @@ class _PlatePainter extends CustomPainter {
       _paintTreat(canvas, c + Offset((x - 0.5) * s * 0.8, (y - 0.5) * s * 0.8), s * (plate.pattern == SnackPattern.frame ? 0.07 : 0.09));
     }
     if (covered) {
-      // A silver plate cover: a dome with a shine and a knob.
-      final dome = Rect.fromCircle(center: c + Offset(0, -s * 0.02), radius: s * 0.42);
-      final path = Path()
-        ..moveTo(dome.left, dome.center.dy)
-        ..arcTo(dome, math.pi, math.pi, false)
-        ..close();
+      // A silver cover over the whole plate, seen from above: a domed lid
+      // with a soft shine and a knob in the middle. Nothing shows through.
+      final lid = Rect.fromCircle(center: c, radius: s * 0.45);
       canvas
-        ..drawPath(path, Paint()..color = const Color(0xFFCFD6E3))
+        ..drawOval(lid.shift(Offset(0, s * 0.025)), Paint()..color = const Color(0x262B2440))
+        ..drawOval(lid, Paint()..color = const Color(0xFFC3CCDA))
+        ..drawCircle(c + Offset(-s * 0.05, -s * 0.06), s * 0.33, Paint()..color = const Color(0xFFD5DCE7))
+        ..drawCircle(c + Offset(-s * 0.09, -s * 0.11), s * 0.17, Paint()..color = const Color(0xFFE3E8F0))
         ..drawArc(
-          dome.deflate(s * 0.07),
-          math.pi * 1.15,
-          math.pi * 0.32,
+          lid.deflate(s * 0.06),
+          math.pi * 1.05,
+          math.pi * 0.4,
           false,
           Paint()
-            ..color = Colors.white.withValues(alpha: 0.75)
+            ..color = Colors.white.withValues(alpha: 0.8)
             ..style = PaintingStyle.stroke
-            ..strokeWidth = s * 0.035
+            ..strokeWidth = s * 0.03
             ..strokeCap = StrokeCap.round,
         )
-        ..drawCircle(Offset(c.dx, dome.top + s * 0.03), s * 0.05, Paint()..color = const Color(0xFFAEB9CC))
-        ..drawPath(
-          path,
-          Paint()
-            ..color = const Color(0xFF8B98AC)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = math.max(2, s * 0.02),
-        );
+        ..drawOval(lid, Paint()
+          ..color = const Color(0xFF8B98AC)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = math.max(2, s * 0.02))
+        // The knob.
+        ..drawCircle(c + Offset(0, s * 0.012), s * 0.075, Paint()..color = const Color(0x262B2440))
+        ..drawCircle(c, s * 0.075, Paint()..color = const Color(0xFFAEB9CC))
+        ..drawCircle(c + Offset(-s * 0.022, -s * 0.022), s * 0.025, Paint()..color = Colors.white.withValues(alpha: 0.85))
+        ..drawCircle(c, s * 0.075, Paint()
+          ..color = const Color(0xFF8B98AC)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = math.max(1.5, s * 0.014));
     }
   }
 

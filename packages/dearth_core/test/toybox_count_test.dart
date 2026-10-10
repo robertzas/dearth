@@ -135,6 +135,9 @@ void main() {
       // Dice are the faces everyone knows.
       expect(snackDots(const SnackPlate(1, SnackPattern.dice)), [(0.5, 0.5)]);
       expect(snackDots(const SnackPlate(6, SnackPattern.dice)), hasLength(6));
+      // Rows are even: four is two and two, five three over two.
+      expect(snackDots(const SnackPlate(4, SnackPattern.row)), [(0.35, 0.35), (0.65, 0.35), (0.35, 0.65), (0.65, 0.65)]);
+      expect(snackDots(const SnackPlate(5, SnackPattern.row)).map((d) => d.$2).toList(), [0.35, 0.35, 0.35, 0.65, 0.65]);
       // The frame fills the top row first.
       expect(snackDots(const SnackPlate(5, SnackPattern.frame)).last, (0.9, 0.3));
       expect(snackDots(const SnackPlate(6, SnackPattern.frame))[5], (0.1, 0.7));

@@ -216,7 +216,7 @@ class RaceGameState extends State<RaceGame> with TickerProviderStateMixin {
             child: LayoutBuilder(builder: (context, box) {
               final wide = box.maxWidth > box.maxHeight;
               final trackW = wide ? box.maxWidth : box.maxWidth * 0.92;
-              final laneH = math.min(box.maxHeight / r.lanes, 150 * t.scale);
+              final laneH = math.min(box.maxHeight / r.lanes, 230 * t.scale);
               final track = Rect.fromCenter(center: Offset(box.maxWidth / 2, box.maxHeight / 2), width: trackW, height: laneH * r.lanes);
               return Stack(
                 key: ValueKey(_deal),
@@ -224,7 +224,7 @@ class RaceGameState extends State<RaceGame> with TickerProviderStateMixin {
                 children: [
                   Positioned.fromRect(
                     rect: track,
-                    child: RepaintBoundary(child: CustomPaint(size: track.size, painter: _TrackPainter(round: r, t: _t, ribbons: _ribbons, hintLane: _hint ? _wantedLane : -1, listenable: _t))),
+                    child: RepaintBoundary(child: CustomPaint(size: track.size, painter: _TrackPainter(round: r, t: _t, ribbons: Map.of(_ribbons), hintLane: _hint ? _wantedLane : -1, listenable: _t))),
                   ),
                   for (var lane = 0; lane < r.lanes; lane++) _animalBox(lane, track, laneH),
                 ],
@@ -236,7 +236,14 @@ class RaceGameState extends State<RaceGame> with TickerProviderStateMixin {
               id: 'race.ask',
               label: _askLabel(),
               onSayAgain: _replay,
-              children: [DEmoji('🏁', size: 44 * t.scale)],
+              // While she answers, the ribbon she's looking for: the place
+              // asked, on the rosette the winner will wear.
+              children: [
+                if (_racing || _solved)
+                  DEmoji('🏁', size: 44 * t.scale)
+                else
+                  SizedBox.square(dimension: 64 * t.scale, child: CustomPaint(painter: _RosettePainter(_want == 0 ? r.lanes : _want, last: _want == 0))),
+              ],
             ),
           ),
         ],
@@ -257,7 +264,7 @@ class RaceGameState extends State<RaceGame> with TickerProviderStateMixin {
     final (emoji, name) = kRacers[r.racers[lane]];
     final place = r.places[lane];
     final rest = _restX(lane, track);
-    final side = math.min(laneH * 0.85, 120.0);
+    final side = math.min(laneH * 0.85, 170.0);
     final row = track.top + laneH * (lane + 0.5);
     return Positioned.fromRect(
       rect: Rect.fromCenter(center: Offset(rest, row), width: side, height: side),
@@ -300,33 +307,16 @@ class _TrackPainter extends CustomPainter {
   final Map<int, int> ribbons;
   final int hintLane;
 
-  static final _pictures = <(String, double, int), (ui.Picture, Size)>{};
+  static final _pictures = <(String, double), (ui.Picture, Size)>{};
 
-  /// [text] in the Toybox's print, [height] tall, in [color], recorded
-  /// once (Word Pop caches its words the same way).
-  (ui.Picture, Size) _label(String text, double height, Color color) => _pictures[(text, height, color.toARGB32())] ??= () {
+
+  (ui.Picture, Size) _emoji(String emoji, double height) => _pictures[(emoji, height)] ??= () {
         final rec = ui.PictureRecorder();
         final canvas = Canvas(rec);
-        const weight = 1.3, band = 14.0;
-        final unit = height / (band + weight);
-        var x = 0.0;
-        for (final ch in text.split('')) {
-          final g = glyphFor(ch);
-          final w = (g.width + weight) * unit;
-          canvas
-            ..save()
-            ..translate(x, 0);
-          GlyphPainter(g, color: color, frameTop: 0, frameBottom: band).paint(canvas, Size(w, height));
-          canvas.restore();
-          x += w;
-        }
-        return (rec.endRecording(), Size(x, height));
-      }();
-
-  (ui.Picture, Size) _emoji(String emoji, double height) => _pictures[(emoji, height, 0)] ??= () {
-        final rec = ui.PictureRecorder();
-        final canvas = Canvas(rec);
-        final tp = TextPainter(text: TextSpan(text: emoji, style: TextStyle(fontSize: height * 0.8, height: 1.0)), textDirection: TextDirection.ltr)..layout();
+        final tp = TextPainter(
+          text: TextSpan(text: emoji, style: TextStyle(fontSize: height * 0.8, height: 1.0, inherit: false, fontFamilyFallback: const ['Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji'])),
+          textDirection: TextDirection.ltr,
+        )..layout();
         tp.paint(canvas, Offset.zero);
         return (rec.endRecording(), tp.size);
       }();
@@ -395,43 +385,86 @@ class _TrackPainter extends CustomPainter {
     }
   }
 
-  /// A rosette with the place on it: petals around a disc, two tails.
-  void _rosette(Canvas canvas, Offset c, double r, int place) {
-    const colors = [Color(0xFFFFC94D), Color(0xFFC9D1DC), Color(0xFFE0A26E), Color(0xFF7EA6E4), Color(0xFF7DC98F)];
-    final color = colors[place - 1];
-    const ink = Color(0xFF2B2440);
-    // The tails.
-    final tail = Paint()..color = const Color(0xFFE5484D);
-    for (final dx in [-r * 0.32, r * 0.08]) {
-      final path = Path()
-        ..moveTo(c.dx + dx, c.dy + r * 0.5)
-        ..lineTo(c.dx + dx + r * 0.3, c.dy + r * 1.3)
-        ..lineTo(c.dx + dx + r * 0.55, c.dy + r * 1.3)
-        ..lineTo(c.dx + dx + r * 0.25, c.dy + r * 0.5)
-        ..close();
-      canvas.drawPath(path, tail);
-    }
-    // Petals, then the disc.
-    for (var p = 0; p < 8; p++) {
-      final a = p * math.pi / 4;
-      canvas.drawCircle(c + Offset(math.cos(a) * r * 0.8, math.sin(a) * r * 0.8), r * 0.34, Paint()..color = color.withValues(alpha: 0.75));
-    }
-    canvas
-      ..drawCircle(c, r * 0.72, Paint()..color = color)
-      ..drawCircle(c, r * 0.72, Paint()
-        ..color = ink
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = r * 0.09);
-    final (pic, size) = _label(ordinal(place), r * 0.72, ink);
-    canvas
-      ..save()
-      ..translate(c.dx - size.width / 2, c.dy - size.height / 2)
-      ..drawPicture(pic)
-      ..restore();
+  @override
+  bool shouldRepaint(_TrackPainter old) => old.round != round || old.hintLane != hintLane || !_same(old.ribbons, ribbons);
+}
+
+/// The rosette for the place she's asked about, in the prompt pill. "Last"
+/// gets the last place's colors and the word.
+class _RosettePainter extends CustomPainter {
+  const _RosettePainter(this.place, {this.last = false});
+  final int place;
+  final bool last;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final r = size.shortestSide * 0.4;
+    _rosette(canvas, Offset(size.width / 2, size.height / 2 - r * 0.25), r, place, text: last ? 'last' : null);
   }
 
   @override
-  bool shouldRepaint(_TrackPainter old) => old.round != round || old.hintLane != hintLane || !_same(old.ribbons, ribbons);
+  bool shouldRepaint(_RosettePainter old) => old.place != place || old.last != last;
+}
+
+final _labels = <(String, double, int), (ui.Picture, Size)>{};
+
+/// [text] in the Toybox's print, [height] tall, in [color], recorded once
+/// (Word Pop caches its words the same way).
+(ui.Picture, Size) _label(String text, double height, Color color) => _labels[(text, height, color.toARGB32())] ??= () {
+      final rec = ui.PictureRecorder();
+      final canvas = Canvas(rec);
+      const weight = 1.3, band = 14.0;
+      final unit = height / (band + weight);
+      var x = 0.0;
+      for (final ch in text.split('')) {
+        final g = glyphFor(ch);
+        final w = (g.width + weight) * unit;
+        canvas
+          ..save()
+          ..translate(x, 0);
+        GlyphPainter(g, color: color, frameTop: 0, frameBottom: band).paint(canvas, Size(w, height));
+        canvas.restore();
+        x += w;
+      }
+      return (rec.endRecording(), Size(x, height));
+    }();
+
+/// A rosette with the place on it (or [text]): petals around a disc, two
+/// tails.
+void _rosette(Canvas canvas, Offset c, double r, int place, {String? text}) {
+  const colors = [Color(0xFFFFC94D), Color(0xFFC9D1DC), Color(0xFFE0A26E), Color(0xFF7EA6E4), Color(0xFF7DC98F)];
+  final color = colors[place - 1];
+  const ink = Color(0xFF2B2440);
+  // The tails.
+  final tail = Paint()..color = const Color(0xFFE5484D);
+  for (final dx in [-r * 0.32, r * 0.08]) {
+    final path = Path()
+      ..moveTo(c.dx + dx, c.dy + r * 0.5)
+      ..lineTo(c.dx + dx + r * 0.3, c.dy + r * 1.3)
+      ..lineTo(c.dx + dx + r * 0.55, c.dy + r * 1.3)
+      ..lineTo(c.dx + dx + r * 0.25, c.dy + r * 0.5)
+      ..close();
+    canvas.drawPath(path, tail);
+  }
+  // Petals, then the disc.
+  for (var p = 0; p < 8; p++) {
+    final a = p * math.pi / 4;
+    canvas.drawCircle(c + Offset(math.cos(a) * r * 0.8, math.sin(a) * r * 0.8), r * 0.34, Paint()..color = color.withValues(alpha: 0.75));
+  }
+  canvas
+    ..drawCircle(c, r * 0.72, Paint()..color = color)
+    ..drawCircle(c, r * 0.72, Paint()
+      ..color = ink
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = r * 0.09);
+  final label = text ?? ordinal(place);
+  // Longer words shrink to fit the disc.
+  final (pic, size) = _label(label, r * (label.length > 3 ? 0.5 : 0.72), ink);
+  canvas
+    ..save()
+    ..translate(c.dx - size.width / 2, c.dy - size.height / 2)
+    ..drawPicture(pic)
+    ..restore();
 }
 
 bool _same(Map<int, int> a, Map<int, int> b) {

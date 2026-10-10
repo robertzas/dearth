@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:dearth_core/dearth_core.dart';
 import 'package:dearth_ui/dearth_ui.dart';
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/sound.dart';
@@ -58,6 +59,10 @@ class FingerGameState extends State<FingerGame> with TickerProviderStateMixin {
 
   @visibleForTesting
   bool get debugSolved => _solved;
+
+  /// How many fingers the hint outlines on hand [h] (0 left, 1 right).
+  @visibleForTesting
+  int debugOutlined(int h) => _hintOn(h);
 
   int _total() => [for (var h = 0; h < 2; h++) if (_shows(h)) _up[h].where((u) => u).length].fold(0, (a, b) => a + b);
 
@@ -196,6 +201,7 @@ class FingerGameState extends State<FingerGame> with TickerProviderStateMixin {
     if (_solved) return;
     final r = _round!;
     _waitIdle();
+    if (r.mode == FingerMode.read) return;
     if (r.mode == FingerMode.twoHands && h == 0) {
       // The left hand gives the five at once.
       if (_up[0].every((u) => u)) {
@@ -207,7 +213,8 @@ class FingerGameState extends State<FingerGame> with TickerProviderStateMixin {
       _changed(say: VoiceLine.fingersFive);
       return;
     }
-    if (r.mode == FingerMode.inOrder) _raiseNext(h);
+    // Elsewhere a palm tap raises the next finger, so every tap answers.
+    _raiseNext(h);
   }
 
   /// The high five button: the round's check.
@@ -251,7 +258,7 @@ class FingerGameState extends State<FingerGame> with TickerProviderStateMixin {
     _idle?.cancel();
     setState(() => _solved = true);
     final r = _round!;
-    final clips = [if (r.want <= 5) fingersYayClip(r.want) else fingersYayClip(r.want), if (r.want > 5) fingersMakeClip(r.want)];
+    final clips = [fingersYayClip(r.want), if (r.want > 5) fingersMakeClip(r.want)];
     var at = Duration.zero;
     for (final clip in clips) {
       if (at == Duration.zero) {
@@ -275,10 +282,12 @@ class FingerGameState extends State<FingerGame> with TickerProviderStateMixin {
   String _handLabel(int h) => '${h == 0 ? 'Left' : 'Right'} hand: ${_up[h].where((u) => u).length} ${_up[h].where((u) => u).length == 1 ? 'finger' : 'fingers'} up';
 
   /// The fingers that should be up on hand [h], for the outlines after two
-  /// slips: the left hand first, in counting order.
+  /// slips: one-hand rounds on the hand shown; two hands, the left first,
+  /// in counting order.
   int _hintOn(int h) {
     final r = _round!;
-    if (!_hint) return 0;
+    if (!_hint || !_shows(h)) return 0;
+    if (r.hands == 1) return r.want;
     if (h == 0) return math.min(r.want, 5);
     return math.max(0, r.want - 5);
   }
@@ -302,7 +311,7 @@ class FingerGameState extends State<FingerGame> with TickerProviderStateMixin {
                   ? math.min(box.maxHeight * 0.85, box.maxWidth * 0.32)
                   : two
                       ? math.min(box.maxWidth * 0.45, box.maxHeight * 0.5)
-                      : math.min(box.maxWidth * 0.5, box.maxHeight * 0.55);
+                      : math.min(box.maxWidth * 0.72, box.maxHeight * 0.52);
               final hands = [for (var h = 0; h < 2; h++) if (_shows(h)) h];
               Widget handsRow() => Row(mainAxisSize: MainAxisSize.min, children: [for (final h in hands) _hand(h, side)]);
               Widget? beside;
@@ -397,8 +406,8 @@ class FingerGameState extends State<FingerGame> with TickerProviderStateMixin {
   }
 
   Widget _palmBox(int h, double side) {
-    // The palm's lower half, clear of the finger and thumb boxes.
-    final b = _boxFor(h, const Rect.fromLTRB(0.30, 0.66, 0.70, 0.88), side);
+    // The whole palm; the finger and thumb boxes sit over it.
+    final b = _boxFor(h, const Rect.fromLTRB(0.30, 0.46, 0.80, 0.92), side);
     return Positioned.fromRect(
       rect: b,
       child: tid(
@@ -465,18 +474,18 @@ class FingerGameState extends State<FingerGame> with TickerProviderStateMixin {
 /// (right-hand coordinates; the left hand mirrors them): the finger's
 /// column from its tip down into the palm, the thumb where it lies.
 Rect fingerBox(int i, bool up) {
-  const xs = [0.24, 0.30, 0.42, 0.54, 0.66];
-  const lens = [0.30, 0.36, 0.40, 0.37, 0.30];
-  if (i == 0) return up ? const Rect.fromLTRB(0.0, 0.36, 0.31, 0.73) : const Rect.fromLTRB(0.18, 0.55, 0.56, 0.72);
-  return Rect.fromLTRB(xs[i] - 0.06, 0.48 - lens[i] - 0.04, xs[i] + 0.06, 0.53);
+  if (i == 0) return up ? const Rect.fromLTRB(0.02, 0.40, 0.36, 0.80) : const Rect.fromLTRB(0.30, 0.73, 0.60, 0.88);
+  final x = _HandPainter.xs[i - 1], len = _HandPainter.lens[i - 1];
+  return Rect.fromLTRB(x - 0.065, _HandPainter.palmTop - len - 0.04, x + 0.065, 0.60);
 }
 
-/// A friendly cartoon hand, palm out: a rounded palm and five capsule
-/// fingers — up ones drawn tall, down ones folded into knuckle bumps. The
-/// thumb points out to the side when up and lies across the palm when
-/// down. While [wave] runs the hand rocks around its wrist; when [hint]
-/// fingers should be up but aren't, their shape is outlined softly. The
-/// left hand is the same drawing mirrored.
+/// A friendly cartoon hand as she sees her own, held up: a rounded palm, a
+/// striped cuff, and five fingers — up ones tall with a nail, folded ones
+/// knuckle bumps on the palm's top edge. The thumb points out to the side
+/// when up and lies across the palm when folded. While [wave] runs the
+/// hand rocks around its wrist; after two slips, the fingers that should
+/// be up but aren't are dashed in. The left hand is the same drawing
+/// mirrored.
 class _HandPainter extends CustomPainter {
   _HandPainter({required this.up, required this.hint, required this.wave, required this.mirrored, required this.bump})
       : super(repaint: Listenable.merge([bump, wave]));
@@ -489,8 +498,28 @@ class _HandPainter extends CustomPainter {
   /// Bumped on any change of the fingers.
   final ValueNotifier<int> bump;
 
-  static const _xs = [0.30, 0.42, 0.54, 0.66];
-  static const _lens = [0.36, 0.40, 0.37, 0.30];
+  /// Index to pinky: centers and lengths above the palm (fractions).
+  static const xs = [0.375, 0.50, 0.625, 0.745];
+  static const lens = [0.31, 0.35, 0.32, 0.25];
+  static const palmTop = 0.47;
+  static const _fw = 0.118;
+  static const _skin = Color(0xFFFFD3B0), _ink = Color(0xFFB9805A), _nail = Color(0xFFFFE9DC);
+
+  RRect _finger(int i, double s) {
+    final x = xs[i - 1] * s, len = lens[i - 1] * s, fw = _fw * s;
+    return RRect.fromRectAndRadius(Rect.fromLTWH(x - fw / 2, palmTop * s - len, fw, len + 0.12 * s), Radius.circular(fw / 2));
+  }
+
+  /// The thumb as a capsule pointing up from its root, before rotation.
+  RRect _thumb(double s, {required bool folded}) {
+    final tw = (folded ? 0.12 : 0.13) * s, len = (folded ? 0.21 : 0.31) * s;
+    return RRect.fromRectAndRadius(Rect.fromLTWH(-tw / 2, -len, tw, len + 0.05 * s), Radius.circular(tw / 2));
+  }
+
+  /// Turns the canvas to the thumb's root and its angle.
+  void _toThumb(Canvas canvas, double s, {required bool folded}) => canvas
+    ..translate(s * (folded ? 0.345 : 0.33), s * (folded ? 0.80 : 0.74))
+    ..rotate((folded ? 76 : -52) * math.pi / 180);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -503,69 +532,111 @@ class _HandPainter extends CustomPainter {
     final w = wave.value;
     if (w > 0) {
       canvas
-        ..translate(s * 0.5, s * 0.95)
+        ..translate(s * 0.55, s * 0.98)
         ..rotate(math.sin(w * math.pi * 5) * 0.14 * (1 - w * 0.4))
-        ..translate(-s * 0.5, -s * 0.95);
+        ..translate(-s * 0.55, -s * 0.98);
     }
-    const skin = Color(0xFFFFD3B0);
-    const ink = Color(0xFFB9805A);
-    final fill = Paint()..color = skin;
+    final fill = Paint()..color = _skin;
     final line = Paint()
-      ..color = ink
+      ..color = _ink
       ..style = PaintingStyle.stroke
-      ..strokeWidth = s * 0.025
+      ..strokeWidth = s * 0.022
       ..strokeJoin = StrokeJoin.round;
     void capsule(RRect r) => canvas
       ..drawRRect(r, fill)
       ..drawRRect(r, line);
 
-    // The thumb, then the fingers, root under the palm's edge.
-    final thumbUp = up[0];
-    canvas.save();
-    canvas.translate(s * 0.24, s * 0.66);
-    canvas.rotate((thumbUp ? -50 : 80) * math.pi / 180);
-    final tw = 0.11 * s;
-    canvas
-      ..drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(-tw / 2, -0.30 * s, tw, 0.34 * s), Radius.circular(tw / 2)), fill)
-      ..drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(-tw / 2, -0.30 * s, tw, 0.34 * s), Radius.circular(tw / 2)), line);
-    canvas.restore();
+    // A raised thumb and the fingers go under the palm's edge.
+    if (up[0]) {
+      canvas.save();
+      _toThumb(canvas, s, folded: false);
+      final r = _thumb(s, folded: false);
+      capsule(r);
+      _nailOn(canvas, r, s);
+      canvas.restore();
+    }
     for (var i = 1; i <= 4; i++) {
-      final x = _xs[i - 1] * s, len = _lens[i - 1] * s, fw = 0.11 * s;
       if (up[i]) {
-        capsule(RRect.fromRectAndRadius(Rect.fromLTWH(x - fw / 2, s * 0.48 - len, fw, len + 0.04 * s), Radius.circular(fw / 2)));
-      } else {
-        // Folded: a knuckle bump on the palm's top edge, with a crease.
-        final r = RRect.fromRectAndRadius(Rect.fromLTWH(x - fw / 2, s * 0.48 - 0.12, fw, 0.16 * s), Radius.circular(fw / 2));
+        final r = _finger(i, s);
         capsule(r);
-        canvas.drawLine(Offset(x - fw * 0.28, s * 0.44), Offset(x + fw * 0.28, s * 0.44), line..strokeWidth = s * 0.016);
-        line.strokeWidth = s * 0.025;
+        _nailOn(canvas, r, s);
+      } else {
+        // Folded: a knuckle bump over the palm's top edge.
+        final x = xs[i - 1] * s, fw = _fw * s;
+        capsule(RRect.fromRectAndRadius(Rect.fromLTWH(x - fw / 2, (palmTop - 0.075) * s, fw, 0.2 * s), Radius.circular(fw / 2)));
       }
     }
-    // The palm.
-    capsule(RRect.fromRectAndRadius(Rect.fromLTRB(0.22 * s, 0.48 * s, 0.78 * s, 0.92 * s), Radius.circular(0.12 * s)));
-    // The outlines after two slips: the fingers that should be up, softly.
-    if (hint > 0) {
-      final glow = Paint()
-        ..color = ink.withValues(alpha: 0.4)
+    // The palm, then a cuff at the wrist.
+    final palm = RRect.fromRectAndCorners(
+      Rect.fromLTRB(0.30 * s, palmTop * s, 0.80 * s, 0.92 * s),
+      topLeft: Radius.circular(0.12 * s),
+      topRight: Radius.circular(0.12 * s),
+      bottomLeft: Radius.circular(0.18 * s),
+      bottomRight: Radius.circular(0.18 * s),
+    );
+    capsule(palm);
+    final cuff = RRect.fromRectAndRadius(Rect.fromLTRB(0.33 * s, 0.86 * s, 0.77 * s, 0.99 * s), Radius.circular(0.04 * s));
+    canvas
+      ..drawRRect(cuff, Paint()..color = const Color(0xFF7EA6E4))
+      ..drawLine(Offset(0.36 * s, 0.925 * s), Offset(0.74 * s, 0.925 * s), Paint()
+        ..color = const Color(0xFFB8CFF2)
+        ..strokeWidth = s * 0.018
+        ..strokeCap = StrokeCap.round)
+      ..drawRRect(cuff, Paint()
+        ..color = const Color(0xFF4F78BC)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = s * 0.02
-        ..strokeJoin = StrokeJoin.round;
+        ..strokeWidth = s * 0.018);
+    // A folded thumb lies across the palm, over it.
+    if (!up[0]) {
+      canvas.save();
+      _toThumb(canvas, s, folded: true);
+      capsule(_thumb(s, folded: true));
+      canvas.restore();
+    }
+    // The fingers that should be up but aren't, dashed in after two slips.
+    if (hint > 0) {
+      final dash = Paint()
+        ..color = const Color(0xFF6B4FB8)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = s * 0.018
+        ..strokeCap = StrokeCap.round;
       for (var i = 0; i < hint && i < 5; i++) {
         if (up[i]) continue;
         if (i == 0) {
           canvas.save();
-          canvas.translate(s * 0.24, s * 0.66);
-          canvas.rotate(-50 * math.pi / 180);
-          canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(-0.055 * s, -0.30 * s, 0.11 * s, 0.34 * s), Radius.circular(0.055 * s)), glow);
+          _toThumb(canvas, s, folded: false);
+          _dashed(canvas, _thumb(s, folded: false), dash, s);
           canvas.restore();
         } else {
-          final x = _xs[i - 1] * s, len = _lens[i - 1] * s, fw = 0.11 * s;
-          canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(x - fw / 2, s * 0.48 - len, fw, len + 0.04 * s), Radius.circular(fw / 2)), glow);
+          _dashed(canvas, _finger(i, s), dash, s);
         }
       }
     }
   }
 
+  /// A nail near the tip of an up finger.
+  void _nailOn(Canvas canvas, RRect finger, double s) {
+    final r = finger.outerRect;
+    final nail = RRect.fromRectAndRadius(Rect.fromLTWH(r.left + r.width * 0.24, r.top + r.width * 0.18, r.width * 0.52, r.width * 0.5), Radius.circular(r.width * 0.2));
+    canvas
+      ..drawRRect(nail, Paint()..color = _nail)
+      ..drawRRect(nail, Paint()
+        ..color = _ink.withValues(alpha: 0.6)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = s * 0.01);
+  }
+
+  /// [shape]'s outline in dashes (only drawn while the hint shows).
+  void _dashed(Canvas canvas, RRect shape, Paint paint, double s) {
+    final path = Path()..addRRect(shape);
+    final dash = s * 0.035, gap = s * 0.025;
+    for (final m in path.computeMetrics()) {
+      for (var d = 0.0; d < m.length; d += dash + gap) {
+        canvas.drawPath(m.extractPath(d, math.min(d + dash, m.length)), paint);
+      }
+    }
+  }
+
   @override
-  bool shouldRepaint(_HandPainter old) => old.up.length != up.length || old.hint != hint || old.mirrored != mirrored || List.of(old.up).join() != List.of(up).join();
+  bool shouldRepaint(_HandPainter old) => old.hint != hint || old.mirrored != mirrored || !listEquals(old.up, up);
 }

@@ -88,9 +88,10 @@ List<int> _distractors(int want, int count, int lo, int hi, Random rng, {bool ne
 }
 
 /// Where a plate's treats sit, as (x, y) in a unit square (0–1), so the
-/// app draws them and the tests check them: row (rows of up to three,
-/// centered), dice (the standard pips for 1–6), frame (two rows of five,
-/// the top row filling left to right first).
+/// app draws them and the tests check them: row (even rows of up to three,
+/// centered: four is two and two, the way it's seen at a glance), dice (the
+/// standard pips for 1–6), frame (two rows of five, the top row filling
+/// left to right first).
 List<(double, double)> snackDots(SnackPlate p) => switch (p.pattern) {
       SnackPattern.row => _rowDots(p.n),
       SnackPattern.dice => p.n >= 1 && p.n <= 6 ? _diceDots[p.n]! : _rowDots(p.n),
@@ -99,9 +100,11 @@ List<(double, double)> snackDots(SnackPlate p) => switch (p.pattern) {
 
 List<(double, double)> _rowDots(int n) {
   final rows = (n + 2) ~/ 3;
+  // The longer rows first: 5 is three over two, 7 three, two and two.
+  int inRow(int r) => n ~/ rows + (r < n % rows ? 1 : 0);
   return [
     for (var r = 0; r < rows; r++)
-      for (var i = 0; i < min(3, n - 3 * r); i++) (0.5 + (i - (min(3, n - 3 * r) - 1) / 2) * 0.3, 0.5 + (r - (rows - 1) / 2) * 0.3),
+      for (var i = 0; i < inRow(r); i++) (0.5 + (i - (inRow(r) - 1) / 2) * 0.3, 0.5 + (r - (rows - 1) / 2) * 0.3),
   ];
 }
 

@@ -461,6 +461,31 @@ void main() {
       handle.dispose();
     });
 
+    testWidgets('one hand: a palm tap raises the next finger; two slips outline the fingers on the hand shown', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'fingers', sound: sound, level: 2);
+      final r = game(tester).debugRound;
+      await intro(tester);
+      // Any-finger rounds still answer a palm tap.
+      await tester.tap(byId('fingers.palm.right'));
+      await tester.pump(const Duration(milliseconds: 120));
+      expect(game(tester).debugUp, 1);
+      expect(sound.said.last, numberClip(1));
+      if (r.want == 1) await tester.tap(byId('fingers.palm.right'));
+      await tester.pump(const Duration(milliseconds: 120));
+      for (var slip = 0; slip < 2; slip++) {
+        await tester.tap(byId('fingers.done'));
+        await tester.pump(const Duration(milliseconds: 150));
+      }
+      expect(game(tester).debugHint, isTrue);
+      expect(game(tester).debugOutlined(1), r.want, reason: 'the hand on screen shows where the fingers go');
+      expect(game(tester).debugOutlined(0), 0, reason: 'the other hand is not shown');
+      await tester.pump(const Duration(seconds: 12));
+      await h.shutdown();
+      handle.dispose();
+    });
+
     testWidgets('the left palm raises a whole hand; the make-clip names the five and some more', (tester) async {
       final handle = tester.ensureSemantics();
       final sound = RecordingSound();
@@ -660,6 +685,24 @@ void main() {
       handle.dispose();
     });
 
+    testWidgets('the beads cross the gap: a bead across sits at the left end, one not at the right', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'beads', sound: sound, level: 2);
+      final r = game(tester).debugRound;
+      await intro(tester);
+      final screen = tester.getRect(find.byType(BeadGame));
+      final before = tester.getCenter(byId('beads.bead.0.0'));
+      await tester.tap(byId('beads.bead.0.${r.want - 1}'));
+      await tester.pump(const Duration(milliseconds: 250));
+      final after = tester.getCenter(byId('beads.bead.0.0'));
+      expect(after.dx, lessThan(before.dx - 60), reason: 'the first bead slid left across the gap');
+      if (r.want < 10) expect(tester.getCenter(byId('beads.bead.0.9')).dx, greaterThan(screen.left + screen.width / 2), reason: 'the beads not across stay on the right');
+      await tester.pump(const Duration(seconds: 12));
+      await h.shutdown();
+      handle.dispose();
+    });
+
     testWidgets('a tap on a bead already across slides them back', (tester) async {
       final handle = tester.ensureSemantics();
       final sound = RecordingSound();
@@ -771,11 +814,18 @@ void main() {
       await tester.pump(afterVoice(VoiceLine.cookiesBell) + const Duration(milliseconds: 100));
     }
 
-    /// A tap on the plate's rim, below its cupcakes: the centre can be
-    /// covered by a cupcake of its own.
+    /// A tap in the middle of plate [i], on its cupcakes when it has some:
+    /// every tap on a plate gives it one.
     Future<void> give(WidgetTester tester, int i) async {
-      final rect = tester.getRect(byId('share.plate.$i'));
-      await tester.tapAt(rect.bottomCenter - Offset(0, rect.height * 0.12));
+      await tester.tap(byId('share.plate.$i'));
+      await tester.pump(const Duration(milliseconds: 350));
+    }
+
+    /// Drags cupcake [cake] (a `share.cupcake.…` or `share.traycake.…` id)
+    /// and lets go over [to].
+    Future<void> move(WidgetTester tester, String cake, String to) async {
+      final from = tester.getCenter(byId(cake));
+      await tester.dragFrom(from, tester.getCenter(byId(to)) - from);
       await tester.pump(const Duration(milliseconds: 350));
     }
 
@@ -799,7 +849,8 @@ void main() {
       expect(sound.said, contains(numberClip(1)));
       expect(labelOf(tester, 'share.plate.0'), 'Plate 1: ${r.each} cupcake${r.each == 1 ? '' : 's'}');
       expect(labelOf(tester, 'share.tray'), 'Tray: ${r.left} cupcake${r.left == 1 ? '' : 's'}');
-      // The tray is empty: another give is a boing, not a slip.
+      // The tray is empty: another give is a boing, not a slip. (A tap on
+      // a plate's cupcakes gives, too: it never takes one away.)
       await give(tester, 0);
       expect(game(tester).debugPlates[0], r.each);
       expect(sound.played.where((e) => e.$1 == Sfx.boing), hasLength(1));
@@ -826,19 +877,22 @@ void main() {
         await give(tester, k % r.monsters);
       }
       // Move one from plate 1 to plate 0: not fair.
-      await tester.tap(byId('share.cupcake.1.0'));
-      await tester.pump(const Duration(milliseconds: 350));
-      expect(game(tester).debugPlates[1], r.each - 1);
-      await give(tester, 0);
+      await move(tester, 'share.cupcake.1.0', 'share.plate.0');
+      expect(game(tester).debugPlates, [r.each + 1, r.each - 1]);
+      expect(sound.said.last, numberClip(r.each + 1), reason: 'the plate it lands on says its count');
       await tester.tap(byId('share.bell'));
       await tester.pump(const Duration(milliseconds: 150));
       expect(sound.said.last, VoiceLine.shareFewer);
       expect(sound.played.where((e) => e.$1 == Sfx.nope), hasLength(1));
       expect(game(tester).debugPlates, isNot(equals([for (var i = 0; i < r.monsters; i++) r.each])), reason: 'the cupcakes stay to fix');
-      // Put it back: one each again, and the bell finds it fair.
-      await tester.tap(byId('share.cupcake.0.0'));
-      await tester.pump(const Duration(milliseconds: 350));
-      await give(tester, 1);
+      // Put it back: dropped nowhere it floats home, on the tray it waits
+      // there, and from the tray it goes where it's dropped.
+      await move(tester, 'share.cupcake.0.0', 'share.ask');
+      expect(game(tester).debugPlates, [r.each + 1, r.each - 1], reason: 'a drop on no plate changes nothing');
+      await move(tester, 'share.cupcake.0.0', 'share.tray');
+      expect(game(tester).debugTray, 1);
+      await move(tester, 'share.traycake.0', 'share.plate.1');
+      expect(game(tester).debugPlates, [r.each, r.each]);
       await tester.tap(byId('share.bell'));
       await tester.pump(const Duration(seconds: 3));
       await h.settle();

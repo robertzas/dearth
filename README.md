@@ -110,9 +110,9 @@ back.
   top level), Finger Count (a big cartoon hand asks her to raise fingers — a whole hand at a tap on the palm for 6–10 — then a
   high five checks; at the top the hand shows fingers and she picks the number), Animal Race (animals race across their lanes
   and coast to a stop in order; she answers "who came second?", ribbons all five at the top), Bead Slider (a counting rack
-  of red and white beads; a tap or swipe slides beads across and the bell checks — "Five and two make seven!"; at the top she
-  reads the rack) and Fair Share (two or three monsters with empty plates and a tray of cupcakes; a tap on a plate gives it one,
-  and the bell checks everyone has the same — "Three each! Fair and square!"). The letter, word
+  of red and white beads; a tap slides beads across the gap and the bell checks — "Five and two make seven!"; at the top she
+  reads the rack) and Fair Share (two or three monsters with empty plates and a tray of cupcakes; a tap on a plate gives it one, a drag
+  moves one, and the bell checks everyone has the same — "Three each! Fair and square!"). The letter, word
   and number games talk: every line is a clip bundled with the app, so they
   work on a display with no text-to-speech. Every game is on for every kid, the ones that suit their age first, and every game
   adapts: three wins in a row go up a level, three misses ease off, and

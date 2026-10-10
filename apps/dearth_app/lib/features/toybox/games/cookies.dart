@@ -540,7 +540,6 @@ class _JarPainter extends CustomPainter {
   bool shouldRepaint(_JarPainter old) => false;
 }
 
-/// A shop counter bell: a golden dome on a dark base, a button on top.
 /// A shop counter bell: a golden dome on a dark base, a button on top
 /// (Cookie Count and Bead Slider share it).
 class BellPainter extends CustomPainter {

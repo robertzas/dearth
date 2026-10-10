@@ -497,11 +497,12 @@ List<_Spot> _partSpots(CountPart part, int n, int shape, _Box b) {
           }(),
       ];
     case CountPart.spots:
-      // Dice-like: the middle, the corners, then between.
+      // Dice-like on the belly, well inside the outline: the middle, the
+      // corners, then between.
       const cells = [4, 0, 8, 2, 6, 3, 5, 1, 7];
       return [
         for (var i = 0; i < n; i++)
-          (0.5 + (cells[i] % 3 - 1) * 0.09 * k, b.faceY + 0.11 + (cells[i] ~/ 3) * 0.075, 0.032 * k),
+          (0.5 + (cells[i] % 3 - 1) * 0.075 * k, b.faceY + 0.17 + (cells[i] ~/ 3 - 1) * 0.07, 0.03 * k),
       ];
   }
 }
@@ -574,7 +575,8 @@ void _drawPart(Canvas canvas, double s, _Box b, int shape, CountPart part, int i
         canvas.drawCircle(c, r * s, line());
         return;
       }
-      canvas.drawCircle(c, r * s, Paint()..color = light);
+      // A darker shade of the body, so every spot can be counted.
+      canvas.drawCircle(c, r * s, Paint()..color = Color.lerp(color, const Color(0xFF2B2440), 0.32)!);
   }
 }
 
@@ -651,33 +653,58 @@ class _CountCreaturePainter extends CustomPainter {
       CountPart.values.any((p) => (old.counts[p] ?? 0) != (counts[p] ?? 0));
 }
 
-/// One part on a plain grey body, for the part buttons and the pill.
+/// One part, drawn big enough to tell at a glance, for the part buttons
+/// and the pill: a googly eye, a horn, a leg with its foot, or a patch of
+/// body with spots.
 class _PartIconPainter extends CustomPainter {
   const _PartIconPainter(this.part);
   final CountPart part;
 
+  static const _body = Color(0xFFCFC7E8), _dark = Color(0xFF6B5A99), _ink = Color(0xFF2B2440);
+
   @override
   void paint(Canvas canvas, Size size) {
-    final s = size.width;
-    const shape = 0;
-    final b = creatureBodyBox(shape);
-    const color = Color(0xFFCFC7E8);
-    final (dark, _) = _inks(color);
-    if (part == CountPart.legs) _drawPart(canvas, s, b, shape, part, 0, 1, color);
-    if (part == CountPart.horns) _drawPart(canvas, s, b, shape, part, 0, 1, color);
-    final body = CreaturePainter.bodyPath(shape, s);
-    canvas
-      ..drawPath(body, Paint()..color = color)
-      ..drawPath(
-        body,
-        Paint()
-          ..color = dark
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = s * 0.02
-          ..strokeJoin = StrokeJoin.round,
-      );
-    if (part == CountPart.spots) _drawPart(canvas, s, b, shape, part, 0, 1, color);
-    if (part == CountPart.eyes) _drawPart(canvas, s, b, shape, part, 0, 1, color);
+    final s = size.shortestSide;
+    final c = size.center(Offset.zero);
+    final line = Paint()
+      ..color = _dark
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = math.max(1.5, s * 0.06)
+      ..strokeJoin = StrokeJoin.round
+      ..strokeCap = StrokeCap.round;
+    switch (part) {
+      case CountPart.eyes:
+        final r = s * 0.42;
+        canvas
+          ..drawCircle(c, r, Paint()..color = Colors.white)
+          ..drawCircle(c, r, line)
+          ..drawCircle(c + Offset(0, r * 0.15), r * 0.48, Paint()..color = _ink)
+          ..drawCircle(c + Offset(-r * 0.16, -r * 0.04), r * 0.17, Paint()..color = Colors.white);
+      case CountPart.horns:
+        final horn = Path()
+          ..moveTo(c.dx - s * 0.26, c.dy + s * 0.38)
+          ..quadraticBezierTo(c.dx - s * 0.12, c.dy - s * 0.1, c.dx + s * 0.08, c.dy - s * 0.44)
+          ..quadraticBezierTo(c.dx + s * 0.12, c.dy, c.dx + s * 0.26, c.dy + s * 0.38)
+          ..close();
+        canvas
+          ..drawPath(horn, Paint()..color = Color.lerp(_body, Colors.white, 0.45)!)
+          ..drawPath(horn, line);
+      case CountPart.legs:
+        final leg = RRect.fromRectAndRadius(Rect.fromCenter(center: c + Offset(0, -s * 0.06), width: s * 0.26, height: s * 0.66), Radius.circular(s * 0.13));
+        final foot = Rect.fromCenter(center: c + Offset(s * 0.08, s * 0.3), width: s * 0.52, height: s * 0.24);
+        canvas
+          ..drawRRect(leg, Paint()..color = _dark)
+          ..drawOval(foot, Paint()..color = _dark);
+      case CountPart.spots:
+        final patch = Rect.fromCircle(center: c, radius: s * 0.44);
+        canvas
+          ..drawOval(patch, Paint()..color = _body)
+          ..drawOval(patch, line);
+        final spot = Paint()..color = Color.lerp(_body, _ink, 0.32)!;
+        for (final o in const [Offset(-0.16, -0.14), Offset(0.15, -0.06), Offset(-0.04, 0.18)]) {
+          canvas.drawCircle(c + o * s, s * 0.1, spot);
+        }
+    }
   }
 
   @override

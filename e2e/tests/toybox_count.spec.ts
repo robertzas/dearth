@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { expectCheered, expectText, idsUnder, openToyboxGame, tap, tapAt, textOf, tid } from './helpers';
+import { expectCheered, expectText, idsUnder, openToyboxGame, tap, textOf, tid } from './helpers';
 
 // The Toybox's third set, six number games built on her longest-played
 // games (SPEC FR-TOY-03), played from what the screen shows (labels). The
@@ -81,8 +81,9 @@ test.describe('Toybox third set', () => {
     const plates = await idsUnder(page, 'share.plate.');
     // Round robin, one each, until the tray is empty.
     for (let given = 0; given < n; given++) {
-      // The plate's rim, below its cupcakes: the centre is covered.
-      await tapAt(tid(page, `share.plate.${given % plates.length}`), 0.5, 0.9);
+      // The middle of the plate, on its cupcakes once it has some: every
+      // tap on a plate gives it one.
+      await tap(tid(page, `share.plate.${given % plates.length}`));
       await expectText(tid(page, 'share.tray'), `Tray: ${n - given - 1} ${n - given - 1 === 1 ? 'cupcake' : 'cupcakes'}`);
     }
     await tap(tid(page, 'share.bell'));

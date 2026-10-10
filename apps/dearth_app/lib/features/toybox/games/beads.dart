@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:dearth_core/dearth_core.dart';
 import 'package:dearth_ui/dearth_ui.dart';
@@ -35,7 +36,8 @@ class BeadGameState extends State<BeadGame> with TickerProviderStateMixin {
   /// Beads pushed left, one count per row.
   late List<int> _left;
 
-  /// Where each row's slide started, for the painter to lerp from.
+  /// Each row's count before its last slide: the beads between the two
+  /// glide across while the slide runs.
   late List<int> _from;
   late List<AnimationController> _slide;
   int _slips = 0, _deal = 0, _bellHops = 0;
@@ -138,12 +140,14 @@ class BeadGameState extends State<BeadGame> with TickerProviderStateMixin {
     });
   }
 
-  /// The bead at play-area [x] within row [row]'s box [box]: the beads
-  /// sit a bead's width apart wherever they are, so the count to its left
-  /// finds it.
-  int _beadAt(int row, Rect box, double d, Offset global) {
-    final x = global.dx - box.left - 2 * d;
-    return (((x) / d).round()).clamp(0, 9);
+  /// The bead nearest [x] (the row's own coordinates), wherever the beads
+  /// sit now.
+  int _beadAt(int row, double x, double d) {
+    var best = 0;
+    for (var i = 1; i < 10; i++) {
+      if ((x - _beadX(i, _left[row], d)).abs() < (x - _beadX(best, _left[row], d)).abs()) best = i;
+    }
+    return best;
   }
 
   /// Slides row [row]'s beads by the rekenrek rule: a bead to the right
@@ -157,19 +161,15 @@ class BeadGameState extends State<BeadGame> with TickerProviderStateMixin {
     _waitIdle();
     widget.c.sound(Sfx.blip, volume: 0.4);
     setState(() {
-      _from[row] = _painted(row);
+      // A slide that's still running finishes at once: the new one starts
+      // from where the beads were going.
+      _from[row] = _left[row];
       _left[row] = now;
       _slide[row]
         ..stop()
         ..forward(from: 0);
     });
     widget.c.say(numberClip(debugTotal));
-  }
-
-  /// The count the painter shows for row [row] mid-slide.
-  int _painted(int row) {
-    if (_slide[row].isCompleted) return _left[row];
-    return _lerpInt(_from[row], _left[row], Curves.easeOut.transform(_slide[row].value));
   }
 
   /// The bell: the round's check. Any split across the rows is right.
@@ -246,8 +246,11 @@ class BeadGameState extends State<BeadGame> with TickerProviderStateMixin {
             top: 140,
             child: LayoutBuilder(builder: (context, box) {
               final wide = box.maxWidth > box.maxHeight;
-              final rackW = math.min(box.maxWidth * 0.92, 1100 * t.scale);
-              final d = rackW / 14;
+              final dd = math.max(72 * t.scale, math.min(box.maxHeight * 0.24, 150 * t.scale));
+              // Wide: the bell (or the numbers) stands beside the rack.
+              final room = wide ? box.maxWidth - (r.read ? box.maxWidth * 0.3 : dd) - 32 * t.scale : box.maxWidth;
+              final rackW = math.min(room * 0.96, 1150 * t.scale);
+              final d = rackW / kRackBeads;
               final rowH = d * 1.6;
               final rows = [for (var row = 0; row < r.rows; row++) row];
               final rackH = r.rows * rowH + (r.rows - 1) * d * 0.4;
@@ -258,7 +261,6 @@ class BeadGameState extends State<BeadGame> with TickerProviderStateMixin {
                     ? TileRows(per: 1, children: [for (final n in r.choices) _choice(context, n, tile)])
                     : TileRows(per: 3, children: [for (final n in r.choices) _choice(context, n, math.min(tile, (box.maxWidth - 24) / 3.4))]);
               } else {
-                final dd = math.max(72 * t.scale, math.min(box.maxHeight * 0.24, 150 * t.scale));
                 beside = DPressable(
                   id: 'beads.bell',
                   semanticLabel: 'Bell',
@@ -285,9 +287,11 @@ class BeadGameState extends State<BeadGame> with TickerProviderStateMixin {
               id: 'beads.ask',
               label: _askLabel(),
               onSayAgain: _sayPrompt,
-              children: [
-                for (final digit in '${r.want}'.split('')) GlyphView(digit, height: 52 * t.scale, color: const Color(0xFF6B4FB8)),
-              ],
+              // Reading the rack, the number is hers to find: a bead, not
+              // the answer.
+              children: r.read && !_solved
+                  ? [SizedBox(width: 72 * t.scale, height: 44 * t.scale, child: const CustomPaint(painter: _BeadsIconPainter()))]
+                  : [for (final digit in '${r.want}'.split('')) GlyphView(digit, height: 52 * t.scale, color: const Color(0xFF6B4FB8))],
             ),
           ),
         ],
@@ -301,7 +305,7 @@ class BeadGameState extends State<BeadGame> with TickerProviderStateMixin {
     final box = Rect.fromLTWH(0, 0, rackW, rowH);
     final left = _left[row];
     Widget beadBox(int i) {
-      final x = (i < left ? 2 * d + i * d : rackW - 2 * d - (10 - i) * d);
+      final x = _beadX(i, left, d);
       final side = math.max(d, 44 * DTheme.of(context).scale);
       return Positioned.fromRect(
         rect: Rect.fromCenter(center: Offset(x, rowH / 2), width: side, height: side),
@@ -349,8 +353,9 @@ class BeadGameState extends State<BeadGame> with TickerProviderStateMixin {
             ),
             Listener(
               behavior: HitTestBehavior.opaque,
-              onPointerDown: (e) => _slideBy(row, _beadAt(row, box, d, e.localPosition)),
-              onPointerMove: (e) => _slideBy(row, _beadAt(row, box, d, e.localPosition)),
+              // A touch moves the bead under it at once, so a swipe that
+              // starts on a bead pushes it (and its neighbors) across.
+              onPointerDown: (e) => _slideBy(row, _beadAt(row, e.localPosition.dx, d)),
               child: SizedBox.expand(child: Stack(children: [for (var i = 0; i < 10; i++) beadBox(i)])),
             ),
           ],
@@ -386,12 +391,19 @@ class BeadGameState extends State<BeadGame> with TickerProviderStateMixin {
   }
 }
 
-/// The count a slide is showing, between two whole counts.
-int _lerpInt(int a, int b, double t) => (a + (b - a) * t).round();
+/// A rack row is this many beads wide: ten beads, a four-bead gap to slide
+/// across, and the frame's ends.
+const double kRackBeads = 16;
 
-/// One rack row mid-slide: a wooden frame, a metal rod, and ten beads —
-/// five red, five white — the ones across on the left. A dashed marker
-/// shows where to stop after two slips.
+/// Where bead [i] (0–9) sits, in bead widths [d] from the row's left
+/// edge, with [left] beads across: packed against the left end when it's
+/// across, against the right end when not, so the gap shows between.
+double _beadX(int i, int left, double d) => (i < left ? 1.5 + i : kRackBeads - 1.5 - (9 - i)) * d;
+
+/// One rack row: a wooden frame, a metal rod, and ten beads — five red,
+/// five white — the ones across on the left. While a slide runs, the beads
+/// between [from] and [left] glide to their new end. A dashed marker shows
+/// where to stop after two slips.
 class _RowPainter extends CustomPainter {
   _RowPainter({required this.left, required this.from, required this.slide, required this.hintAt}) : super(repaint: slide);
 
@@ -405,8 +417,8 @@ class _RowPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
-    final d = w / 14;
-    final shown = slide.isCompleted ? left : _lerpInt(from, left, Curves.easeOut.transform(slide.value));
+    final d = w / kRackBeads;
+    final k = slide.isCompleted ? 1.0 : Curves.easeOutCubic.transform(slide.value);
     const wood = Color(0xFFB7814C);
     final ink = Color.lerp(wood, const Color(0xFF2B2440), 0.45)!;
     canvas
@@ -419,12 +431,12 @@ class _RowPainter extends CustomPainter {
           ..strokeWidth = math.max(2, d * 0.12),
       )
       // The metal rod.
-      ..drawLine(Offset(2 * d, h / 2), Offset(w - 2 * d, h / 2), Paint()
+      ..drawLine(Offset(d * 0.8, h / 2), Offset(w - d * 0.8, h / 2), Paint()
         ..color = const Color(0xFF9AA0A8)
         ..strokeWidth = d * 0.16
         ..strokeCap = StrokeCap.round);
     for (var i = 0; i < 10; i++) {
-      final x = i < shown ? 2 * d + i * d : w - 2 * d - (10 - i) * d;
+      final x = ui.lerpDouble(_beadX(i, from, d), _beadX(i, left, d), k)!;
       final c = Offset(x, h / 2);
       final r = d * 0.46;
       final red = i < 5;
@@ -438,7 +450,7 @@ class _RowPainter extends CustomPainter {
       canvas.drawCircle(c + Offset(-r * 0.3, -r * 0.3), r * 0.16, Paint()..color = (red ? Colors.white : const Color(0xFFD9DDE3)).withValues(alpha: 0.9));
     }
     if (hintAt > 0 && hintAt <= 10) {
-      final x = 2 * d + hintAt * d - d / 2;
+      final x = _beadX(hintAt - 1, 10, d) + d / 2;
       final dash = Paint()
         ..color = const Color(0xFF6B4FB8)
         ..style = PaintingStyle.stroke
@@ -454,4 +466,34 @@ class _RowPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_RowPainter old) => old.left != left || old.from != from || old.hintAt != hintAt;
+}
+
+/// A red bead and a white one on a rod, for the pill while she reads the
+/// rack.
+class _BeadsIconPainter extends CustomPainter {
+  const _BeadsIconPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final r = size.height * 0.36;
+    final y = size.height / 2;
+    canvas.drawLine(Offset(0, y), Offset(size.width, y), Paint()
+      ..color = const Color(0xFF9AA0A8)
+      ..strokeWidth = size.height * 0.1
+      ..strokeCap = StrokeCap.round);
+    for (final (x, red) in [(size.width * 0.32, true), (size.width * 0.68, false)]) {
+      final c = Offset(x, y);
+      canvas.drawCircle(c, r, Paint()..color = red ? const Color(0xFFE5484D) : const Color(0xFFF7F7F7));
+      if (!red) {
+        canvas.drawCircle(c, r, Paint()
+          ..color = const Color(0xFFB9BEC7)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = math.max(1.5, r * 0.1));
+      }
+      canvas.drawCircle(c + Offset(-r * 0.3, -r * 0.3), r * 0.16, Paint()..color = (red ? Colors.white : const Color(0xFFD9DDE3)).withValues(alpha: 0.9));
+    }
+  }
+
+  @override
+  bool shouldRepaint(_BeadsIconPainter old) => false;
 }
