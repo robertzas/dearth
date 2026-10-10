@@ -218,6 +218,17 @@ class HubApi {
 
   Future<void> delete(String path) => _send(() => _client.delete(_u(path), headers: _headers(json: false)));
 
+  /// Asks the Hub to forget this device (FR-ADM-01). Best effort and quick:
+  /// a display leaving an unreachable Hub still leaves, and a grown-up can
+  /// remove the stale row in Settings later.
+  Future<void> forgetThisDevice() async {
+    try {
+      await _send(() => _client.delete(_u('/api/devices/self'), headers: _headers(json: false)), timeout: const Duration(seconds: 3));
+    } on HubApiException {
+      // Unreachable or already removed: nothing more to do.
+    }
+  }
+
   // ── Moving a household between Hubs (SPEC §7.2, §8.7; admin) ───────────
 
   /// Every synced table plus the blobs the rows point at, decoded off the

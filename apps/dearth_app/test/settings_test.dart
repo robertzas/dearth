@@ -308,4 +308,49 @@ void main() {
     await h.shutdown();
     handle.dispose();
   });
+
+  testWidgets('FR-ADM-01: a grown-up removes another device from the Hub; it leaves the list', (tester) async {
+    final handle = tester.ensureSemantics();
+    final deletes = <String>[];
+    var devices = [
+      {'id': 'dev-frame', 'name': 'Kitchen frame', 'role': 'kitchen', 'admin': true, 'online': true},
+      {'id': 'dev-old', 'name': 'Old tablet', 'role': 'kitchen', 'admin': false, 'online': false},
+    ];
+    http.Response ok(Object body) => http.Response(jsonEncode(body), 200, headers: {'content-type': 'application/json'});
+    final api = HubApi(Uri.parse('http://hub.test'), token: 't', client: MockClient((req) async {
+      switch ((req.method, req.url.path)) {
+        case ('GET', '/api/admin/status'):
+          return ok({'hub': {'version': 'test', 'seq': 1}, 'devices': devices, 'pendingPairings': <Object>[]});
+        case ('DELETE', final String path) when path.startsWith('/api/admin/devices/'):
+          final id = path.split('/').last;
+          deletes.add(id);
+          devices = [for (final d in devices) if (d['id'] != id) d];
+          return ok({'ok': true});
+      }
+      return http.Response('{}', 404);
+    }));
+    final h = await AppHarness.demo(tester, overrides: [hubApiProvider.overrideWithValue(api)]);
+    h.container.read(routerProvider).go('/settings/hub');
+    await h.settle();
+    expect(labelOf(tester, 'hub.device.dev-old'), contains('Old tablet'));
+    expectNoFallbackText();
+
+    await tester.ensureVisible(byId('hub.device.dev-old.remove'));
+    await tester.tap(byId('hub.device.dev-old.remove'));
+    await h.settle();
+    expect(byId('dialog.confirm'), findsOneWidget);
+    await tester.tap(byId('dialog.cancel'));
+    await h.settle();
+    expect(deletes, isEmpty, reason: 'Cancel keeps the device');
+
+    await tester.tap(byId('hub.device.dev-old.remove'));
+    await h.settle();
+    await tester.tap(byId('dialog.confirm.ok'));
+    await h.settle();
+    expect(deletes, ['dev-old']);
+    expect(byId('hub.device.dev-old'), findsNothing);
+    expect(byId('hub.device.dev-frame'), findsOneWidget);
+    await h.shutdown();
+    handle.dispose();
+  });
 }

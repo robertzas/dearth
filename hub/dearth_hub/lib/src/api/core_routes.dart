@@ -53,6 +53,15 @@ void mountCoreRoutes(Router r, HubContext ctx) {
     return jsonOk(status.toJson());
   });
 
+  // A display that disconnects removes itself (FR-ADM-01), so the device
+  // list keeps only displays that can still sync.
+  r.delete('/api/devices/self', (Request req) async {
+    final device = await requireDevice(req, ctx.auth);
+    await ctx.auth.revoke(device.deviceId);
+    await ctx.connections.disconnect(device.deviceId);
+    return jsonOk({'ok': true});
+  });
+
   // ── Sync bootstrap (SPEC §8.4.6) ─────────────────────────────────────────
   r.get('/api/sync/snapshot', (Request req) async {
     final device = await requireDevice(req, ctx.auth);

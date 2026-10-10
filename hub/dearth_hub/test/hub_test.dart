@@ -110,6 +110,29 @@ void main() {
     expect(noAuth.statusCode, 401);
   });
 
+  test('FR-ADM-01: an admin removes a device, a display removes itself; both leave the list and their tokens stop working', () async {
+    final keep = await pairDevice('Kitchen');
+    final old = await pairDevice('Old tablet');
+    final leaving = await pairDevice('Playroom');
+    Future<List<String>> names() async {
+      final r = jsonDecode((await http.get(u('/api/admin/status'), headers: _admin)).body) as Map<String, Object?>;
+      return [for (final d in r['devices']! as List) (d as Map<String, Object?>)['name']! as String];
+    }
+
+    final oldId = (await hub.context.auth.deviceForToken(old))!.deviceId;
+    final removed = await http.delete(u('/api/admin/devices/$oldId'), headers: _admin);
+    expect(removed.statusCode, 200);
+    final bye = await http.delete(u('/api/devices/self'), headers: {'authorization': 'Bearer $leaving'});
+    expect(bye.statusCode, 200);
+    expect(await names(), ['Kitchen']);
+    for (final token in [old, leaving]) {
+      final r = await http.get(u('/api/sync/snapshot'), headers: {'authorization': 'Bearer $token'});
+      expect(r.statusCode, 401, reason: 'a removed device has to pair again');
+    }
+    expect((await http.get(u('/api/sync/snapshot'), headers: {'authorization': 'Bearer $keep'})).statusCode, 200);
+    expect((await http.delete(u('/api/devices/self'))).statusCode, 401);
+  });
+
   test('sync: snapshot bootstrap, live fan-out, ACLs and hub-owned fields', () async {
     final kitchen = TestDevice(hub, await pairDevice('Kitchen', admin: true));
     final kid = TestDevice(hub, await pairDevice('Ava room', role: DeviceRole.kidRoom));

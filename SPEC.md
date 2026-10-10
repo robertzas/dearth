@@ -1499,7 +1499,11 @@ only**.
 
 - **FR-ADM-01 [M1]** **Devices view:** online state, app version, role,
   tier, renderer backend, memory and CPU, frame stats (p50/p95), uptime,
-  last error, data cache sizes.
+  last error, data cache sizes. A grown-up can **remove** any other device
+  (PIN, then a confirmation): its token is revoked at once, it drops off
+  the list, and it has to pair again to come back. A display that
+  disconnects itself tells the Hub first (best effort), so the list keeps
+  only displays that can still sync.
 - **FR-ADM-02 [M1]** **Remote screenshot:** the device renders its own
   Flutter layer to PNG and uploads it. `adb screencap` returns 0 bytes on
   this ROM, so this matters.

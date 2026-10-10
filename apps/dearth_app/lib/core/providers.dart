@@ -214,9 +214,11 @@ class SessionController extends Notifier<Session> {
   }
 
   /// Forgets the Hub or demo data and returns to onboarding. On its own,
-  /// that deletes the household: the built-in Hub held the only copy.
+  /// that deletes the household: the built-in Hub held the only copy. A
+  /// display leaving a Hub asks it to drop this device from its list first.
   Future<void> reset() async {
     if (state.isSolo) await BuiltInHub.erase();
+    if (state.mode == SessionMode.hub && state.isHub) await ref.read(hubApiProvider)?.forgetThisDevice();
     await ref.read(sessionStoreProvider).wipe();
     await set(const Session());
   }

@@ -83,6 +83,29 @@ class _HubSectionState extends ConsumerState<HubSection> {
     }
   }
 
+  /// Removes another device from the Hub (FR-ADM-01): its token stops
+  /// working at once, so it has to pair again to come back.
+  Future<void> _remove(HubApi api, Map<String, Object?> device) async {
+    if (!await ensureGrownUp(context, ref, reason: 'Removing a device needs a grown-up')) return;
+    if (!mounted) return;
+    final name = '${device['name']}';
+    final ok = await confirmDialog(
+      context,
+      title: 'Remove $name?',
+      message: 'It stops syncing at once and leaves this list. To bring it back, pair it again with a new code.',
+      confirmLabel: 'Remove',
+      danger: true,
+    );
+    if (!ok) return;
+    try {
+      await api.delete('/api/admin/devices/${device['id']}');
+      ref.read(toastProvider).show('$name removed', emoji: '🗑️');
+      await _load();
+    } on HubApiException catch (e) {
+      ref.read(toastProvider).show(e.friendly, emoji: '⚠️');
+    }
+  }
+
   Future<void> _leave() async {
     if (!await ensureGrownUp(context, ref, reason: 'Disconnecting needs a grown-up')) return;
     if (!mounted) return;
@@ -198,12 +221,17 @@ class _HubSectionState extends ConsumerState<HubSection> {
             children: [
               for (final d in devices)
                 DListRow(
-                  title: '${d['name']}',
+                  id: 'hub.device.${d['id']}',
+                  title: d['id'] == session.deviceId ? '${d['name']} (this display)' : '${d['name']}',
                   subtitle: [
                     '${d['role']}${d['admin'] == true ? ' · admin' : ''} · ${d['online'] == true ? 'online' : 'offline'}',
                     if (d['online'] == true) ...deviceHealth(d['telemetry']),
                   ].join(' · '),
                   leading: Icon(Icons.circle, size: 14 * t.scale, color: d['online'] == true ? t.colors.success : t.colors.inkTertiary),
+                  // This display leaves with "Disconnect this display" above.
+                  trailing: d['id'] == session.deviceId
+                      ? null
+                      : DButton(label: 'Remove', size: DButtonSize.sm, tone: DButtonTone.ghost, id: 'hub.device.${d['id']}.remove', onPressed: () => _remove(api, d)),
                 ),
               DListRow(
                 id: 'hub.enroll',
