@@ -8,6 +8,7 @@ import 'package:dearth_app/features/toybox/games/music.dart';
 import 'package:dearth_app/features/toybox/toybox_data.dart';
 import 'package:dearth_core/dearth_core.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'support/app_harness.dart';
 
@@ -21,7 +22,14 @@ void main() {
     if (level != null) await h.write((w) => [settingOp(w, SettingKeys.toybox, ToyboxSettings(pins: {'p-ava.$game': level}).toJson())]);
     h.container.read(routerProvider).go('/toybox');
     await h.settle();
-    await tester.tap(byId('toybox.game.$game'));
+    // The launcher's grid is lazy and the expansion games are many: the
+    // tile can be below the fold, where a tap misses. Drag until it is
+    // built and visible, then scroll it fully into view.
+    final tile = byId('toybox.game.$game');
+    await tester.dragUntilVisible(tile, find.descendant(of: find.byType(GridView), matching: find.byType(Scrollable)).first, const Offset(0, -180), maxIteration: 60);
+    await tester.ensureVisible(tile);
+    await h.settle();
+    await tester.tap(tile);
     await h.settle();
     return h;
   }

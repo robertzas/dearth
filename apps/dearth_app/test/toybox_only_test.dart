@@ -102,7 +102,13 @@ void main() {
   testWidgets('a game opens and is recorded on the device, as anywhere else', (tester) async {
     final handle = tester.ensureSemantics();
     final h = await toyboxOnly(tester, size: const Size(1080, 1920));
-    await tester.tap(byId('toybox.game.bubbles'));
+    // The launcher's grid is lazy: drag until the tile is built, then
+    // scroll it fully into view.
+    final tile = byId('toybox.game.bubbles');
+    await tester.dragUntilVisible(tile, find.descendant(of: find.byType(GridView), matching: find.byType(Scrollable)).first, const Offset(0, -180), maxIteration: 60);
+    await tester.ensureVisible(tile);
+    await h.settle(10);
+    await tester.tap(tile);
     await h.settle(10);
     expect(byId('game.bubbles'), findsOneWidget);
     await tester.tap(byId('game.home'));
