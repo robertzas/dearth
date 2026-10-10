@@ -9,6 +9,13 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'support/app_harness.dart';
 
+/// The games added in the last month, minus [except], in launcher order:
+/// newest first, catalog order within a date.
+List<String> _freshLead({String? except}) {
+  final dates = {for (final g in kGames) g.added}.whereType<String>().toList()..sort((a, b) => b.compareTo(a));
+  return [for (final d in dates) for (final g in kGames) if (g.added == d && g.id != except) g.id];
+}
+
 /// The Toybox (SPEC §10.8): the launcher, the game host and its rules, on
 /// the demo household (Ava is 2½).
 void main() {
@@ -26,12 +33,15 @@ void main() {
     final shown = [for (final g in h.container.read(kidGamesProvider('p-ava'))) g.id];
     // Who's That? waits for face photos, which the demo family hasn't got.
     expect(shown, unorderedEquals([for (final g in kGames) if (g.id != 'whosthat') g.id]), reason: 'every game is on by default');
+    // Games added this month that she hasn't played yet lead, newest first
+    // (ties in catalog order).
+    final lead = _freshLead();
     final added = [for (final g in kGames) if (g.added != null) g.id];
-    expect(shown.take(added.length), added, reason: 'games added this month that she hasn\'t played yet lead');
+    expect(shown.take(lead.length), lead, reason: 'games added this month that she hasn\'t played yet lead, the newest first');
     final hers = [for (final g in kGames) if (g.minMonths <= 30 && g.id != 'whosthat' && !added.contains(g.id)) g.id];
-    expect(shown.skip(added.length).take(hers.length), hers, reason: 'then the games for 2½, in catalog order (no favorites yet)');
+    expect(shown.skip(lead.length).take(hers.length), hers, reason: 'then the games for 2½, in catalog order (no favorites yet)');
     expect(shown.indexOf('counting'), greaterThan(shown.indexOf('memory')), reason: 'counting is for 3+, so it comes after hers');
-    expect(byId('toybox.game.${added.first}'), findsOneWidget, reason: 'first on the screen');
+    expect(byId('toybox.game.${lead.first}'), findsOneWidget, reason: 'first on the screen');
 
     await tester.ensureVisible(byId('toybox.game.bubbles'));
     await h.settle();
@@ -62,10 +72,10 @@ void main() {
           for (var i = 0; i < 4; i++) w.op('game_events', 'ge-paint-$i', {'profile_id': 'p-ava', 'game': 'paint', 'level': 1, 'result': 'played', 'duration_ms': 90000, 'at_ms': now - day - i * 60000}, kind: OpKind.insertOnly),
         ]);
     final shown = [for (final g in games.read()) g.id];
-    final added = [for (final g in kGames) if (g.added != null && g.id != 'cookies') g.id];
-    expect(shown.take(added.length), added, reason: 'Cookie Count has been played, so it\'s no longer new');
-    expect(shown.skip(added.length).take(4), ['numbers', 'paint', 'compare', 'monster'], reason: 'three rounds or sessions or more in two weeks, most first (a tie keeps the age order)');
-    expect(shown.indexOf('rocket'), lessThan(added.length), reason: 'peeked into, not played: still new');
+    final lead = _freshLead(except: 'cookies');
+    expect(shown.take(lead.length), lead, reason: 'Cookie Count has been played, so it\'s no longer new');
+    expect(shown.skip(lead.length).take(4), ['numbers', 'paint', 'compare', 'monster'], reason: 'three rounds or sessions or more in two weeks, most first (a tie keeps the age order)');
+    expect(shown.indexOf('rocket'), lessThan(lead.length), reason: 'peeked into, not played: still new');
     expect(shown.indexOf('jigsaw'), greaterThan(shown.indexOf('bubbles')), reason: 'visits are not rounds: not a favorite');
     expect(shown.indexOf('farm'), greaterThan(shown.indexOf('bubbles')), reason: 'two rounds is not a favorite');
     expect(shown.indexOf('sight'), greaterThan(shown.indexOf('memory')), reason: 'played three weeks ago: back in its age place');

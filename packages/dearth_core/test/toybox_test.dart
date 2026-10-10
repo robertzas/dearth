@@ -64,22 +64,27 @@ void main() {
 
     test('FR-TOY-01: the launcher puts new games she hasn\'t tried first, then her favorites, then the rest in age order', () {
       final games = gamesFor(30);
+      final newest = [for (final g in kGames) if (g.added == '2026-10-10') g.id];
       final added = [for (final g in kGames) if (g.added == '2026-10-08') g.id];
       expect(added, ['cookies', 'lettermonster', 'busstop', 'wordpop', 'rocket', 'train', 'fishing', 'lettercreature']);
+      expect(newest, isNotEmpty, reason: 'the number set being built');
       // The frame's week: Number Tracing 34 rounds, Who Has More? 22, Feed the Monster 20, Sight Words 16, Tallies 15,
       // Build-a-Creature 5, and a few of most others.
       const rounds = {'numbers': 34, 'compare': 22, 'monster': 20, 'sight': 16, 'tally': 15, 'creature': 5, 'coloring': 3, 'farm': 3, 'bubbles': 1};
-      final order = launcherOrder(games, tried: {'bubbles', 'numbers', 'compare'}, recentRounds: rounds, today: '2026-10-09').map((g) => g.id).toList();
-      expect(order.take(8), added, reason: 'new and untried, in catalog order');
-      expect(order.skip(8).take(6), ['numbers', 'compare', 'monster', 'sight', 'tally', 'creature'], reason: 'six favorites, most played first');
-      expect(order.skip(14), [for (final g in games) if (!added.contains(g.id) && !['numbers', 'compare', 'monster', 'sight', 'tally', 'creature'].contains(g.id)) g.id]);
+      final order = launcherOrder(games, tried: {'bubbles', 'numbers', 'compare'}, recentRounds: rounds, today: '2026-10-10').map((g) => g.id).toList();
+      expect(order.take(newest.length + added.length), [...newest, ...added], reason: 'new and untried, the newest games first');
+      expect(order.skip(newest.length + added.length).take(6), ['numbers', 'compare', 'monster', 'sight', 'tally', 'creature'], reason: 'six favorites, most played first');
+      expect(order.skip(newest.length + added.length + 6), [
+        for (final g in games)
+          if (!added.contains(g.id) && !newest.contains(g.id) && !['numbers', 'compare', 'monster', 'sight', 'tally', 'creature'].contains(g.id)) g.id,
+      ]);
       expect(order.toSet(), games.map((g) => g.id).toSet(), reason: 'nothing lost or doubled');
 
       // Tried, it drops into place: a favorite once played enough, else its age place.
-      final tried = launcherOrder(games, tried: {'cookies'}, recentRounds: {...rounds, 'cookies': 40}, today: '2026-10-09').map((g) => g.id).toList();
-      expect(tried.indexOf('cookies'), 7, reason: 'after the seven still-new games, the top favorite');
+      final tried = launcherOrder(games, tried: {'cookies'}, recentRounds: {...rounds, 'cookies': 40}, today: '2026-10-10').map((g) => g.id).toList();
+      expect(tried.indexOf('cookies'), newest.length + 7, reason: 'after the still-new games, the top favorite');
       // A month on, nothing is new any more.
-      final later = launcherOrder(games, tried: const {}, recentRounds: const {}, today: '2026-11-08').map((g) => g.id).toList();
+      final later = launcherOrder(games, tried: const {}, recentRounds: const {}, today: '2026-11-09').map((g) => g.id).toList();
       expect(later, games.map((g) => g.id).toList());
       // Fewer than three rounds is not a favorite; a game switched off stays off.
       final off = launcherOrder(gamesFor(30, off: {'numbers'}), tried: const {}, recentRounds: const {'numbers': 34, 'farm': 2}, today: '2026-12-01').map((g) => g.id).toList();
