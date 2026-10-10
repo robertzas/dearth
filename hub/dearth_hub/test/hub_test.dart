@@ -133,6 +133,34 @@ void main() {
     expect((await http.delete(u('/api/devices/self'))).statusCode, 401);
   });
 
+  test('a display that asks for a rejoin code comes back as itself after a reset, settings kept; the old token stops', () async {
+    final old = await pairDevice('Kitchen frame', admin: true);
+    final id = (await hub.context.auth.deviceForToken(old))!.deviceId;
+    await hub.context.kernel.upsert('devices', id, {'settings': '{"theme":"evening"}', 'orientation': 'landscape'});
+    final ticket = await postJson('/api/devices/self/rejoin', {'minutes': 30}, headers: {'authorization': 'Bearer $old'});
+    expect(ticket['deviceId'], id);
+    expect(ticket['expiresInS'], 1800);
+    // The frame is wiped; its new install claims the code.
+    final claimed = await postJson('/api/pair/claim', {'code': ticket['code'], 'platform': 'android', 'model': 'JT215M'});
+    expect(claimed['deviceId'], id, reason: 'the same device, not a new one');
+    expect(claimed['name'], 'Kitchen frame');
+    expect(claimed['admin'], isTrue);
+    final row = await hub.context.kernel.store.readRow('devices', id);
+    expect(row!['settings'], '{"theme":"evening"}');
+    expect(row['orientation'], 'landscape');
+    expect(row['model'], 'JT215M');
+    final status = jsonDecode((await http.get(u('/api/admin/status'), headers: _admin)).body) as Map<String, Object?>;
+    expect((status['devices']! as List), hasLength(1), reason: 'no second entry for the frame');
+    expect((await http.get(u('/api/sync/snapshot'), headers: {'authorization': 'Bearer $old'})).statusCode, 401);
+    expect((await http.get(u('/api/sync/snapshot'), headers: {'authorization': 'Bearer ${claimed['token']}'})).statusCode, 200);
+    expect((await http.post(u('/api/pair/claim'), body: jsonEncode({'code': ticket['code']}))).statusCode, 404, reason: 'single use');
+
+    // A device removed after it made its code stays removed.
+    final again = await postJson('/api/devices/self/rejoin', {}, headers: {'authorization': 'Bearer ${claimed['token']}'});
+    await http.delete(u('/api/admin/devices/$id'), headers: _admin);
+    expect((await http.post(u('/api/pair/claim'), body: jsonEncode({'code': again['code']}))).statusCode, 404);
+  });
+
   test('sync: snapshot bootstrap, live fan-out, ACLs and hub-owned fields', () async {
     final kitchen = TestDevice(hub, await pairDevice('Kitchen', admin: true));
     final kid = TestDevice(hub, await pairDevice('Ava room', role: DeviceRole.kidRoom));

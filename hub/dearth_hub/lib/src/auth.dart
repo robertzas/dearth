@@ -17,12 +17,15 @@ String hashToken(String token) => crypto.sha256.convert(utf8.encode(token)).toSt
 
 /// Pairing status as returned to a waiting device.
 class PairStatus {
-  const PairStatus(this.status, {this.token, this.deviceId, this.role, this.admin = false});
+  const PairStatus(this.status, {this.token, this.deviceId, this.role, this.admin = false, this.name});
   final String status;
   final String? token;
   final String? deviceId;
   final String? role;
   final bool admin;
+
+  /// The device's name on the Hub (a rejoining display keeps its own).
+  final String? name;
 
   Map<String, Object?> toJson() => {
         'status': status,
@@ -30,6 +33,7 @@ class PairStatus {
         'deviceId': ?deviceId,
         'role': ?role,
         'admin': admin,
+        'name': ?name,
       };
 }
 
@@ -125,6 +129,8 @@ class HubAuth {
 
   Future<List<DeviceAuth>> devices() => (db.select(db.deviceAuths)..where((t) => t.revokedMs.isNull())).get();
 
+  Future<DeviceAuth?> device(String deviceId) => (db.select(db.deviceAuths)..where((t) => t.deviceId.equals(deviceId))).getSingleOrNull();
+
   // ─────────────────────────────── Pairing ─────────────────────────────────
 
   /// A device asks to pair. Returns (pairingId, code, secret).
@@ -165,7 +171,10 @@ class HubAuth {
   }
 
   /// Pre-approved enrollment code for unattended provisioning (tool scripts).
-  Future<String> enroll({required String name, String role = DeviceRole.kitchen, bool admin = false, String? orientation}) async {
+  /// With [replaces], the code brings that device back under its own id (a
+  /// display that was reset, `tool/perf_gate.sh`): the claim gives it a new
+  /// token and keeps its row, settings and all.
+  Future<String> enroll({required String name, String role = DeviceRole.kitchen, bool admin = false, String? orientation, String? replaces, Duration ttl = enrollTtl}) async {
     final code = randomCode(8);
     final now = DateTime.now().millisecondsSinceEpoch;
     await db.into(db.pairings).insert(PairingsCompanion.insert(
@@ -175,9 +184,10 @@ class HubAuth {
           role: Value(role),
           admin: Value(admin),
           orientation: Value(orientation),
+          deviceId: Value(replaces),
           status: const Value('approved'),
           requestedMs: now,
-          expiresMs: now + enrollTtl.inMilliseconds,
+          expiresMs: now + ttl.inMilliseconds,
         ));
     return code;
   }
@@ -208,29 +218,43 @@ class HubAuth {
     if (p.status == 'claimed') return const PairStatus('claimed');
     if (p.expiresMs < now) return const PairStatus('expired');
     if (p.status != 'approved') return const PairStatus('pending');
-    final deviceId = newId();
+    // An enrollment made for a device that's coming back (enroll's
+    // replaces) carries its id; anything else is a new device.
+    final returning = p.deviceId == null ? null : await device(p.deviceId!);
+    // Removed from the Hub since the code was made: it stays removed.
+    if (p.deviceId != null && (returning == null || returning.revokedMs != null)) return const PairStatus('expired');
+    final deviceId = returning?.deviceId ?? newId();
     final token = randomToken();
     await db.transaction(() async {
-      await db.into(db.deviceAuths).insert(DeviceAuthsCompanion.insert(
-            deviceId: deviceId,
-            tokenHash: hashToken(token),
-            name: Value(p.deviceName),
-            role: Value(p.role),
-            admin: Value(p.admin),
-            createdMs: now,
-          ));
+      if (returning != null) {
+        // The old token stops working: the device's only key is the new one.
+        await (db.update(db.deviceAuths)..where((t) => t.deviceId.equals(deviceId))).write(DeviceAuthsCompanion(
+              tokenHash: Value(hashToken(token)),
+              name: Value(p.deviceName),
+              role: Value(p.role),
+              admin: Value(p.admin),
+            ));
+      } else {
+        await db.into(db.deviceAuths).insert(DeviceAuthsCompanion.insert(
+              deviceId: deviceId,
+              tokenHash: hashToken(token),
+              name: Value(p.deviceName),
+              role: Value(p.role),
+              admin: Value(p.admin),
+              createdMs: now,
+            ));
+      }
       await (db.update(db.pairings)..where((t) => t.id.equals(p.id)))
           .write(PairingsCompanion(status: const Value('claimed'), deviceId: Value(deviceId)));
     });
     await kernel.upsert('devices', deviceId, {
-      'name': p.deviceName,
-      'role': p.role,
+      // A returning display keeps its row (orientation, size, its settings).
+      if (returning == null) ...{'name': p.deviceName, 'role': p.role, 'orientation': p.orientation ?? 'auto'},
       'platform': p.platform,
       'model': p.model,
-      'orientation': p.orientation ?? 'auto',
     });
-    _log.info('Device "${p.deviceName}" paired as ${p.role}${p.admin ? ' (admin)' : ''}');
-    return PairStatus('approved', token: token, deviceId: deviceId, role: p.role, admin: p.admin);
+    _log.info('Device "${p.deviceName}" ${returning == null ? 'paired' : 'rejoined'} as ${p.role}${p.admin ? ' (admin)' : ''}');
+    return PairStatus('approved', token: token, deviceId: deviceId, role: p.role, admin: p.admin, name: p.deviceName);
   }
 
   Future<Pairing?> _pending(String code) async {

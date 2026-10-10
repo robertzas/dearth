@@ -41,19 +41,23 @@ class PairingTicket {
 /// Pairing status as polled by the waiting device.
 @immutable
 class PairResult {
-  const PairResult({required this.status, this.token, this.deviceId, this.role, this.admin = false});
+  const PairResult({required this.status, this.token, this.deviceId, this.role, this.admin = false, this.name});
   factory PairResult.fromJson(Map<String, Object?> j) => PairResult(
         status: j['status'] as String? ?? 'unknown',
         token: j['token'] as String?,
         deviceId: j['deviceId'] as String?,
         role: j['role'] as String?,
         admin: j['admin'] as bool? ?? false,
+        name: j['name'] as String?,
       );
   final String status;
   final String? token;
   final String? deviceId;
   final String? role;
   final bool admin;
+
+  /// The device's name on the Hub.
+  final String? name;
 
   bool get approved => status == 'approved' && token != null && deviceId != null;
 }

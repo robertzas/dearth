@@ -62,6 +62,17 @@ void mountCoreRoutes(Router r, HubContext ctx) {
     return jsonOk({'ok': true});
   });
 
+  // A display about to be reset asks for its way back (tool/perf_gate.sh): a
+  // single-use code that re-keys this same device, so it rejoins with its
+  // id, settings and role. Only the device itself can ask.
+  r.post('/api/devices/self/rejoin', (Request req) async {
+    final device = await requireDevice(req, ctx.auth);
+    final b = await readJson(req);
+    final minutes = ((b['minutes'] as num?)?.toInt() ?? 60).clamp(5, 24 * 60);
+    final code = await ctx.auth.enroll(name: device.name, role: device.role, admin: device.admin, replaces: device.deviceId, ttl: Duration(minutes: minutes));
+    return jsonOk({'code': code, 'deviceId': device.deviceId, 'expiresInS': minutes * 60});
+  });
+
   // ── Sync bootstrap (SPEC §8.4.6) ─────────────────────────────────────────
   r.get('/api/sync/snapshot', (Request req) async {
     final device = await requireDevice(req, ctx.auth);

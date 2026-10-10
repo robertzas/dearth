@@ -46,6 +46,10 @@
 #                  ROMs ship 74; Dearth will need it for YouTube).
 #   --no-bloat     Keep the vendor apps that a known model's preset disables.
 #   --reboot       Reboot at the end and check that Dearth comes back by itself.
+#   --join HUB CODE  Join Dearth to a Hub with an enrollment code (Settings →
+#                  Hub & devices → Add a display with a code): a display that
+#                  isn't set up claims it by itself. One that is set up is
+#                  left as it is.
 #
 # Needs adb (Android platform-tools), curl and python3; --webview also needs
 # apksigner (Android SDK build-tools). Reading FreeKiosk's settings back needs
@@ -65,7 +69,7 @@ FK=com.freekiosk
 CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/dearth"
 
 CHECK=0 APK="" BUILD=0 NO_APP=0 REPLACE=0 PIN=1234 CORNER=bottom-right TAPS=5 WINDOW=2000
-TZ_WANT="" WEBVIEW=0 BLOAT=1 REBOOT=0
+TZ_WANT="" WEBVIEW=0 BLOAT=1 REBOOT=0 JOIN_HUB="" JOIN_CODE=""
 
 # ─────────────────────────────── output ────────────────────────────────────
 
@@ -104,6 +108,7 @@ while [ $# -gt 0 ]; do
     --webview) WEBVIEW=1 ;;
     --no-bloat) BLOAT=0 ;;
     --reboot) REBOOT=1 ;;
+    --join) JOIN_HUB="${2:?--join needs the Hub address and a code}" JOIN_CODE="${3:?--join needs the Hub address and a code}"; shift 2 ;;
     -h | --help) usage 0 ;;
     *) printf 'Unknown option: %s\n\n' "$1" >&2; usage 2 ;;
   esac
@@ -625,6 +630,27 @@ if [ -n "$FK_KEY" ] && [ -n "$(sh_ pm path "$APP")" ]; then
   else
     adb_ shell am start -n "$APP/.MainActivity" --es freekiosk_api_key "$FK_KEY" --ei freekiosk_port "$FK_PORT" >/dev/null 2>&1 || true
     ok "Dearth has the key (Settings → Screen & sound → Kiosk shows whether it works)"
+  fi
+fi
+# Joining a Hub: the app claims the code itself and answers on logcat
+# (frame_tool.dart, as for tool/perf_gate.sh).
+if [ -n "$JOIN_CODE" ] && [ -n "$(sh_ pm path "$APP")" ]; then
+  if [ $CHECK = 1 ]; then
+    note "--join is skipped with --check"
+  else
+    adb_ logcat -c 2>/dev/null || true
+    adb_ shell am start -n "$APP/.MainActivity" --es dearth_hub "$JOIN_HUB" --es dearth_enroll "$JOIN_CODE" >/dev/null 2>&1 || true
+    joined=""
+    for _ in $(seq 1 45); do
+      joined=$(adb_ logcat -d -v raw -s DearthTool:I 2>/dev/null | tr -d '\r' | sed -n 's/^DEARTH_TOOL enroll //p' | tail -n 1)
+      [ -n "$joined" ] && break
+      sleep 1
+    done
+    case "$joined" in
+      '') problem "Dearth didn't answer the join (a build from before 2026-10-10 can't): enter the code on its onboarding screen" ;;
+      *'"error"'*) problem "Dearth didn't join $JOIN_HUB: $(printf '%s' "$joined" | python3 -I -c 'import json,sys; print(json.load(sys.stdin)["error"])')" ;;
+      *) changed "Dearth joined the Hub at $JOIN_HUB" ;;
+    esac
   fi
 fi
 

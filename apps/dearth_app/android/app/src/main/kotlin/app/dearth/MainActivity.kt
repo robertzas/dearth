@@ -10,6 +10,7 @@ import android.hardware.SensorManager
 import android.media.AudioManager
 import android.os.Bundle
 import android.os.PowerManager
+import android.util.Log
 import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -23,6 +24,7 @@ class MainActivity : FlutterActivity() {
         // first frame, so a wall display boots the right way up.
         applyOrientation(prefs().getString(ORIENTATION, null))
         takeKioskKey(intent)
+        takeToolExtras(intent)
     }
 
     override fun onResume() {
@@ -38,6 +40,27 @@ class MainActivity : FlutterActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         takeKioskKey(intent)
+        if (takeToolExtras(intent)) tool?.invokeMethod("nudge", null)
+    }
+
+    // Tool commands from the developer's machine over ADB (tool/perf_gate.sh):
+    // `--es dearth_tool session|rejoin` asks Dart to report on logcat (tag
+    // DearthTool); `--es dearth_hub URL --es dearth_enroll CODE` lets an
+    // unpaired app claim an enrollment code by itself. Kept until Dart takes
+    // them (takeTool), so a cold start doesn't lose them.
+    private fun takeToolExtras(intent: Intent): Boolean {
+        val command = intent.getStringExtra(TOOL_COMMAND)
+        val hub = intent.getStringExtra(TOOL_HUB)
+        val code = intent.getStringExtra(TOOL_ENROLL)
+        if (command == null && (hub == null || code == null)) return false
+        toolPrefs().edit().apply {
+            if (command != null) putString(TOOL_COMMAND, command)
+            if (hub != null && code != null) {
+                putString(TOOL_HUB, hub)
+                putString(TOOL_ENROLL, code)
+            }
+        }.apply()
+        return true
     }
 
     // FreeKiosk's REST key, handed over by tool/deploy_frame.sh with
@@ -71,6 +94,24 @@ class MainActivity : FlutterActivity() {
                 listener = null
             }
         })
+        tool = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "app.dearth/tool").apply {
+            setMethodCallHandler { call, result ->
+                when (call.method) {
+                    // The pending command and enrollment, cleared as Dart takes them.
+                    "takeTool" -> {
+                        val p = toolPrefs()
+                        val taken = mapOf("command" to p.getString(TOOL_COMMAND, null), "hub" to p.getString(TOOL_HUB, null), "code" to p.getString(TOOL_ENROLL, null))
+                        p.edit().clear().apply()
+                        result.success(taken)
+                    }
+                    "report" -> {
+                        Log.i("DearthTool", call.arguments as? String ?: "")
+                        result.success(null)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+        }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "app.dearth/display").setMethodCallHandler { call, result ->
             when (call.method) {
                 "setOrientation" -> {
@@ -138,6 +179,10 @@ class MainActivity : FlutterActivity() {
 
     private fun kioskPrefs() = getSharedPreferences("dearth_kiosk", MODE_PRIVATE)
 
+    private fun toolPrefs() = getSharedPreferences("dearth_tool", MODE_PRIVATE)
+
+    private var tool: MethodChannel? = null
+
     // SPEC FR-DEV-05. "sensor" follows the accelerometer even when Android's
     // auto-rotate is off: some frame ROMs switch it off at every boot, and a
     // wall display has no one to switch it back. "user" keeps a phone's
@@ -159,5 +204,8 @@ class MainActivity : FlutterActivity() {
         private const val ORIENTATION = "orientation"
         private const val FREEKIOSK_KEY = "freekiosk_api_key"
         private const val FREEKIOSK_PORT = "freekiosk_port"
+        private const val TOOL_COMMAND = "dearth_tool"
+        private const val TOOL_HUB = "dearth_hub"
+        private const val TOOL_ENROLL = "dearth_enroll"
     }
 }

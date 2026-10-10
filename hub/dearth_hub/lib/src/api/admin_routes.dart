@@ -73,11 +73,16 @@ void mountAdminRoutes(Router r, HubContext ctx) {
   r.post('/api/admin/enroll', (Request req) async {
     await requireAdmin(req, ctx.auth);
     final b = await readJson(req);
+    // Bringing back a device that was reset: its own name, role and rights.
+    final replaces = b['replaces'] as String?;
+    final old = replaces == null ? null : await ctx.auth.device(replaces);
+    if (replaces != null && old == null) throw HttpError(404, 'unknown_device', 'No device with that id');
     final code = await ctx.auth.enroll(
-      name: b['name'] as String? ?? 'Display',
-      role: DeviceRole.all.contains(b['role']) ? b['role']! as String : DeviceRole.kitchen,
-      admin: b['admin'] as bool? ?? false,
+      name: b['name'] as String? ?? old?.name ?? 'Display',
+      role: DeviceRole.all.contains(b['role']) ? b['role']! as String : old?.role ?? DeviceRole.kitchen,
+      admin: b['admin'] as bool? ?? old?.admin ?? false,
       orientation: b['orientation'] as String?,
+      replaces: replaces,
     );
     return jsonOk({'code': code, 'expiresInS': 1800});
   });

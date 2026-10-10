@@ -2040,7 +2040,7 @@ numbers refer to the JT215M (T1) in **profile** builds unless noted.
 - **`tool/perf_gate.sh <device>`**: builds a profile APK whose entry point
   is the scenarios (`apps/dearth_app/integration_test/perf_test.dart`, the
   real app on a demo household at full motion), installs it over ADB over
-  the installed Dearth (same package and key: its data stays), reads one
+  the installed Dearth (same package and key), reads one
   `PERF_RESULT` line per scenario from logcat (frame build, raster and
   total p50/p90/p99 from `FrameTiming`, frames over the display's budget
   and over 50 ms, CPU from `/proc/self/stat`, RSS; PSS at the end from
@@ -2055,6 +2055,20 @@ numbers refer to the JT215M (T1) in **profile** builds unless noted.
   noise on the JT215M is up to ~20 %). The §12.1 budgets are printed beside
   each scenario; misses already in the baseline don't fail it.
   `--only <scenario>` probes one; `--soak <min>` adds the memory soak.
+  It runs unattended and ends in a Markdown report (verdict, what it did to
+  the display, every scenario against budget and baseline) beside its logs.
+  It first asks the app what it is (`--es dearth_tool session`, answered
+  on logcat as `DEARTH_TOOL session {…}`). A display **joined to a Hub is
+  reset** for a clean measurement: the app asks its Hub for a single-use
+  rejoin code for itself (`POST /api/devices/self/rejoin`), its data is
+  cleared, and afterwards the gate hands the code back (`--es dearth_hub
+  --es dearth_enroll`): the app claims it from onboarding and returns as
+  the **same device** (id, name, role, settings; only the token is new),
+  gets FreeKiosk's key again, and the gate waits until it syncs live.
+  Solo and Toybox-only displays hold the only copy of their data and demo
+  displays have nothing to lose: they're never reset (`--no-reset` skips
+  it for any display). Exit codes: 0 passed, 1 slower or failed, 3 the
+  display couldn't be put back.
   **Release builds for displays require a green perf gate on the frame.**
 
   | Scenario | Measures |

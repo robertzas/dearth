@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer' show Timeline;
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui' show FramePhase;
 
 import 'package:dearth_app/app/app.dart';
 import 'package:dearth_app/app/display_state.dart';
@@ -111,9 +113,13 @@ Future<void> _run(WidgetTester tester, {required int soakMinutes}) async {
 
   // Every destination, three times.
   const destinations = ['/', '/calendar', '/meals', '/lists', '/kids', '/toybox', '/weather', '/photos', '/settings'];
-  await _measure('navigate', () async {
+  // Each frame is also counted under the destination it was drawn for, so
+  // the report says which switch got slower.
+  final marks = <(int, String)>[];
+  await _measure('navigate', marks: marks, () async {
     for (var round = 0; round < 3; round++) {
       for (final d in destinations) {
+        marks.add((Timeline.now, d));
         router.go(d);
         await _wait(const Duration(milliseconds: 900));
       }
@@ -244,7 +250,11 @@ const _only = String.fromEnvironment('PERF_ONLY');
 
 /// Runs [scenario] and logs its frames (build, raster and total time
 /// against the display's budget), CPU and memory.
-Future<void> _measure(String name, Future<void> Function() scenario) async {
+///
+/// With [marks] ((Timeline.now, label) at each step, filled while the
+/// scenario runs), each frame also counts under the label it started in,
+/// reported as `parts`: frames, build p90 and total p90 per label.
+Future<void> _measure(String name, Future<void> Function() scenario, {List<(int, String)>? marks}) async {
   if (_only.isNotEmpty && _only != name) return;
   final timings = <FrameTiming>[];
   void collect(List<FrameTiming> t) => timings.addAll(t);
@@ -280,8 +290,30 @@ Future<void> _measure(String name, Future<void> Function() scenario) async {
     'over50': total.where((v) => v > 50000).length,
     if (cpu0 != null && cpu1 != null) 'cpuPct': double.parse((100 * (cpu1 - cpu0) / 100 / seconds / Platform.numberOfProcessors).toStringAsFixed(1)),
     'rssMb': ProcessInfo.currentRss ~/ (1 << 20),
+    if (marks != null && marks.isNotEmpty) 'parts': _parts(timings, marks, pct),
   };
   debugPrint('PERF_RESULT ${jsonEncode(result)}');
+}
+
+/// [timings] split by the last mark before each frame's build started
+/// (FrameTiming stamps share the Timeline clock). Labels that drew nothing
+/// are left out; frames before the first mark count under it.
+Map<String, Object?> _parts(List<FrameTiming> timings, List<(int, String)> marks, double Function(List<int>, double) pct) {
+  final build = <String, List<int>>{}, total = <String, List<int>>{};
+  for (final t in timings) {
+    final at = t.timestampInMicroseconds(FramePhase.buildStart);
+    var label = marks.first.$2;
+    for (final (stamp, l) in marks) {
+      if (stamp > at) break;
+      label = l;
+    }
+    (build[label] ??= []).add(t.buildDuration.inMicroseconds);
+    (total[label] ??= []).add(t.totalSpan.inMicroseconds);
+  }
+  return {
+    for (final label in build.keys)
+      label: {'frames': build[label]!.length, 'buildP90': pct(build[label]!..sort(), 0.9), 'totalP90': pct(total[label]!..sort(), 0.9)},
+  };
 }
 
 /// This process's CPU time in clock ticks (utime + stime, 100 a second on

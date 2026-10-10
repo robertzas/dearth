@@ -12,6 +12,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import '../core/clock_check.dart';
 import '../core/data/household.dart';
 import '../core/env.dart';
+import '../core/platform/frame_tool.dart';
 import '../core/platform/freekiosk.dart';
 import '../core/platform/platform.dart';
 import '../core/providers.dart';
@@ -134,6 +135,8 @@ class _AppFrameState extends ConsumerState<AppFrame> with WidgetsBindingObserver
     // The panel's brightness and power follow the display mode (FR-DSP-02/03).
     ref.listen(brightnessProvider, (_, _) {});
     ref.listen(screenPowerProvider, (_, _) {});
+    // The developer's tools over ADB (tool/perf_gate.sh), onboarding included.
+    ref.listen(frameToolProvider, (_, _) {});
     return Theme(
       data: _theme!,
       child: _Effects(
