@@ -330,11 +330,24 @@ end and checks that Dearth comes back by itself.
 3. Run `tool/deploy_frame.sh <tablet-ip> --reboot`.
 4. On the tablet, pair Dearth with your Hub from its welcome screen.
 
-**Updating Dearth:** run the script again. An APK can only update the
-installed Dearth if both are signed with the same key. For example, a
-release can't update a `--build`. In that case `--replace` uninstalls
-Dearth first. That resets Dearth's data on the device, so pair it again
-afterwards.
+**Updating Dearth:** the Android app updates itself from the
+[latest release](https://github.com/robertzas/dearth/releases/latest).
+It looks every four hours, and **Settings → Updates** shows a newer build
+with an **Install** button (grown-ups only). A frame whose own network ADB
+is open (the JT215M) installs without asking and comes back by itself a
+few seconds later; there you can also choose **Nightly** (during the night
+hours) or **When idle** (while the photo frame or the night clock is up).
+It never installs while a kitchen timer is counting down. Other devices
+show Android's "install this update?" screen; the first time, Android asks
+you to allow Dearth to install apps.
+
+Running the script again also updates Dearth. An APK can only update the
+installed Dearth if both are signed with the same key (see Android signing
+below). When they aren't, `--replace` uninstalls Dearth first. That resets
+Dearth's data on the device, so pair it again afterwards. A `--build`
+keeps the installed build's number, so it replaces a newer release in
+place; being a local build, it doesn't update itself until a grown-up
+installs a release from Settings.
 
 Vendor frames ship an old System WebView (Chromium 74). Add `--webview` to
 upgrade it to Chromium 124; Dearth will need that for YouTube in the music
@@ -379,7 +392,8 @@ keytool -genkeypair -keystore ~/.config/dearth/android-release.jks -storetype PK
   -alias dearth -keyalg RSA -keysize 4096 -validity 36500 -dname "CN=Dearth"
 ```
 
-Local builds read it from `apps/dearth_app/android/key.properties`, which
+Local builds (release and profile, so `tool/perf_gate.sh` can install over
+a release) read it from `apps/dearth_app/android/key.properties`, which
 git ignores. Set `storeFile` (the keystore's path), `storePassword`,
 `keyAlias=dearth` and `keyPassword`. CI reads four repository secrets:
 

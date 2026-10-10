@@ -76,6 +76,7 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        Updater.register(this, flutterEngine)
         // The ambient light sensor, in lux, while Dart listens (SPEC FR-DSP-02).
         EventChannel(flutterEngine.dartExecutor.binaryMessenger, "app.dearth/light").setStreamHandler(object : EventChannel.StreamHandler {
             private var listener: SensorEventListener? = null

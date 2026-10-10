@@ -99,6 +99,12 @@ case "$ABI" in
   x86_64) TARGET=android-x64 ;;
   *) echo "no Dearth build for $ABI" >&2; exit 1 ;;
 esac
+# The installed Dearth's build number (Flutter's split APKs carry
+# versionCode = 1000 × ABI code + build): the scenarios install over it and
+# the installed APK goes back afterwards, so both must be the same version.
+code=$(sh_ dumpsys package app.dearth | sed -n 's/^ *versionCode=\([0-9]*\).*/\1/p' | head -n 1)
+case "$ABI" in armeabi-v7a) base=1000 ;; arm64-v8a) base=2000 ;; *) base=4000 ;; esac
+if [ -n "$code" ] && [ "$code" -gt "$base" ]; then BUILD_NUMBER=$((code - base)); else BUILD_NUMBER=1; fi
 BASELINE="$ROOT/tool/perf/baseline-$MODEL.json"
 mkdir -p "$CACHE"
 RUN="$CACHE/$MODEL-$(date +%Y%m%d-%H%M%S)"
@@ -221,7 +227,7 @@ if [ $BUILD = 1 ]; then
   say "  building the profile scenarios (a few minutes)…"
   (cd "$ROOT/apps/dearth_app" &&
     flutter build apk --profile --split-per-abi --target-platform "$TARGET" -t integration_test/perf_test.dart \
-      --dart-define=PERF_SOAK_MINUTES="$SOAK" --dart-define=PERF_ONLY="$ONLY" >"$RUN.build.log" 2>&1) || { tail -n 30 "$RUN.build.log" >&2; fail "the profile build failed (log: $RUN.build.log)"; }
+      --dart-define=PERF_SOAK_MINUTES="$SOAK" --dart-define=PERF_ONLY="$ONLY" --build-number="$BUILD_NUMBER" >"$RUN.build.log" 2>&1) || { tail -n 30 "$RUN.build.log" >&2; fail "the profile build failed (log: $RUN.build.log)"; }
   step "Built the profile scenarios from $COMMIT$DIRTY."
 fi
 [ -f "$APK" ] || fail "no profile APK at $APK (drop --no-build)"

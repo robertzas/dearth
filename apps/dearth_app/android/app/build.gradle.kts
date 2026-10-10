@@ -50,10 +50,14 @@ android {
         }
     }
 
+    // Profile builds too: tool/perf_gate.sh installs its scenarios over the
+    // display's Dearth, which takes the same key. Releases update themselves
+    // in place (SPEC §15.3), so every build a display runs shares one key.
     buildTypes {
         release {
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
+        findByName("profile")?.signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
     }
 }
 

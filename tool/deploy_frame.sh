@@ -311,6 +311,15 @@ case "$ABI" in
   *) TARGET="" ;;
 esac
 
+# Flutter's split APKs carry versionCode = 1000 × ABI code + build number
+# (armeabi-v7a 1, arm64-v8a 2, x86_64 4). The build number of an installed
+# versionCode, or 1 when there's none.
+build_number() {
+  local base
+  case "$ABI" in armeabi-v7a) base=1000 ;; arm64-v8a) base=2000 ;; x86_64) base=4000 ;; *) base=0 ;; esac
+  if [ -n "${1:-}" ] && [ "$1" -gt "$base" ]; then echo $(($1 - base)); else echo 1; fi
+}
+
 if [ $NO_APP = 1 ]; then
   ok "Left as it is: ${APP_HAVE:-not installed}"
 elif [ -z "$TARGET" ]; then
@@ -322,8 +331,12 @@ else
     if [ $CHECK = 0 ]; then
       note "Building Dearth for $ABI (a few minutes)…"
       sha=$(git -C "$ROOT" describe --always --dirty 2>/dev/null || echo dev)
+      # The installed build's number, so it installs in place over a newer
+      # GitHub release (a lower one is a downgrade). Its "local" version
+      # keeps the app's updater from replacing it (SPEC §15.3).
       (cd "$ROOT/apps/dearth_app" &&
-        flutter build apk --release --split-per-abi --target-platform "$TARGET" --dart-define=DEARTH_VERSION="0.1.0-local.$sha" >"$WORK/build.log" 2>&1) ||
+        flutter build apk --release --split-per-abi --target-platform "$TARGET" --dart-define=DEARTH_VERSION="0.1.0-local.$sha" \
+          --build-number="$(build_number "$APP_CODE")" >"$WORK/build.log" 2>&1) ||
         { tail -n 30 "$WORK/build.log" >&2; die "flutter build apk failed"; }
       NEW_APK="$ROOT/apps/dearth_app/build/app/outputs/flutter-apk/app-$ABI-release.apk" NEW_LABEL="local build $sha"
     fi

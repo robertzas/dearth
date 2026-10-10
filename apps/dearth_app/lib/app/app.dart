@@ -17,6 +17,7 @@ import '../core/platform/freekiosk.dart';
 import '../core/platform/platform.dart';
 import '../core/providers.dart';
 import '../core/sync/sync_client.dart';
+import '../core/update/updater.dart';
 import '../features/photos/screensaver.dart';
 import '../features/timers/timers.dart';
 import 'clock_layer.dart';
@@ -137,6 +138,8 @@ class _AppFrameState extends ConsumerState<AppFrame> with WidgetsBindingObserver
     ref.listen(screenPowerProvider, (_, _) {});
     // The developer's tools over ADB (tool/perf_gate.sh), onboarding included.
     ref.listen(frameToolProvider, (_, _) {});
+    // New releases from GitHub, on Android (SPEC §15.3).
+    ref.listen(appUpdaterProvider, (_, _) {});
     return Theme(
       data: _theme!,
       child: _Effects(

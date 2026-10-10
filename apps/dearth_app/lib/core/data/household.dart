@@ -137,6 +137,7 @@ class DeviceSettings {
     this.brightnessBias = 0,
     this.nightScreen = 'clock',
     this.darkRoomNight = false,
+    this.updates = 'manual',
   });
 
   factory DeviceSettings.fromRow(Device? d, {String? sessionRole}) {
@@ -159,6 +160,7 @@ class DeviceSettings {
       brightnessBias: (s['brightnessBias'] as num?)?.toInt() ?? 0,
       nightScreen: s['nightScreen'] as String? ?? 'clock',
       darkRoomNight: s['darkRoomNight'] as bool? ?? false,
+      updates: s['updates'] as String? ?? 'manual',
     );
   }
 
@@ -193,6 +195,10 @@ class DeviceSettings {
   /// Night also when the room goes dark (§10.12), by the light sensor.
   final bool darkRoomNight;
 
+  /// When a new release installs itself (SPEC §15.3): manual (a grown-up
+  /// taps Install) | nightly | idle. Only where it can install silently.
+  final String updates;
+
   bool get isPersonal => role == DeviceRole.personal;
 
   Map<String, Object?> settingsJson() => {
@@ -207,6 +213,7 @@ class DeviceSettings {
         'brightnessBias': brightnessBias,
         'nightScreen': nightScreen,
         'darkRoomNight': darkRoomNight,
+        'updates': updates,
       };
 
   @override
@@ -228,11 +235,12 @@ class DeviceSettings {
       other.brightness == brightness &&
       other.brightnessBias == brightnessBias &&
       other.nightScreen == nightScreen &&
-      other.darkRoomNight == darkRoomNight;
+      other.darkRoomNight == darkRoomNight &&
+      other.updates == updates;
 
   @override
   int get hashCode => Object.hash(role, name, orientation, diagonalIn, viewingDistance, tierOverride, theme, userScale, idleMinutes, screensaver, nightMode, keepAwake, reducedMotion, brightness,
-      brightnessBias, nightScreen, darkRoomNight);
+      brightnessBias, nightScreen, darkRoomNight, updates);
 }
 
 final deviceSettingsProvider = Provider<DeviceSettings>((ref) {

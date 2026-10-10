@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/providers.dart';
+import '../../core/update/updater.dart';
 
 import 'sections/about_section.dart';
 import 'sections/calendars_section.dart';
@@ -17,6 +18,7 @@ import 'sections/photos_section.dart';
 import 'sections/recipes_section.dart';
 import 'sections/screensaver_section.dart';
 import 'sections/toybox_section.dart';
+import 'sections/updates_section.dart';
 import 'sections/weather_section.dart';
 
 /// The headings Settings groups its sections under (SPEC FR-SET-03): the
@@ -64,7 +66,7 @@ class SettingsSection {
 
 /// The sections a Toybox-only device shows (SPEC §7.2): there is nothing
 /// else on it to set up.
-const List<String> kToyboxOnlySettings = ['toybox', 'people', 'device', 'screensaver', 'hub', 'about'];
+const List<String> kToyboxOnlySettings = ['toybox', 'people', 'device', 'screensaver', 'hub', 'updates', 'about'];
 
 final List<SettingsSection> kSettingsSections = [
   SettingsSection('household', SettingsGroupKind.family, 'Household', 'Name, location, time zone, formats', Icons.home_rounded, (_) => const HouseholdSection(),
@@ -92,6 +94,8 @@ final List<SettingsSection> kSettingsSections = [
       keywords: const ['Forecast', 'Weather updates', 'Weather Underground', 'Weather station', 'API key']),
   SettingsSection('hub', SettingsGroupKind.system, 'Hub & devices', 'How this device runs, other screens', Icons.hub_rounded, (_) => const HubSection(),
       keywords: const ['Sync', 'Pairing', 'Devices', 'Enrollment code', 'On its own', 'Move to a Hub', 'Demo', 'Toybox mode', 'Disconnect']),
+  SettingsSection('updates', SettingsGroupKind.system, 'Updates', 'New versions of the app', Icons.system_update_rounded, (_) => const UpdatesSection(),
+      keywords: const ['Update', 'Install', 'New version', 'Release', 'Nightly', 'GitHub']),
   SettingsSection('about', SettingsGroupKind.system, 'About', 'Version and licenses', Icons.info_outline_rounded, (_) => const AboutSection(),
       keywords: const ['Version', 'Licenses', 'Source code']),
 ];
@@ -118,7 +122,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final t = DTheme.of(context);
     final wide = !t.isPhone && MediaQuery.sizeOf(context).width >= 1000 * t.scale;
     final toyboxOnly = ref.watch(sessionProvider.select((s) => s.isToybox));
-    final sections = [for (final s in kSettingsSections) if (!toyboxOnly || kToyboxOnlySettings.contains(s.id)) s];
+    // Updates only where the app can install them (Android).
+    final updates = ref.watch(appUpdaterProvider.select((u) => u.phase != UpdatePhase.unsupported));
+    final sections = [
+      for (final s in kSettingsSections)
+        if ((!toyboxOnly || kToyboxOnlySettings.contains(s.id)) && (s.id != 'updates' || updates)) s,
+    ];
     final current = sections.where((s) => s.id == widget.section).firstOrNull ?? (wide ? sections.first : null);
     final query = _query.text.trim();
     // While searching, the sections that match, each with the settings it matched.

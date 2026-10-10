@@ -1509,9 +1509,17 @@ only**.
   this ROM, so this matters.
 - **FR-ADM-03 [M1]** Remote log tail and crash reports, stored on the Hub
   only.
-- **FR-ADM-04 [M2]** **App updates:** the Hub hosts signed APKs (per ABI)
-  with release notes. Devices check daily and show "Update available".
-  Install mechanics depend on kiosk mode (§15.3).
+- **FR-ADM-04 [M2]** **App updates:** every green push to `main` publishes
+  a GitHub release with an APK per ABI, all signed with one release key.
+  The Android app reads the latest release from GitHub itself (two minutes
+  after start, then every four hours, and when Settings → Updates opens),
+  shows a newer build there, and a grown-up installs it. A display that can
+  install silently can also install by itself, nightly or when idle.
+  Install mechanics depend on the device (§15.3). (The owner chose GitHub
+  over a Hub-hosted feed on 2026-10-10: it works in demo, Solo and Hub
+  modes, and displays update without waiting for a newer Hub. It is the
+  one network call the app makes outside the Hub, besides the FreeKiosk
+  bridge.)
 - **FR-ADM-05 [M1]** Integration health page: status, last success, next
   run, quota use (WU calls per day, Spoonacular points), and a "Reconnect"
   button.
@@ -2076,7 +2084,8 @@ numbers refer to the JT215M (T1) in **profile** builds unless noted.
   build p90 swings between ~95 and ~160 ms run to run (same build, same
   boot), sometimes for minutes at a time. Exit codes: 0 passed, 1
   slower or failed, 3 the display couldn't be put back.
-  **Release builds for displays require a green perf gate on the frame.**
+  **Release builds for displays require a green perf gate on the frame**
+  before a display is set to update by itself (§15.3); CI can't run it.
 
   | Scenario | Measures |
   |---|---|
@@ -2505,8 +2514,8 @@ The Hub:
 - runs the **media pipeline** and **blob store**;
 - serves the **web app** (iPhone PWA + admin) and the OAuth, webhook and
   pairing endpoints;
-- handles **device management**: pairing, roles, commands, APK hosting,
-  diagnostics.
+- handles **device management**: pairing, roles, commands, diagnostics
+  (app updates come from GitHub releases, §15.3).
 
 ### 14.2 API surface (v1)
 
@@ -2526,7 +2535,6 @@ generated from the shelf routes and committed.
 | Photos | `POST /photos/sources/{id}/refresh` · `POST /photos/google/picker` (new session) · `GET /photos/google/picker/{id}` |
 | Smart home | `POST /ha/call` (ACL-checked) · `GET /ha/camera/{entity}` (snapshot) |
 | Devices | `POST /devices/{id}/command` (wake, sleep, reload, screenshot, chime, announce, timer) · `GET /devices/{id}/screenshot/latest` · `GET /devices/{id}/logs` |
-| Updates | `GET /app/latest?abi=&channel=` · `GET /app/apk/{version}/{abi}` |
 | Admin | `GET/PUT /admin/settings` · `/admin/integrations/*` · `POST /admin/backup` · `POST /admin/export` · `POST /admin/import` |
 | Web | `/` (Flutter web app, PWA manifest, service worker, COOP/COEP headers) |
 
@@ -2541,7 +2549,6 @@ generated from the shelf routes and committed.
 | Chore & routine materialization | Hourly + at local midnight (household TZ) |
 | Spoonacular budget reset (remembered recipes are kept indefinitely, §13.6) | Daily |
 | Backups | Nightly 03:30 local |
-| APK update check (GitHub releases, optional) | Daily |
 | HA connection | Persistent with reconnect backoff |
 | Blob store GC (unreferenced, older than 7 d) | Weekly |
 
@@ -2665,11 +2672,28 @@ key handoff (§13.9).
 
 ### 15.3 App updates
 
-| Mode | How updates install |
+Releases come from GitHub (FR-ADM-04): `releases/latest`, the asset
+`dearth-<version>-android-<abi>.apk` for the ABI of the installed APK,
+checked against the SHA-256 GitHub publishes for it. A release is newer
+when its CI run number (`-build.<n>`) is higher than this build's. Builds
+made anywhere else (`0.1.0-local.<sha>` from `deploy_frame.sh --build`,
+perf-gate profile builds) have no run number: they never update by
+themselves, and a grown-up's Install replaces them. Every build a display
+runs (CI releases, local release and profile builds) is signed with the
+one release key (README → Android signing), so each installs over the
+others.
+
+| Device | How updates install |
 |---|---|
-| Under FreeKiosk (Phase 1) | `tool/deploy_frame.sh` pushes the new APK over LAN ADB, one frame per run (developer path). In-app "Update available" for others, **if** the system installer UI can appear under FreeKiosk's lock task (M0 check). |
-| Dearth as Device Owner/launcher (M5, optional) | **Silent** `PackageInstaller` sessions from the Hub's APK feed, with staged rollout (one frame first) and automatic rollback if the new version fails to report healthy within 10 min. |
-| Phones | Android: APK channel from the Hub (or a store later). iPhone: the PWA updates on reload. |
+| Under FreeKiosk, with the ROM's network ADB open (the JT215M: root adbd on 5555, no authorization) | **Silently.** Dearth isn't Device Owner, and lock task allows only FreeKiosk and Dearth, so Android's installer screen can't appear. Dearth connects to its own adbd on 127.0.0.1:5555 (`LocalAdb`) and runs `cat <apk> \| pm install -r -S <size>; am start -n app.dearth/.MainActivity` under `nohup`, because pm stops the app to replace it. Verified on the frame 2026-10-10: installed in under 5 s, back in front, still in lock task. A build that fails to install (still running 5 min later, pm's answer in `/data/local/tmp/dearth-update.log`) is shown in Settings and never retried by itself. Per display (Settings → Updates, grown-up): **When I tap** (default), **Nightly** (the household's night hours, or 2–5 am without a night schedule) or **When idle** (the photo frame, the night clock or the screen off). Never while the display is in use or a kitchen timer is running or ringing. |
+| Other Android devices (phones, tablets) | A grown-up taps Install: a `PackageInstaller` session, and Android shows its confirm screen (the first time, Android asks to allow Dearth to install apps). |
+| Developer path | `tool/deploy_frame.sh` installs the latest release, `--apk` a given one, `--build` a local build (keeping the installed build number, so it installs over a newer release). |
+| Dearth as Device Owner/launcher (M5, optional) | Silent `PackageInstaller` sessions without ADB, with staged rollout (one frame first) and automatic rollback if the new version fails to report healthy within 10 min. |
+| iPhone | The PWA updates on reload. |
+
+Releases skip the frame perf gate (§12.9), which needs the frame and a
+person to run it: a display set to update by itself runs whatever passed
+CI.
 
 ### 15.4 Watchdog & recovery
 
@@ -2828,7 +2852,7 @@ consolidated shopping list + phone store mode · plan-aware recommendations
 birthdays and holidays · Web Push · web admin for content · drag-to-move
 events · on-display reminders · optional shared "Family" Google calendar ·
 photo collections · photos sent from phones · share targets · clock faces ·
-Wi-Fi QR widget · APK update channel.
+Wi-Fi QR widget · app updates from GitHub releases (§15.3).
 
 ### M3: Kids & play
 Kid stages · chores + library · routines + run mode + visual timers ·
