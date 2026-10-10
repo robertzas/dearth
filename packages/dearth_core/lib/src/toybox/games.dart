@@ -99,6 +99,7 @@ const List<GameInfo> kExpansionGames = [
   // Six number games built on her longest-played games (added 2026-10-10; the
   // owner chose minMonths 30 for all six, Ava's age, so she sees every one).
   GameInfo('creaturecount', 'Creature Count', '🐙', minMonths: 30, skills: ['Counting out a set', 'Reading numerals', 'Counting two things'], levels: 4, added: '2026-10-10'),
+  GameInfo('snacksnap', 'Snack Snap', '🥨', minMonths: 30, skills: ['Seeing amounts at a glance', 'Matching amounts to numbers', 'Ten-frames'], levels: 4, added: '2026-10-10'),
 ];
 
 GameInfo? gameById(String id) => kGames.where((g) => g.id == id).firstOrNull;

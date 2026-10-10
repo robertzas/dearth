@@ -38,6 +38,7 @@ import 'shadows.dart';
 import 'shapes.dart';
 import 'sight.dart';
 import 'sizes.dart';
+import 'snacksnap.dart';
 import 'spell.dart';
 import 'stories.dart';
 import 'storytime.dart';
@@ -102,4 +103,5 @@ final Map<String, GameBuilder> kGameBuilders = {
   'fishing': FishingGame.new,
   'lettercreature': LetterCreatureGame.new,
   'creaturecount': CreatureCountGame.new,
+  'snacksnap': SnackSnapGame.new,
 };

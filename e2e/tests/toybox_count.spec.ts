@@ -20,4 +20,17 @@ test.describe('Toybox third set', () => {
     await expectText(tid(page, 'creaturecount.ask'), /^Yay! /);
     await expectCheered(page);
   });
+
+  test('FR-TOY-03: Snack Snap — she taps the plate with the number of treats the monster asks for', async ({ page }) => {
+    await openToyboxGame(page, 'snacksnap');
+    await expectText(tid(page, 'snacksnap.ask'), /^Snack: (\d+) treats?$/);
+    const want = (await textOf(tid(page, 'snacksnap.ask'))).match(/^Snack: (\d+) treats?$/)![1];
+    // The plates are labelled by what they hold.
+    const plates = await idsUnder(page, 'snacksnap.plate.');
+    const wanted = `Plate with ${want} treat${want === '1' ? '' : 's'}`;
+    const target = (await Promise.all(plates.map(async (id) => [id, await textOf(tid(page, id))] as const))).find(([, label]) => label === wanted)![0];
+    await tap(tid(page, target));
+    await expectText(tid(page, 'snacksnap.ask'), /^Yum! /);
+    await expectCheered(page);
+  });
 });

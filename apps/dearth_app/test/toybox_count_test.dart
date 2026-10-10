@@ -1,5 +1,6 @@
 import 'package:dearth_app/core/sound.dart';
 import 'package:dearth_app/features/toybox/games/creaturecount.dart';
+import 'package:dearth_app/features/toybox/games/snacksnap.dart';
 import 'package:dearth_core/dearth_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -13,7 +14,7 @@ import 'support/toybox_harness.dart';
 void main() {
   for (final size in const [Size(390, 844), Size(844, 390), Size(1080, 1920), Size(1920, 1080)]) {
     testWidgets('every game of the third set lays out on a ${size.width.toInt()}×${size.height.toInt()} screen at its busiest level', (tester) async {
-      await expectGamesLayOut(tester, const [('creaturecount', 1), ('creaturecount', 3), ('creaturecount', 4)], size: size);
+      await expectGamesLayOut(tester, const [('creaturecount', 1), ('creaturecount', 3), ('creaturecount', 4), ('snacksnap', 1), ('snacksnap', 3), ('snacksnap', 4)], size: size);
     });
   }
 
@@ -217,6 +218,106 @@ void main() {
       await tester.pump(const Duration(seconds: 3));
       await h.settle();
       expect(await toyboxRounds(h), [('creaturecount', 2, 'win')]);
+      await tester.pump(const Duration(seconds: 12));
+      await h.shutdown();
+      handle.dispose();
+    });
+  });
+
+  group('Snack Snap', () {
+    SnackSnapGameState game(WidgetTester tester) => tester.state<SnackSnapGameState>(find.byType(SnackSnapGame));
+
+    testWidgets('FR-TOY-03: the voice asks for treats; the right plate feeds the monster and wins', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'snacksnap', sound: sound, level: 1);
+      final r = game(tester).debugRound;
+      expectNoFallbackText(byId('screen.game'));
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(sound.said.first, snackWantClip(r.want));
+      expect(labelOf(tester, 'snacksnap.ask'), 'Snack: ${r.want} treat${r.want == 1 ? '' : 's'}');
+      await tester.tap(byId('snacksnap.plate.${r.answer}'));
+      await tester.pump(const Duration(milliseconds: 800));
+      expect(sound.said, contains(snackYumClip(r.want)));
+      expect(sound.played.where((e) => e.$1 == Sfx.munch), hasLength(r.want), reason: 'one munch a treat');
+      expect(labelOf(tester, 'snacksnap.ask'), 'Yum! ${r.want} treat${r.want == 1 ? '' : 's'}');
+      await tester.pump(const Duration(seconds: 3));
+      await h.settle();
+      expect(await toyboxRounds(h), [('snacksnap', 1, 'win')]);
+      await tester.pump(const Duration(seconds: 12));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('a wrong plate says its own amount; two slips light the right one', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'snacksnap', sound: sound, level: 2);
+      final r = game(tester).debugRound;
+      final wrong = [for (var i = 0; i < r.plates.length; i++) if (i != r.answer) i];
+      expect(wrong, hasLength(2));
+      await tester.pump(const Duration(milliseconds: 700));
+      for (final i in wrong) {
+        await tester.tap(byId('snacksnap.plate.$i'));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(sound.said, containsAllInOrder([for (final i in wrong) snackThatsClip(r.plates[i].n)]));
+      expect(sound.played.where((e) => e.$1 == Sfx.nope), hasLength(2));
+      expect(game(tester).debugHint, isTrue, reason: 'the right plate glows after two slips');
+      // A tried plate is done for the round: tapping it again is nothing.
+      final said = sound.said.length;
+      await tester.tap(byId('snacksnap.plate.${wrong.first}'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(sound.said.length, said);
+      await tester.tap(byId('snacksnap.plate.${r.answer}'));
+      await tester.pump(const Duration(seconds: 3));
+      await h.settle();
+      expect(await toyboxRounds(h), [('snacksnap', 2, 'miss')]);
+      await tester.pump(const Duration(seconds: 12));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('level 4: "Quick, look!", then the plates cover; she chooses from memory', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'snacksnap', sound: sound, level: 4);
+      final r = game(tester).debugRound;
+      expect(r.flash, isTrue);
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(sound.said.first, VoiceLine.snackLook);
+      await tester.pump(afterVoice(VoiceLine.snackLook) + const Duration(milliseconds: 100));
+      expect(sound.said.last, snackWantClip(r.want));
+      await tester.pump(const Duration(milliseconds: 2100));
+      expect(game(tester).debugCovered, isTrue);
+      for (var i = 0; i < r.plates.length; i++) {
+        expect(labelOf(tester, 'snacksnap.plate.$i'), 'Covered plate');
+      }
+      await tester.tap(byId('snacksnap.plate.${r.answer}'));
+      await tester.pump(const Duration(seconds: 3));
+      await h.settle();
+      expect(await toyboxRounds(h), [('snacksnap', 4, 'win')]);
+      await tester.pump(const Duration(seconds: 12));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('a peek at the covered plates can\'t be a clean win', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'snacksnap', sound: sound, level: 4);
+      final r = game(tester).debugRound;
+      await tester.pump(const Duration(milliseconds: 700));
+      await tester.pump(afterVoice(VoiceLine.snackLook) + const Duration(milliseconds: 100));
+      await tester.pump(afterVoice(snackWantClip(r.want)) + const Duration(milliseconds: 2100));
+      expect(game(tester).debugCovered, isTrue);
+      await tester.tap(byId('snacksnap.ask.again'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(game(tester).debugCovered, isFalse, reason: 'the peek lifts the covers');
+      await tester.tap(byId('snacksnap.plate.${r.answer}'));
+      await tester.pump(const Duration(seconds: 3));
+      await h.settle();
+      expect(await toyboxRounds(h), [('snacksnap', 4, 'helped')]);
       await tester.pump(const Duration(seconds: 12));
       await h.shutdown();
       handle.dispose();

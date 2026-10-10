@@ -15,7 +15,7 @@ at a time.
 | # | Game | id | Status | Built on (her favorite) | Teaches |
 |---|---|---|---|---|---|
 | 1 | Creature Count | `creaturecount` | ✅ built and pushed 2026-10-10 | Build-a-Creature | Counting out a set |
-| 2 | Snack Snap | `snacksnap` | ⬜ not started | Feed the Monster | Seeing amounts at a glance |
+| 2 | Snack Snap | `snacksnap` | ✅ built and pushed 2026-10-10 | Feed the Monster | Seeing amounts at a glance |
 | 3 | Finger Count | `fingers` | ⬜ not started | Number Tracing | Fingers as numbers |
 | 4 | Animal Race | `race` | ⬜ not started | Who Has More? | First, second, third |
 | 5 | Bead Slider | `beads` | ⬜ not started | Tallies | Fives and tens |

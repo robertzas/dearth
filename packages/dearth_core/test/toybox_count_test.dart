@@ -67,4 +67,84 @@ void main() {
       expect(countPartLabel(CountPart.legs, 1), '1 leg');
     });
   });
+
+  group('FR-TOY-03 Snack Snap', () {
+    test('the ladder: rows 1–3, dice 1–6, ten-frames 5–10, then the flash', () {
+      for (var seed = 0; seed < 200; seed++) {
+        for (var level = 1; level <= 4; level++) {
+          final r = snackRound(level, Random(seed));
+          final ns = [for (final p in r.plates) p.n];
+          expect(ns.toSet().length, ns.length, reason: 'distinct amounts');
+          expect(ns, contains(r.want));
+          expect(r.plates.where((p) => p.n == r.want).length, 1, reason: 'exactly one plate equals the want');
+          expect(r.answer, greaterThanOrEqualTo(0));
+          switch (level) {
+            case 1:
+              expect(ns..sort(), [1, 2, 3], reason: 'exactly one, two and three');
+              expect(r.plates.every((p) => p.pattern == SnackPattern.row), isTrue);
+              expect(r.flash, isFalse);
+            case 2:
+              expect(r.want, inInclusiveRange(1, 6));
+              expect(ns, everyElement(inInclusiveRange(1, 6)));
+              expect(r.plates, hasLength(3));
+              expect(r.plates.every((p) => p.pattern == SnackPattern.dice), isTrue);
+              expect(r.flash, isFalse);
+            case 3:
+              expect(r.want, inInclusiveRange(5, 10));
+              expect(ns, everyElement(inInclusiveRange(5, 10)));
+              expect(r.plates, hasLength(4));
+              expect(r.plates.every((p) => p.pattern == SnackPattern.frame), isTrue);
+              expect(ns.any((n) => (n - r.want).abs() == 1), isTrue, reason: 'a neighbor beside the want');
+              expect(r.flash, isFalse);
+            default:
+              expect(r.want, inInclusiveRange(1, 6));
+              expect(ns, everyElement(inInclusiveRange(1, 6)));
+              expect(r.plates, hasLength(4));
+              expect(r.plates.every((p) => p.pattern == SnackPattern.row || p.pattern == SnackPattern.dice), isTrue);
+              expect(r.flash, isTrue, reason: 'only the top level flashes');
+          }
+        }
+      }
+    });
+
+    test('never the same want twice in a row', () {
+      for (var level = 1; level <= 4; level++) {
+        SnackRound? last;
+        for (var i = 0; i < 200; i++) {
+          final r = snackRound(level, Random(level * 1000 + i), last: last);
+          if (last != null) {
+            expect(r.want, isNot(last.want), reason: 'level $level round $i');
+          }
+          last = r;
+        }
+      }
+    });
+
+    test('dots: the right number, all on the plate, no two in one place', () {
+      for (final pattern in SnackPattern.values) {
+        for (var n = 1; n <= 10; n++) {
+          final dots = snackDots(SnackPlate(n, pattern));
+          expect(dots, hasLength(n), reason: '$pattern $n');
+          for (final (x, y) in dots) {
+            expect(x, inInclusiveRange(0, 1));
+            expect(y, inInclusiveRange(0, 1));
+          }
+          expect(dots.toSet().length, n, reason: '$pattern $n');
+        }
+      }
+      // Dice are the faces everyone knows.
+      expect(snackDots(const SnackPlate(1, SnackPattern.dice)), [(0.5, 0.5)]);
+      expect(snackDots(const SnackPlate(6, SnackPattern.dice)), hasLength(6));
+      // The frame fills the top row first.
+      expect(snackDots(const SnackPlate(5, SnackPattern.frame)).last, (0.9, 0.3));
+      expect(snackDots(const SnackPlate(6, SnackPattern.frame))[5], (0.1, 0.7));
+    });
+
+    test('a wrong plate is helped once, then a miss; a peek can\'t be a clean win', () {
+      expect([for (var slips = 0; slips <= 3; slips++) snackResult(slips)], [GameResult.win, GameResult.helped, GameResult.miss, GameResult.miss]);
+      expect(snackResult(0, peeked: true), GameResult.helped);
+      expect(snackResult(1, peeked: true), GameResult.helped);
+      expect(snackResult(2, peeked: true), GameResult.miss);
+    });
+  });
 }

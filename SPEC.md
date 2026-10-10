@@ -1244,10 +1244,11 @@ her thinking* from age 2 to 5, adapt to her level, and respect family limits.
    - Six more number games on the skills her longest-played games exercise
      (added 2026-10-10; the owner chose to show all six from 2½, her age):
      Creature Count — counting out a set as parts on a creature she
-     dresses, then reading the numeral alone; ordinal words to fifth;
-     subitizing; five-structured numbers to twenty; sharing equally with a
-     remainder (Animal Race, Snack Snap, Finger Count, Bead Slider and
-     Fair Share follow as they are built)
+     dresses, then reading the numeral alone; Snack Snap — amounts at a
+     glance on plates (rows, dice pips, ten-frames), flashed and covered
+     at the top level; ordinal words to fifth; five-structured numbers to
+     twenty; sharing equally with a remainder (Finger Count, Animal Race,
+     Bead Slider and Fair Share follow as they are built)
 
 - **FR-TOY-04 [M3]** **Adaptive difficulty:** each game tracks success rate,
   time and hints. It levels up after consistent success, eases off after
@@ -2955,6 +2956,7 @@ points, not limits.
 | Number Fishing | 3.5+ | Reading numerals to twenty, the biggest number, pairs that make five | Fish with a number on a white patch on their sides swim back and forth across a pond, a lane each, turning to face the way they go (the number never mirrors). The voice calls one ("Find the number seven."), later "Catch the biggest number!", then "Catch two fish that make five!". She taps the fish: it says its number and leaps out of the water in an arc into the bucket on the bank, where its tail sticks out; a pair is said together ("Two and three make five!"). A wrong fish wiggles and says its number; two slips or a long pause put a golden ring on the right one | 1–5 among three, slow → 6–20 among four, one sharing a digit with the answer (12 and 2, 7 and 17) → the biggest of three up to twenty, at least two above the next → two of four that make five, exactly one pair able to | M4 |
 | Letter Creatures | 3.5+ | First sounds, letter sounds | Build-a-Creature's parts, picked by sound. A creature grows on the stage a part at a time (a "?" egg until the body comes): the pill shows the letter and the voice asks "Find a body that starts with rrr!"; three or four painted parts wait beside it, each with a key word that starts with its own sound (round, egg, pear; googly, sleepy, happy; horns, bunny ears; wings, fins; curly, spiky…). The right one goes on as the voice links sound and word ("Rrr, rrr, round!"); another says its own name ("Bunny ears!") and wiggles; two slips or a long pause light the right one. With every part on, the creature dances to Build-a-Creature's tune and says its silly name | body and eyes, three to choose from → top and legs too → arms and tail too, four to choose from | M4 |
 | Creature Count | 2.5+ | Counting out a set, reading numerals | A bare creature asks for parts ("Give it three eyes!"): a button per part adds one, each saying the new count; a tap on a part takes it off; the dance button checks — right: it dances and says "Yay! Three eyes!"; wrong: "More eyes, please!" or "Too many eyes!", and two slips show outlines where the parts go. Eyes, legs, horns and spots on Build-a-Creature's bodies | one part 1–3 with outlines → 1–5 → two parts at once → the numeral alone ("Give it this many spots!", up to nine) | M4 |
+| Snack Snap | 2.5+ | Seeing amounts at a glance | The orange monster asks for a number of treats ("Four treats, please!"); plates show amounts as rows, dice or ten-frames; she taps the plate with that many and the monster eats them; another plate wiggles and says its amount ("That's three!"), two slips light the right one. At the top the plates flash for two seconds and cover over | 1–3 in rows → dice 1–6 → ten-frames 5–10 → flashed plates | M4 |
 
 ### Appendix C: Chores & rewards by age
 

@@ -265,6 +265,8 @@ void main() {
           ccountManyClip(p), ccountMoreClip(p), ccountFewerClip(p),
         ],
         VoiceLine.ccountDance,
+        for (var n = 1; n <= 10; n++) ...[snackWantClip(n), snackThatsClip(n), snackYumClip(n)],
+        VoiceLine.snackLook,
         for (var n = 1; n <= kBusStopMax; n++) ...[busStartClip(n), busNowClip(n)],
         for (var n = 1; n <= 4; n++) busOnClip(n),
         for (var n = 1; n <= 3; n++) busOffClip(n),

@@ -172,6 +172,15 @@ String ccountFewerClip(CountPart p) => 'ccount_fewer_${p.name}';
 /// Right: "Yay! Three eyes!"
 String ccountYayClip(CountPart p, int n) => 'ccount_yay_${p.name}_$n';
 
+/// Snack Snap: "Four treats, please!" / "One treat, please!"
+String snackWantClip(int n) => 'snack_want_$n';
+
+/// A wrong plate: "That's three!"
+String snackThatsClip(int n) => 'snack_thats_$n';
+
+/// Right: "Four! Yum!"
+String snackYumClip(int n) => 'snack_yum_$n';
+
 /// What Letter Monster wants: "I want the letter B!", "I want the letter
 /// that says buh!", or a picture's first sound ([firstSoundClip]).
 String letterMonsterAskClip(LetterMonsterRound r) => switch (r.ask) {
@@ -260,6 +269,7 @@ abstract final class VoiceLine {
   static const whoYesYou = 'who_yes_you';
   static const cookiesBell = 'cookies_bell';
   static const ccountDance = 'ccount_dance';
+  static const snackLook = 'snack_look';
   static const busStopAsk = 'busstop_ask';
   static const rocketBlastOff = 'rocket_blastoff';
   static const trainNext = 'train_next';
@@ -506,6 +516,13 @@ Map<String, String> _lines() {
     lines[ccountFewerClip(p)] = 'Too many $many!';
   }
   lines[VoiceLine.ccountDance] = 'Then make it dance!';
+  for (var n = 1; n <= 10; n++) {
+    final treats = '${numberWord(n)} treat${n == 1 ? '' : 's'}';
+    lines[snackWantClip(n)] = '${_cap(treats)}, please!';
+    lines[snackThatsClip(n)] = "That's ${numberWord(n)}!";
+    lines[snackYumClip(n)] = '${_cap(numberWord(n))}! Yum!';
+  }
+  lines[VoiceLine.snackLook] = 'Quick, look!';
   for (final l in kLetterSounds) {
     lines[letterMonsterAskClip(LetterMonsterRound(LetterMonsterAsk.name, l.letter, [l.letter]))] = 'I want the letter ${l.letter}!';
     if (l.starts) lines[letterMonsterAskClip(LetterMonsterRound(LetterMonsterAsk.sound, l.letter, [l.letter]))] = 'I want the letter that says ${_sound(l)}!';
