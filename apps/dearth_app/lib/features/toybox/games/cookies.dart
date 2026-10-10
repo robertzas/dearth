@@ -308,7 +308,7 @@ class CookieGameState extends State<CookieGame> with TickerProviderStateMixin {
                       excludeSemantics: true,
                       onTap: _ring,
                       borderRadius: BorderRadius.circular(l.bell.width / 2),
-                      child: Hop(count: _bellHops, child: const RepaintBoundary(child: CustomPaint(painter: _BellPainter(), size: Size.infinite))),
+                      child: Hop(count: _bellHops, child: const RepaintBoundary(child: CustomPaint(painter: BellPainter(), size: Size.infinite))),
                     ),
                   ),
                   for (final e in _returning.entries) _flying(e.key, from: l.spot(e.value), to: l.jar.center, size: l.cookie, shrink: true),
@@ -541,8 +541,10 @@ class _JarPainter extends CustomPainter {
 }
 
 /// A shop counter bell: a golden dome on a dark base, a button on top.
-class _BellPainter extends CustomPainter {
-  const _BellPainter();
+/// A shop counter bell: a golden dome on a dark base, a button on top
+/// (Cookie Count and Bead Slider share it).
+class BellPainter extends CustomPainter {
+  const BellPainter();
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -576,5 +578,5 @@ class _BellPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_BellPainter old) => false;
+  bool shouldRepaint(BellPainter old) => false;
 }

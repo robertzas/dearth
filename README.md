@@ -108,8 +108,10 @@ back.
   creature asks for eyes, legs, horns or spots; she adds them one at a time, each saying the count, and makes it dance to check),
   Snack Snap (plates of treats in rows, dice pips or ten-frames; she taps the one the monster asks for, flashed and covered at the
   top level), Finger Count (a big cartoon hand asks her to raise fingers — a whole hand at a tap on the palm for 6–10 — then a
-  high five checks; at the top the hand shows fingers and she picks the number) and Animal Race (animals race across their lanes
-  and coast to a stop in order; she answers "who came second?", ribbons all five at the top). The letter, word
+  high five checks; at the top the hand shows fingers and she picks the number), Animal Race (animals race across their lanes
+  and coast to a stop in order; she answers "who came second?", ribbons all five at the top) and Bead Slider (a counting rack
+  of red and white beads; a tap or swipe slides beads across and the bell checks — "Five and two make seven!"; at the top she
+  reads the rack). The letter, word
   and number games talk: every line is a clip bundled with the app, so they
   work on a display with no text-to-speech. Every game is on for every kid, the ones that suit their age first, and every game
   adapts: three wins in a row go up a level, three misses ease off, and

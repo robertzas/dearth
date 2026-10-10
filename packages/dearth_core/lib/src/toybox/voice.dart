@@ -200,6 +200,12 @@ String raceCameClip(int place) => 'race_came_$place';
 /// A ribbon pins on: "First place!"
 String racePlaceClip(int place) => 'race_place_$place';
 
+/// Bead Slider: "Show seven!"
+String beadsShowClip(int n) => 'beads_show_$n';
+
+/// Right: "Five and two make seven!" / "Ten and four make fourteen!"
+String beadsYayClip(int n) => 'beads_yay_$n';
+
 /// What Letter Monster wants: "I want the letter B!", "I want the letter
 /// that says buh!", or a picture's first sound ([firstSoundClip]).
 String letterMonsterAskClip(LetterMonsterRound r) => switch (r.ask) {
@@ -295,6 +301,9 @@ abstract final class VoiceLine {
   static const fingersWhich = 'fingers_which';
   static const fingersHighFive = 'fingers_highfive';
   static const raceGo = 'race_go';
+  static const beadsMore = 'beads_more';
+  static const beadsFewer = 'beads_fewer';
+  static const beadsWhich = 'beads_which';
   static const busStopAsk = 'busstop_ask';
   static const rocketBlastOff = 'rocket_blastoff';
   static const trainNext = 'train_next';
@@ -568,6 +577,19 @@ Map<String, String> _lines() {
   }
   lines[raceAskClip(0)] = 'Who came last?';
   lines[VoiceLine.raceGo] = 'Ready, set, go!';
+  for (var n = 1; n <= 20; n++) {
+    lines[beadsShowClip(n)] = 'Show ${numberWord(n)}!';
+    lines[beadsYayClip(n)] = switch (n) {
+      <= 5 => '${_cap(numberWord(n))}!',
+      <= 9 => 'Five and ${numberWord(n - 5)} make ${numberWord(n)}!',
+      10 => 'Ten! A whole row!',
+      <= 19 => 'Ten and ${numberWord(n - 10)} make ${numberWord(n)}!',
+      _ => 'Twenty! Two whole rows!',
+    };
+  }
+  lines[VoiceLine.beadsMore] = 'More beads, please!';
+  lines[VoiceLine.beadsFewer] = 'Too many beads!';
+  lines[VoiceLine.beadsWhich] = 'How many beads?';
   for (final l in kLetterSounds) {
     lines[letterMonsterAskClip(LetterMonsterRound(LetterMonsterAsk.name, l.letter, [l.letter]))] = 'I want the letter ${l.letter}!';
     if (l.starts) lines[letterMonsterAskClip(LetterMonsterRound(LetterMonsterAsk.sound, l.letter, [l.letter]))] = 'I want the letter that says ${_sound(l)}!';

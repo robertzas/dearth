@@ -249,4 +249,60 @@ void main() {
       expect(kRacers.map((r) => r.$1).toSet().length, 10);
     });
   });
+
+  group('FR-TOY-03 Bead Slider', () {
+    test('the ladder: one row 1–5, 3–10, two rows 11–20, then reading them', () {
+      for (var seed = 0; seed < 200; seed++) {
+        for (var level = 1; level <= 4; level++) {
+          final r = beadRound(level, Random(seed));
+          switch (level) {
+            case 1:
+              expect(r.want, inInclusiveRange(1, 5));
+              expect(r.rows, 1);
+              expect(r.read, isFalse);
+            case 2:
+              expect(r.want, inInclusiveRange(3, 10));
+              expect(r.rows, 1);
+              expect(r.read, isFalse);
+            case 3:
+              expect(r.want, inInclusiveRange(11, 20));
+              expect(r.rows, 2);
+              expect(r.read, isFalse);
+            default:
+              expect(r.want, inInclusiveRange(1, 20));
+              expect(r.rows, r.want > 10 ? 2 : 1);
+              expect(r.read, isTrue);
+              expect(r.choices, hasLength(3));
+              expect(r.choices.toSet().length, 3);
+              expect(r.choices, contains(r.want));
+              expect(r.choices, everyElement(inInclusiveRange(1, 20)));
+          }
+        }
+      }
+    });
+
+    test('never the same want twice in a row', () {
+      for (var level = 1; level <= 4; level++) {
+        BeadRound? last;
+        for (var i = 0; i < 200; i++) {
+          final r = beadRound(level, Random(level * 1000 + i), last: last);
+          if (last != null) {
+            expect(r.want, isNot(last.want), reason: 'level $level round $i');
+          }
+          last = r;
+        }
+      }
+    });
+
+    test('the voice names the structure the rack is read in', () {
+      expect(kVoiceLines[beadsShowClip(7)], 'Show seven!');
+      expect(kVoiceLines[beadsYayClip(3)], 'Three!');
+      expect(kVoiceLines[beadsYayClip(7)], 'Five and two make seven!');
+      expect(kVoiceLines[beadsYayClip(10)], 'Ten! A whole row!');
+      expect(kVoiceLines[beadsYayClip(14)], 'Ten and four make fourteen!');
+      expect(kVoiceLines[beadsYayClip(20)], 'Twenty! Two whole rows!');
+      expect(beadResult(0), GameResult.win);
+      expect(beadResult(2), GameResult.miss);
+    });
+  });
 }

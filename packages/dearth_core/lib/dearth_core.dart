@@ -33,6 +33,7 @@ export 'src/sync/sync_specs.dart';
 export 'src/time/household_time.dart';
 export 'src/time/local_date.dart';
 export 'src/toybox/balance.dart';
+export 'src/toybox/beads.dart';
 export 'src/toybox/biglittle.dart';
 export 'src/toybox/busstop.dart';
 export 'src/toybox/compare.dart';

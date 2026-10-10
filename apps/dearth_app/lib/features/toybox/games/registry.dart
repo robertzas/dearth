@@ -1,5 +1,6 @@
 import '../game_host.dart';
 import 'balance.dart';
+import 'beads.dart';
 import 'biglittle.dart';
 import 'breathe.dart';
 import 'bubbles.dart';
@@ -108,4 +109,5 @@ final Map<String, GameBuilder> kGameBuilders = {
   'snacksnap': SnackSnapGame.new,
   'fingers': FingerGame.new,
   'race': RaceGame.new,
+  'beads': BeadGame.new,
 };

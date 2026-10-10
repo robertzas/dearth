@@ -1,4 +1,5 @@
 import 'package:dearth_app/core/sound.dart';
+import 'package:dearth_app/features/toybox/games/beads.dart';
 import 'package:dearth_app/features/toybox/games/creaturecount.dart';
 import 'package:dearth_app/features/toybox/games/fingers.dart';
 import 'package:dearth_app/features/toybox/games/race.dart';
@@ -31,6 +32,9 @@ void main() {
           ('race', 1),
           ('race', 3),
           ('race', 4),
+          ('beads', 1),
+          ('beads', 3),
+          ('beads', 4),
         ],
         size: size,
       );
@@ -603,6 +607,150 @@ void main() {
       await tester.pump(const Duration(seconds: 3));
       await h.settle();
       expect(await toyboxRounds(h), [('race', 4, 'helped')]);
+      await tester.pump(const Duration(seconds: 12));
+      await h.shutdown();
+      handle.dispose();
+    });
+  });
+
+  group('Bead Slider', () {
+    BeadGameState game(WidgetTester tester) => tester.state<BeadGameState>(find.byType(BeadGame));
+
+    /// Lets the ask (and the once-a-session bell line) finish.
+    Future<void> intro(WidgetTester tester) async {
+      final r = game(tester).debugRound;
+      await tester.pump(const Duration(milliseconds: 700));
+      if (!r.read) {
+        await tester.pump(afterVoice(beadsShowClip(r.want)) + const Duration(milliseconds: 100));
+        await tester.pump(afterVoice(VoiceLine.cookiesBell) + const Duration(milliseconds: 100));
+      }
+    }
+
+    testWidgets('FR-TOY-03: one tap slides the beads across; the bell names the structure', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'beads', sound: sound, level: 2);
+      final r = game(tester).debugRound;
+      expectNoFallbackText(byId('screen.game'));
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(sound.said.first, beadsShowClip(r.want));
+      expect(labelOf(tester, 'beads.ask'), 'Show ${r.want}');
+      await tester.pump(afterVoice(beadsShowClip(r.want)) + const Duration(milliseconds: 100));
+      expect(sound.said.last, VoiceLine.cookiesBell, reason: 'the bell is explained once a session');
+      await tester.pump(afterVoice(VoiceLine.cookiesBell));
+      await tester.tap(byId('beads.bead.0.${r.want - 1}'));
+      await tester.pump(const Duration(milliseconds: 250));
+      expect(game(tester).debugLeft[0], r.want, reason: 'one tap slides everything left of it across');
+      expect(sound.said.last, numberClip(r.want));
+      expect(labelOf(tester, 'beads.row.0'), 'Top row: ${r.want} ${r.want == 1 ? 'bead' : 'beads'} across');
+      await tester.tap(byId('beads.bell'));
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(sound.said.last, beadsYayClip(r.want));
+      expect(labelOf(tester, 'beads.ask'), 'Yay! ${r.want}');
+      expect(sound.played.map((e) => e.$1), contains(Sfx.xylophone), reason: 'the rack chimes');
+      await tester.pump(const Duration(seconds: 3));
+      await h.settle();
+      expect(await toyboxRounds(h), [('beads', 2, 'win')]);
+      await tester.pump(const Duration(seconds: 12));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('a tap on a bead already across slides them back', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'beads', sound: sound, level: 2);
+      final r = game(tester).debugRound;
+      await intro(tester);
+      await tester.tap(byId('beads.bead.0.${r.want - 1}'));
+      await tester.pump(const Duration(milliseconds: 250));
+      expect(game(tester).debugTotal, r.want);
+      await tester.tap(byId('beads.bead.0.0'));
+      await tester.pump(const Duration(milliseconds: 250));
+      expect(game(tester).debugLeft[0], 0, reason: 'the bead and everything right of it slide back');
+      expect(sound.said.last, numberClip(0));
+      await tester.tap(byId('beads.bead.0.${r.want - 1}'));
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.tap(byId('beads.bell'));
+      await tester.pump(const Duration(seconds: 3));
+      await h.settle();
+      expect(await toyboxRounds(h), [('beads', 2, 'win')]);
+      await tester.pump(const Duration(seconds: 12));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('wrong totals ask for more or fewer; two slips mark where to stop', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'beads', sound: sound, level: 2);
+      final r = game(tester).debugRound;
+      await intro(tester);
+      await tester.tap(byId('beads.bead.0.${r.want - 2}'));
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.tap(byId('beads.bell'));
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(sound.said.last, VoiceLine.beadsMore);
+      expect(sound.played.where((e) => e.$1 == Sfx.nope), hasLength(1));
+      await tester.tap(byId('beads.bell'));
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(game(tester).debugHint, isTrue);
+      await tester.tap(byId('beads.bead.0.${r.want - 1}'));
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.tap(byId('beads.bell'));
+      await tester.pump(const Duration(seconds: 3));
+      await h.settle();
+      expect(await toyboxRounds(h), [('beads', 2, 'miss')]);
+      await tester.pump(const Duration(seconds: 12));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('two rows: ten and some more, as the rack is read', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'beads', sound: sound, level: 3);
+      final r = game(tester).debugRound;
+      expect(r.rows, 2);
+      await intro(tester);
+      await tester.tap(byId('beads.bead.0.9'));
+      await tester.pump(const Duration(milliseconds: 250));
+      expect(game(tester).debugLeft[0], 10);
+      expect(labelOf(tester, 'beads.row.0'), 'Top row: 10 beads across');
+      await tester.tap(byId('beads.bead.1.${r.want - 11}'));
+      await tester.pump(const Duration(milliseconds: 250));
+      expect(game(tester).debugTotal, r.want);
+      await tester.tap(byId('beads.bell'));
+      await tester.pump();
+      expect(sound.said.last, beadsYayClip(r.want));
+      await tester.pump(const Duration(seconds: 3));
+      await h.settle();
+      expect(await toyboxRounds(h), [('beads', 3, 'win')]);
+      await tester.pump(const Duration(seconds: 12));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('reading the rack: the beads are across, she picks the number', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'beads', sound: sound, level: 4);
+      final r = game(tester).debugRound;
+      expect(r.read, isTrue);
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(sound.said.first, VoiceLine.beadsWhich);
+      expect(labelOf(tester, 'beads.ask'), 'How many beads?');
+      expect(game(tester).debugTotal, r.want, reason: 'the beads are already across; she reads them');
+      final wrong = r.choices.where((c) => c != r.want).first;
+      await tester.tap(byId('beads.choice.$wrong'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(sound.said.last, numberClip(wrong));
+      await tester.tap(byId('beads.choice.${r.want}'));
+      await tester.pump();
+      expect(labelOf(tester, 'beads.ask'), 'Yay! ${r.want}');
+      await tester.pump(const Duration(seconds: 3));
+      await h.settle();
+      expect(await toyboxRounds(h), [('beads', 4, 'helped')]);
       await tester.pump(const Duration(seconds: 12));
       await h.shutdown();
       handle.dispose();

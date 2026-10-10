@@ -76,6 +76,7 @@ const Map<String, Color> kGameHues = {
   'snacksnap': Color(0xFFE8985E),
   'fingers': Color(0xFF53C125),
   'race': Color(0xFF41D87B),
+  'beads': Color(0xFFD8D841),
 };
 
 /// The Toybox (SPEC §10.8, FR-TOY-01): big picture tiles of the games that
@@ -294,8 +295,51 @@ class GameIcon extends StatelessWidget {
         'lettermonster' => LetterMonsterIcon(size: size),
         'wordpop' => WordPopIcon(size: size),
         'dots' => SizedBox.square(dimension: size, child: RepaintBoundary(child: CustomPaint(painter: _DotsIcon(DTheme.of(context).text.kidTitle)))),
+        'beads' => SizedBox.square(dimension: size, child: const RepaintBoundary(child: CustomPaint(painter: _BeadsIcon()))),
         _ => DEmoji(game.emoji, size: size),
       };
+}
+
+/// A mini counting rack: two rods, five red beads and five white on each.
+class _BeadsIcon extends CustomPainter {
+  const _BeadsIcon();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = size.shortestSide;
+    final d = s / 7.4;
+    const wood = Color(0xFFB7814C);
+    final frame = RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(s * 0.12));
+    canvas
+      ..drawRRect(frame, Paint()..color = wood)
+      ..drawRRect(frame, Paint()
+        ..color = Color.lerp(wood, const Color(0xFF2B2440), 0.45)!
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = s * 0.03);
+    for (var row = 0; row < 2; row++) {
+      final y = size.height * (row == 0 ? 0.3 : 0.7);
+      canvas.drawLine(Offset(2 * d, y), Offset(size.width - 2 * d, y), Paint()
+        ..color = const Color(0xFF9AA0A8)
+        ..strokeWidth = d * 0.16
+        ..strokeCap = StrokeCap.round);
+      for (var i = 0; i < 10; i++) {
+        final x = i < 5 ? 2 * d + i * d * 1.02 : size.width - 2 * d - (9 - i) * d * 1.02 - d * 0.5;
+        final r = d * 0.46;
+        final red = i < 5;
+        canvas.drawCircle(Offset(x, y), r, Paint()..color = red ? const Color(0xFFE5484D) : const Color(0xFFF7F7F7));
+        if (!red) {
+          canvas.drawCircle(Offset(x, y), r, Paint()
+            ..color = const Color(0xFFB9BEC7)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = s * 0.012);
+        }
+        canvas.drawCircle(Offset(x - r * 0.3, y - r * 0.3), r * 0.16, Paint()..color = (red ? Colors.white : const Color(0xFFD9DDE3)).withValues(alpha: 0.9));
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_BeadsIcon old) => false;
 }
 
 class _BubblesIcon extends CustomPainter {

@@ -51,14 +51,26 @@ test.describe('Toybox third set', () => {
     await openToyboxGame(page, 'race');
     // The race runs before the question.
     await expectText(tid(page, 'race.ask'), /^Who came (\d)(st|nd|rd|th)\?$|^Who came last\?$/, 30000);
-    const asked = (await textOf(tid(page, 'race.ask'))).match(/^Who came (?:last|(\d)(?:st|nd|rd|th))\?$/)!;
+    const asked = (await textOf(tid(page, 'race.ask'))).match(/^Who came (.+)\?$/)![1];
     const animals = await idsUnder(page, 'race.animal.');
     const labelled = await Promise.all(animals.map(async (id) => [id, await textOf(tid(page, id))] as const));
-    const target = asked[1]
-      ? labelled.find(([, label]) => label.endsWith(`came ${asked[1]}${asked[2] ?? ''}`))!
-      : labelled.reduce((a, b) => (Number(a[1].match(/came (\d)/)![1]) > Number(b[1].match(/came (\d)/)![1]) ? a : b));
+    const place = (label: string) => Number(label.match(/came (\d)/)![1]);
+    const target = asked === 'last'
+      ? labelled.reduce((a, b) => (place(a[1]) > place(b[1]) ? a : b))
+      : labelled.find(([, label]) => label.endsWith(`came ${asked}`))!;
     await tap(tid(page, target[0]));
     await expectText(tid(page, 'race.ask'), /^Yes! /);
+    await expectCheered(page);
+  });
+
+  test('FR-TOY-03: Bead Slider — she slides the beads across and rings the bell', async ({ page }) => {
+    await openToyboxGame(page, 'beads');
+    await expectText(tid(page, 'beads.ask'), /^Show (\d+)$/);
+    const n = Number((await textOf(tid(page, 'beads.ask'))).match(/^Show (\d+)$/)![1]);
+    await tap(tid(page, `beads.bead.0.${n - 1}`));
+    await expectText(tid(page, 'beads.row.0'), `Top row: ${n} ${n === 1 ? 'bead' : 'beads'} across`);
+    await tap(tid(page, 'beads.bell'));
+    await expectText(tid(page, 'beads.ask'), /^Yay! /);
     await expectCheered(page);
   });
 });
