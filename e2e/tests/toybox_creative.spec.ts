@@ -57,12 +57,16 @@ test.describe('Toybox make-and-move games', () => {
   test('FR-TOY-03: Weather Dress-Up — she dresses Buddy for the day, trying things until one suits', async ({ page }) => {
     await openToyboxGame(page, 'dressup');
     await expectText(tid(page, 'dress.buddy'), 'Buddy: 0 of 1 dressed');
-    // Try each choice in turn, as she would, until one goes on.
-    const choices = await tids(page, 'dress.item.').evaluateAll((els) => els.map((e) => e.getAttribute('flt-semantics-identifier')!));
-    for (const id of choices) {
-      await tap(tid(page, id));
-      await page.waitForTimeout(600);
-      if ((await label(page, 'dress.buddy')).startsWith('Buddy: 1 of 1')) break;
+    // Try each choice she hasn't tried yet, as she would, until one goes on
+    // (a few passes: on a slow runner a tap can land before the round settles).
+    for (let pass = 0; pass < 3 && !(await label(page, 'dress.buddy')).startsWith('Buddy: 1 of 1'); pass++) {
+      const choices = await tids(page, 'dress.item.').evaluateAll((els) => els.map((e) => e.getAttribute('flt-semantics-identifier')!));
+      for (const id of choices) {
+        if ((await label(page, id)).endsWith('tried')) continue;
+        await tap(tid(page, id));
+        await page.waitForTimeout(600);
+        if ((await label(page, 'dress.buddy')).startsWith('Buddy: 1 of 1')) break;
+      }
     }
     await expectText(tid(page, 'dress.buddy'), /^Buddy: 1 of 1 dressed, \w+/);
     await expectText(tid(page, 'dress.ask'), 'Ready to go outside');

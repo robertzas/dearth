@@ -49,9 +49,10 @@ class DressGameState extends State<DressGame> {
     super.initState();
     _newRound();
     // The forecast can still be on its way the moment the game opens: a
-    // first pretend round becomes the real day if it arrives in time.
+    // first pretend round becomes the real day if it arrives in time, but
+    // never once she has picked something (a quick first tap was wiped).
     _after(const Duration(milliseconds: 450), () {
-      if (_round!.pretend && widget.c.weather != null) _newRound();
+      if (_round!.pretend && widget.c.weather != null && _worn.isEmpty && _tried.isEmpty) _newRound();
     });
   }
 
