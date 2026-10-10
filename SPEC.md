@@ -1246,9 +1246,10 @@ her thinking* from age 2 to 5, adapt to her level, and respect family limits.
      Creature Count — counting out a set as parts on a creature she
      dresses, then reading the numeral alone; Snack Snap — amounts at a
      glance on plates (rows, dice pips, ten-frames), flashed and covered
-     at the top level; ordinal words to fifth; five-structured numbers to
-     twenty; sharing equally with a remainder (Finger Count, Animal Race,
-     Bead Slider and Fair Share follow as they are built)
+     at the top level; Finger Count — fingers as numbers, five and some
+     more on two hands; ordinal words to fifth; five-structured numbers
+     to twenty; sharing equally with a remainder (Animal Race, Bead
+     Slider and Fair Share follow as they are built)
 
 - **FR-TOY-04 [M3]** **Adaptive difficulty:** each game tracks success rate,
   time and hints. It levels up after consistent success, eases off after
@@ -2957,6 +2958,7 @@ points, not limits.
 | Letter Creatures | 3.5+ | First sounds, letter sounds | Build-a-Creature's parts, picked by sound. A creature grows on the stage a part at a time (a "?" egg until the body comes): the pill shows the letter and the voice asks "Find a body that starts with rrr!"; three or four painted parts wait beside it, each with a key word that starts with its own sound (round, egg, pear; googly, sleepy, happy; horns, bunny ears; wings, fins; curly, spiky…). The right one goes on as the voice links sound and word ("Rrr, rrr, round!"); another says its own name ("Bunny ears!") and wiggles; two slips or a long pause light the right one. With every part on, the creature dances to Build-a-Creature's tune and says its silly name | body and eyes, three to choose from → top and legs too → arms and tail too, four to choose from | M4 |
 | Creature Count | 2.5+ | Counting out a set, reading numerals | A bare creature asks for parts ("Give it three eyes!"): a button per part adds one, each saying the new count; a tap on a part takes it off; the dance button checks — right: it dances and says "Yay! Three eyes!"; wrong: "More eyes, please!" or "Too many eyes!", and two slips show outlines where the parts go. Eyes, legs, horns and spots on Build-a-Creature's bodies | one part 1–3 with outlines → 1–5 → two parts at once → the numeral alone ("Give it this many spots!", up to nine) | M4 |
 | Snack Snap | 2.5+ | Seeing amounts at a glance | The orange monster asks for a number of treats ("Four treats, please!"); plates show amounts as rows, dice or ten-frames; she taps the plate with that many and the monster eats them; another plate wiggles and says its amount ("That's three!"), two slips light the right one. At the top the plates flash for two seconds and cover over | 1–3 in rows → dice 1–6 → ten-frames 5–10 → flashed plates | M4 |
+| Finger Count | 2.5+ | Fingers as numbers, five and some more | A big cartoon hand: "Show me three fingers!" She raises fingers (in order at first, then any; two hands for 6–10, a tap on the palm raising a whole hand: "Five! A whole hand!") and gives it a high five to check: "Three fingers!" or "More fingers!"/"Too many fingers!"; two slips outline the fingers. At the top the hand shows fingers and she picks the number | 1–5 in order → 1–5 any fingers → 6–10 on two hands → read the hands | M4 |
 
 ### Appendix C: Chores & rewards by age
 

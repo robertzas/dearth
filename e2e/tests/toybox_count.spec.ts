@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { expectCheered, expectText, openToyboxGame, tap, textOf, tid } from './helpers';
+import { expectCheered, expectText, idsUnder, openToyboxGame, tap, textOf, tid } from './helpers';
 
 // The Toybox's third set, six number games built on her longest-played
 // games (SPEC FR-TOY-03), played from what the screen shows (labels). The
@@ -31,6 +31,19 @@ test.describe('Toybox third set', () => {
     const target = (await Promise.all(plates.map(async (id) => [id, await textOf(tid(page, id))] as const))).find(([, label]) => label === wanted)![0];
     await tap(tid(page, target));
     await expectText(tid(page, 'snacksnap.ask'), /^Yum! /);
+    await expectCheered(page);
+  });
+
+  test('FR-TOY-03: Finger Count — she raises the fingers the voice asks for and gives a high five', async ({ page }) => {
+    await openToyboxGame(page, 'fingers');
+    await expectText(tid(page, 'fingers.ask'), /^Show (\d+)$/);
+    const n = Number((await textOf(tid(page, 'fingers.ask'))).match(/^Show (\d+)$/)![1]);
+    for (let i = 1; i <= n; i++) {
+      await tap(tid(page, 'fingers.palm.right'));
+      await expectText(tid(page, 'fingers.hand.right'), `Right hand: ${i} ${i === 1 ? 'finger' : 'fingers'} up`);
+    }
+    await tap(tid(page, 'fingers.done'));
+    await expectText(tid(page, 'fingers.ask'), /^Yay! /);
     await expectCheered(page);
   });
 });

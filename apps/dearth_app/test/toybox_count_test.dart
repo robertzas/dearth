@@ -1,5 +1,6 @@
 import 'package:dearth_app/core/sound.dart';
 import 'package:dearth_app/features/toybox/games/creaturecount.dart';
+import 'package:dearth_app/features/toybox/games/fingers.dart';
 import 'package:dearth_app/features/toybox/games/snacksnap.dart';
 import 'package:dearth_core/dearth_core.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -14,7 +15,11 @@ import 'support/toybox_harness.dart';
 void main() {
   for (final size in const [Size(390, 844), Size(844, 390), Size(1080, 1920), Size(1920, 1080)]) {
     testWidgets('every game of the third set lays out on a ${size.width.toInt()}×${size.height.toInt()} screen at its busiest level', (tester) async {
-      await expectGamesLayOut(tester, const [('creaturecount', 1), ('creaturecount', 3), ('creaturecount', 4), ('snacksnap', 1), ('snacksnap', 3), ('snacksnap', 4)], size: size);
+      await expectGamesLayOut(
+        tester,
+        const [('creaturecount', 1), ('creaturecount', 3), ('creaturecount', 4), ('snacksnap', 1), ('snacksnap', 3), ('snacksnap', 4), ('fingers', 1), ('fingers', 3), ('fingers', 4)],
+        size: size,
+      );
     });
   }
 
@@ -118,15 +123,28 @@ void main() {
       expect(game(tester).debugCounts.values.every((c) => c == 0), isTrue);
       expect(sound.said.where((c) => c == askClip(r)), hasLength(2));
       expect(sound.played.where((e) => e.$1 == Sfx.nope), isEmpty);
-      // One too few, twice: the outlines come on.
-      await add(tester, n - 1);
-      await tester.tap(byId('creaturecount.dance'));
-      await tester.pump(const Duration(milliseconds: 100));
-      expect(sound.said.last, ccountMoreClip(p));
-      await tester.tap(byId('creaturecount.dance'));
-      await tester.pump(const Duration(milliseconds: 100));
-      expect(game(tester).debugGuides, isTrue);
-      await add(tester, 1);
+      // One too few, twice: the outlines come on. (For a want of one,
+      // "too few" is no fingers at all — the empty creature — so it's one
+      // too many instead.)
+      if (n == 1) {
+        await add(tester, 2);
+        await tester.tap(byId('creaturecount.dance'));
+        await tester.pump(const Duration(milliseconds: 100));
+        await tester.tap(byId('creaturecount.dance'));
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(game(tester).debugGuides, isTrue);
+        await tester.tap(byId('creaturecount.part.${p.name}.1'));
+        await tester.pump(const Duration(milliseconds: 100));
+      } else {
+        await add(tester, n - 1);
+        await tester.tap(byId('creaturecount.dance'));
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(sound.said.last, ccountMoreClip(p));
+        await tester.tap(byId('creaturecount.dance'));
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(game(tester).debugGuides, isTrue);
+        await add(tester, 1);
+      }
       await tester.tap(byId('creaturecount.dance'));
       await tester.pump(const Duration(seconds: 3));
       await h.settle();
@@ -318,6 +336,161 @@ void main() {
       await tester.pump(const Duration(seconds: 3));
       await h.settle();
       expect(await toyboxRounds(h), [('snacksnap', 4, 'helped')]);
+      await tester.pump(const Duration(seconds: 12));
+      await h.shutdown();
+      handle.dispose();
+    });
+  });
+
+  group('Finger Count', () {
+    FingerGameState game(WidgetTester tester) => tester.state<FingerGameState>(find.byType(FingerGame));
+
+    /// Lets the ask (and the once-a-session high-five line) finish.
+    Future<void> intro(WidgetTester tester) async {
+      final r = game(tester).debugRound;
+      await tester.pump(const Duration(milliseconds: 700));
+      if (r.mode != FingerMode.read) {
+        await tester.pump(afterVoice(fingersShowClip(r.want)) + const Duration(milliseconds: 100));
+        await tester.pump(afterVoice(VoiceLine.fingersHighFive) + const Duration(milliseconds: 100));
+      }
+    }
+
+    testWidgets('FR-TOY-03: the voice asks; palm taps raise fingers in order and say the counts; the high five wins', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'fingers', sound: sound, level: 1);
+      final r = game(tester).debugRound;
+      expectNoFallbackText(byId('screen.game'));
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(sound.said.first, fingersShowClip(r.want));
+      expect(labelOf(tester, 'fingers.ask'), 'Show ${r.want}');
+      await tester.pump(afterVoice(fingersShowClip(r.want)) + const Duration(milliseconds: 100));
+      expect(sound.said.last, VoiceLine.fingersHighFive, reason: 'the high five is explained once a session');
+      await tester.pump(afterVoice(VoiceLine.fingersHighFive));
+      final n = r.want;
+      for (var i = 1; i <= n; i++) {
+        await tester.tap(byId('fingers.palm.right'));
+        await tester.pump(const Duration(milliseconds: 120));
+        expect(labelOf(tester, 'fingers.hand.right'), 'Right hand: $i ${i == 1 ? 'finger' : 'fingers'} up');
+      }
+      expect(labelOf(tester, 'fingers.finger.right.0'), 'Thumb, up', reason: 'the thumb counts first');
+      expect(game(tester).debugUp, n);
+      expect(sound.said.sublist(sound.said.length - n), [for (var i = 1; i <= n; i++) numberClip(i)]);
+      await tester.tap(byId('fingers.done'));
+      await tester.pump();
+      expect(labelOf(tester, 'fingers.ask'), 'Yay! $n ${n == 1 ? 'finger' : 'fingers'}');
+      expect(sound.said, contains(fingersYayClip(n)));
+      await tester.pump(const Duration(seconds: 3));
+      await h.settle();
+      expect(await toyboxRounds(h), [('fingers', 1, 'win')]);
+      await tester.pump(const Duration(seconds: 12));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('toggles say the new total; too many is a slip, then fixing it is helped', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'fingers', sound: sound, level: 2);
+      final r = game(tester).debugRound;
+      final n = r.want;
+      await intro(tester);
+      for (var i = 0; i < n; i++) {
+        await tester.tap(byId('fingers.finger.right.$i'));
+        await tester.pump(const Duration(milliseconds: 120));
+      }
+      expect(game(tester).debugUp, n);
+      // Toggling a finger down says the new total.
+      await tester.tap(byId('fingers.finger.right.0'));
+      await tester.pump(const Duration(milliseconds: 120));
+      expect(game(tester).debugUp, n - 1);
+      expect(sound.said.last, numberClip(n - 1));
+      await tester.tap(byId('fingers.finger.right.0'));
+      await tester.pump(const Duration(milliseconds: 120));
+      expect(game(tester).debugUp, n);
+      if (n < 5) {
+        // One too many, then the high five: "Too many fingers!".
+        await tester.tap(byId('fingers.finger.right.$n'));
+        await tester.pump(const Duration(milliseconds: 120));
+        expect(game(tester).debugUp, n + 1);
+        await tester.tap(byId('fingers.done'));
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(sound.said.last, VoiceLine.fingersFewer);
+        expect(sound.played.where((e) => e.$1 == Sfx.nope), hasLength(1));
+        await tester.tap(byId('fingers.finger.right.$n'));
+        await tester.pump(const Duration(milliseconds: 120));
+      } else {
+        // The full hand can only be too few: let one down first.
+        await tester.tap(byId('fingers.finger.right.0'));
+        await tester.pump(const Duration(milliseconds: 120));
+        await tester.tap(byId('fingers.done'));
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(sound.said.last, VoiceLine.fingersMore);
+        expect(sound.played.where((e) => e.$1 == Sfx.nope), hasLength(1));
+        await tester.tap(byId('fingers.finger.right.0'));
+        await tester.pump(const Duration(milliseconds: 120));
+      }
+      await tester.tap(byId('fingers.done'));
+      await tester.pump(const Duration(seconds: 3));
+      await h.settle();
+      expect(await toyboxRounds(h), [('fingers', 2, 'helped')]);
+      await tester.pump(const Duration(seconds: 12));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('the left palm raises a whole hand; the make-clip names the five and some more', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'fingers', sound: sound, level: 3);
+      final r = game(tester).debugRound;
+      expect(r.want, greaterThan(5));
+      await intro(tester);
+      await tester.tap(byId('fingers.palm.left'));
+      await tester.pump(const Duration(milliseconds: 120));
+      expect(sound.said.last, VoiceLine.fingersFive);
+      expect(game(tester).debugUp, 5);
+      expect(labelOf(tester, 'fingers.hand.left'), 'Left hand: 5 fingers up');
+      for (var i = 0; i < r.want - 5; i++) {
+        await tester.tap(byId('fingers.finger.right.$i'));
+        await tester.pump(const Duration(milliseconds: 120));
+      }
+      expect(game(tester).debugUp, r.want);
+      await tester.tap(byId('fingers.done'));
+      await tester.pump();
+      expect(labelOf(tester, 'fingers.ask'), 'Yay! ${r.want} fingers');
+      expect(sound.said, contains(fingersYayClip(r.want)));
+      await tester.pump(afterVoice(fingersYayClip(r.want)) + const Duration(milliseconds: 100));
+      expect(sound.said, contains(fingersMakeClip(r.want)), reason: 'five and some more make it');
+      await tester.pump(const Duration(seconds: 3));
+      await h.settle();
+      expect(await toyboxRounds(h), [('fingers', 3, 'win')]);
+      await tester.pump(const Duration(seconds: 12));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('reading the hand: a wrong numeral says itself, then the right one is helped', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'fingers', sound: sound, level: 4);
+      final r = game(tester).debugRound;
+      expect(r.mode, FingerMode.read);
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(sound.said.first, VoiceLine.fingersWhich);
+      expect(labelOf(tester, 'fingers.ask'), 'How many fingers?');
+      expect(game(tester).debugUp, r.want, reason: 'the hand is already up; she reads it');
+      final wrong = r.choices.where((c) => c != r.want).first;
+      await tester.tap(byId('fingers.choice.$wrong'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(sound.said.last, numberClip(wrong));
+      expect(sound.played.where((e) => e.$1 == Sfx.nope), hasLength(1));
+      await tester.tap(byId('fingers.choice.${r.want}'));
+      await tester.pump();
+      expect(labelOf(tester, 'fingers.ask'), 'Yay! ${r.want} finger${r.want == 1 ? '' : 's'}');
+      await tester.pump(const Duration(seconds: 3));
+      await h.settle();
+      expect(await toyboxRounds(h), [('fingers', 4, 'helped')]);
       await tester.pump(const Duration(seconds: 12));
       await h.shutdown();
       handle.dispose();

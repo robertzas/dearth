@@ -14,6 +14,7 @@ import 'differences.dart';
 import 'dots.dart';
 import 'dressup.dart';
 import 'farm.dart';
+import 'fingers.dart';
 import 'fishing.dart';
 import 'freeze.dart';
 import 'hear.dart';
@@ -104,4 +105,5 @@ final Map<String, GameBuilder> kGameBuilders = {
   'lettercreature': LetterCreatureGame.new,
   'creaturecount': CreatureCountGame.new,
   'snacksnap': SnackSnapGame.new,
+  'fingers': FingerGame.new,
 };

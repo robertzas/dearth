@@ -147,4 +147,55 @@ void main() {
       expect(snackResult(2, peeked: true), GameResult.miss);
     });
   });
+
+  group('FR-TOY-03 Finger Count', () {
+    test('the ladder: in order, any finger, two hands, then reading them', () {
+      for (var seed = 0; seed < 200; seed++) {
+        for (var level = 1; level <= 4; level++) {
+          final r = fingerRound(level, Random(seed));
+          switch (level) {
+            case 1:
+              expect(r.mode, FingerMode.inOrder);
+              expect(r.want, inInclusiveRange(1, 5));
+            case 2:
+              expect(r.mode, FingerMode.any);
+              expect(r.want, inInclusiveRange(1, 5));
+            case 3:
+              expect(r.mode, FingerMode.twoHands);
+              expect(r.want, inInclusiveRange(6, 10));
+              expect(r.hands, 2);
+            default:
+              expect(r.mode, FingerMode.read);
+              expect(r.want, inInclusiveRange(1, 10));
+              expect(r.hands, r.want > 5 ? 2 : 1, reason: 'two hands only for 6–10');
+              expect(r.choices, hasLength(3), reason: 'three numbers to pick from');
+              expect(r.choices.toSet().length, 3);
+              expect(r.choices, contains(r.want));
+              expect(r.choices, everyElement(inInclusiveRange(1, 10)));
+          }
+          expect(r.hands, r.want > 5 ? 2 : 1);
+        }
+      }
+    });
+
+    test('never the same want twice in a row', () {
+      for (var level = 1; level <= 4; level++) {
+        FingerRound? last;
+        for (var i = 0; i < 200; i++) {
+          final r = fingerRound(level, Random(level * 1000 + i), last: last);
+          if (last != null) {
+            expect(r.want, isNot(last.want), reason: 'level $level round $i');
+          }
+          last = r;
+        }
+      }
+    });
+
+    test('five fingers, thumb first', () {
+      expect(kFingerNames, hasLength(5));
+      expect(kFingerNames.first, 'Thumb');
+      expect(fingerResult(0), GameResult.win);
+      expect(fingerResult(2), GameResult.miss);
+    });
+  });
 }

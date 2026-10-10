@@ -181,6 +181,15 @@ String snackThatsClip(int n) => 'snack_thats_$n';
 /// Right: "Four! Yum!"
 String snackYumClip(int n) => 'snack_yum_$n';
 
+/// Finger Count: "Show me three fingers!" / "Show me one finger!"
+String fingersShowClip(int n) => 'fingers_show_$n';
+
+/// Right: "Three fingers!" / "One finger!"
+String fingersYayClip(int n) => 'fingers_yay_$n';
+
+/// 6–10: "Five and three more make eight!"
+String fingersMakeClip(int n) => 'fingers_make_$n';
+
 /// What Letter Monster wants: "I want the letter B!", "I want the letter
 /// that says buh!", or a picture's first sound ([firstSoundClip]).
 String letterMonsterAskClip(LetterMonsterRound r) => switch (r.ask) {
@@ -270,6 +279,11 @@ abstract final class VoiceLine {
   static const cookiesBell = 'cookies_bell';
   static const ccountDance = 'ccount_dance';
   static const snackLook = 'snack_look';
+  static const fingersMore = 'fingers_more';
+  static const fingersFewer = 'fingers_fewer';
+  static const fingersFive = 'fingers_five';
+  static const fingersWhich = 'fingers_which';
+  static const fingersHighFive = 'fingers_highfive';
   static const busStopAsk = 'busstop_ask';
   static const rocketBlastOff = 'rocket_blastoff';
   static const trainNext = 'train_next';
@@ -523,6 +537,19 @@ Map<String, String> _lines() {
     lines[snackYumClip(n)] = '${_cap(numberWord(n))}! Yum!';
   }
   lines[VoiceLine.snackLook] = 'Quick, look!';
+  for (var n = 1; n <= 10; n++) {
+    final fingers = '${numberWord(n)} finger${n == 1 ? '' : 's'}';
+    lines[fingersShowClip(n)] = 'Show me $fingers!';
+    lines[fingersYayClip(n)] = '${_cap(fingers)}!';
+  }
+  for (var n = 6; n <= 10; n++) {
+    lines[fingersMakeClip(n)] = 'Five and ${numberWord(n - 5)} more make ${numberWord(n)}!';
+  }
+  lines[VoiceLine.fingersMore] = 'More fingers!';
+  lines[VoiceLine.fingersFewer] = 'Too many fingers!';
+  lines[VoiceLine.fingersFive] = 'Five! A whole hand!';
+  lines[VoiceLine.fingersWhich] = 'How many fingers?';
+  lines[VoiceLine.fingersHighFive] = 'Then give me a high five!';
   for (final l in kLetterSounds) {
     lines[letterMonsterAskClip(LetterMonsterRound(LetterMonsterAsk.name, l.letter, [l.letter]))] = 'I want the letter ${l.letter}!';
     if (l.starts) lines[letterMonsterAskClip(LetterMonsterRound(LetterMonsterAsk.sound, l.letter, [l.letter]))] = 'I want the letter that says ${_sound(l)}!';
