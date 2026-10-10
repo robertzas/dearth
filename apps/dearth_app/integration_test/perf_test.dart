@@ -92,6 +92,7 @@ void main() {
 
 Future<void> _run(WidgetTester tester, {required int soakMinutes}) async {
   ensureTimeZones();
+  _only = _readOnly();
   // A fixed morning, so the night schedule never takes over mid-run.
   final now = DateTime.now();
   final db = DearthDb(NativeDatabase.memory());
@@ -205,7 +206,7 @@ Future<void> _run(WidgetTester tester, {required int soakMinutes}) async {
   await _wait(const Duration(seconds: 2));
 
   // Memory over time: destinations on a loop, memory each minute.
-  if (soakMinutes > 0) {
+  if (soakMinutes > 0 && (_only.isEmpty || _only.contains('soak'))) {
     final rss = <int>[];
     final end = DateTime.now().add(Duration(minutes: soakMinutes));
     var next = DateTime.now();
@@ -245,8 +246,21 @@ Future<void> _seedEvents(ProviderContainer c, int count) async {
 
 Future<void> _wait(Duration d) => Future<void>.delayed(d);
 
-/// Measures one scenario only (`--only` on the script), for quick probes.
-const _only = String.fromEnvironment('PERF_ONLY');
+/// The scenarios to measure, all when empty: `--only` on the script (built
+/// in), or the `debug.dearth.perf_only` property (comma-separated), which
+/// the script sets to measure a scenario again without a new build.
+Set<String> _only = const {};
+
+Set<String> _readOnly() {
+  final names = {for (final n in const String.fromEnvironment('PERF_ONLY').split(',')) if (n.isNotEmpty) n};
+  try {
+    final prop = Process.runSync('getprop', ['debug.dearth.perf_only']).stdout.toString().trim();
+    names.addAll([for (final n in prop.split(',')) if (n.trim().isNotEmpty) n.trim()]);
+  } on Object {
+    // No getprop (not Android): the built-in list only.
+  }
+  return names;
+}
 
 /// Runs [scenario] and logs its frames (build, raster and total time
 /// against the display's budget), CPU and memory.
@@ -255,7 +269,7 @@ const _only = String.fromEnvironment('PERF_ONLY');
 /// scenario runs), each frame also counts under the label it started in,
 /// reported as `parts`: frames, build p90 and total p90 per label.
 Future<void> _measure(String name, Future<void> Function() scenario, {List<(int, String)>? marks}) async {
-  if (_only.isNotEmpty && _only != name) return;
+  if (_only.isNotEmpty && !_only.contains(name)) return;
   final timings = <FrameTiming>[];
   void collect(List<FrameTiming> t) => timings.addAll(t);
   SchedulerBinding.instance.addTimingsCallback(collect);

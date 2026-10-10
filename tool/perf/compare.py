@@ -2,12 +2,17 @@
 
     compare.py RUN.jsonl BASELINE.json [--update] [--pss-kb N] [--model M]
                [--report REPORT.md] [--context CONTEXT.json]
+               [--list-slower] [--again AGAIN.jsonl]
 
 Prints each scenario against the SPEC §12.1 budgets and the baseline, and
 exits 1 when a scenario regressed. With --update the run becomes the
 baseline instead. --report also writes it all as Markdown, headed by the
 run's context (what perf_gate.sh did to the device, as {"title", "facts":
-[[label, value]], "steps": [text]}).
+[[label, value]], "steps": [text]}). --list-slower only prints the
+scenarios worse than the baseline (comma-separated) for the gate to measure
+again; --again takes that second measurement, and a scenario fails only
+when both runs are worse (Bubble Pop's random bubbles alone moved its p90
+from 33 to 42 ms between two runs of the same build).
 """
 
 import argparse
@@ -59,6 +64,8 @@ def main():
     p.add_argument("--report")
     p.add_argument("--context")
     p.add_argument("--run-failed", help="why the run didn't finish: reported, and the gate fails")
+    p.add_argument("--list-slower", action="store_true")
+    p.add_argument("--again")
     a = p.parse_args()
 
     run = {}
@@ -75,8 +82,18 @@ def main():
             print(f"Report: {a.report}")
         return 1
     pss_mb = a.pss_kb // 1024
+    again = {}
+    if a.again and pathlib.Path(a.again).exists():
+        for line in pathlib.Path(a.again).read_text().splitlines():
+            if line.strip():
+                r = json.loads(line)
+                again[r["name"]] = r
 
     base_path = pathlib.Path(a.baseline)
+    if a.list_slower:
+        base = json.loads(base_path.read_text())["scenarios"] if base_path.exists() else {}
+        print(",".join(n for n, r in run.items() if n in base and regressions(n, r, base[n])))
+        return 0
     if a.update:
         base_path.parent.mkdir(parents=True, exist_ok=True)
         base_path.write_text(json.dumps({
@@ -105,6 +122,14 @@ def main():
         worse = None
         if name in base and not a.update:
             worse = regressions(name, r, base[name])
+            if worse and name in again:
+                second = regressions(name, again[name], base[name])
+                if second:
+                    worse = [f"{w} (and {s} measured again)" for w, s in zip(worse, second)] + second[len(worse):]
+                else:
+                    print(f"{'':<14} ~ worse once ({', '.join(worse)}), not when measured again (total p90 {again[name]['totalP90']:.1f} ms): noise")
+                    r["again"] = again[name]
+                    worse = []
             if worse:
                 failed.append(name)
                 print(f"{'':<14} ✗ worse than the baseline: {', '.join(worse)}")
@@ -150,6 +175,8 @@ def write_report(path, a, rows, base, pss_mb, verdict):
         b = base.get(name, {})
         was = f" ({b['totalP90']:.1f})" if "totalP90" in b else ""
         result = "✗ " + ", ".join(worse) if worse else ("no baseline" if worse is None and not a.update else "✓")
+        if not worse and "again" in r:
+            result = f"✓ (worse once, total p90 {r['totalP90']:.1f}; measured again {r['again']['totalP90']:.1f}: noise)"
         if budget:
             result += f"; over budget: {', '.join(budget)}"
         md.append(f"| {name} | {r['fps']} | {r['buildP90']:.1f} | {r['rasterP90']:.1f} | {r['totalP90']:.1f}{was} | {r['jankPct']:.1f} | {r['over50']} | {r.get('cpuPct', '-')} | {r['rssMb']} | {result} |")

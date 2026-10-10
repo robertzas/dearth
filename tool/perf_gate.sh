@@ -23,6 +23,8 @@
 #   5. Puts the installed Dearth back, even when the run fails, and a reset
 #      display rejoins its Hub as the same device (its settings are on the
 #      Hub) and gets FreeKiosk's key again; the gate waits until it syncs.
+#      A scenario that comes out slower than the baseline is measured once
+#      more, right away; it fails only if it's slower both times.
 #   6. Writes the report (Markdown, beside the logs) and prints its path.
 #
 # A scenario fails when its p90 frame, build or raster time grows by more
@@ -40,6 +42,7 @@
 #                      week_paging, month_open, toybox_scroll, bubbles, paint,
 #                      screensaver); a probe, never a baseline.
 #   --no-reset         Measure over the display's data, joined or not.
+#   --reboot           Reboot the display and let it settle before measuring.
 #   --no-build         Reuse the last profile APK.
 #   --keep             Leave the profile build installed (to look around); a
 #                      reset display stays unpaired until the next run.
@@ -53,16 +56,17 @@ APP=app.dearth
 CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/dearth/perf"
 CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/dearth"
 
-DEVICE="" UPDATE=0 SOAK=0 BUILD=1 KEEP=0 ONLY="" RESET_OK=1
+DEVICE="" UPDATE=0 SOAK=0 BUILD=1 KEEP=0 ONLY="" RESET_OK=1 REBOOT=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --update-baseline) UPDATE=1 ;;
     --soak) SOAK="${2:?--soak needs minutes}"; shift ;;
     --only) ONLY="${2:?--only needs a scenario}"; shift ;;
     --no-reset) RESET_OK=0 ;;
+    --reboot) REBOOT=1 ;;
     --no-build) BUILD=0 ;;
     --keep) KEEP=1 ;;
-    -h | --help) sed -n '2,50p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h | --help) awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"; exit 0 ;;
     -*) echo "unknown option $1" >&2; exit 2 ;;
     *) DEVICE="$1" ;;
   esac
@@ -122,7 +126,7 @@ ask() { # ask <what> <seconds> [am start extras…]
 }
 
 # 6. The report, at the end or as soon as something fails.
-RAN=ok RESET=0 SWAPPED=0 REJOINED="not needed" RESTORED="not needed" PSS="" COMMIT="" DIRTY=""
+RAN=ok AGAIN="" RESET=0 SWAPPED=0 REJOINED="not needed" RESTORED="not needed" PSS="" COMMIT="" DIRTY=""
 finish() {
   case "$MODE" in
     hub) WAS="joined to the Hub at $HUB as \"$DEVICE_NAME\"" ;;
@@ -151,6 +155,7 @@ PY
   args=("$RUN.jsonl" "$BASELINE" --pss-kb "${PSS:-0}" --model "$MODEL" --report "$RUN.md" --context "$RUN.context.json")
   [ $UPDATE = 0 ] || [ "$RAN" != ok ] || args+=(--update)
   [ "$RAN" = ok ] || args+=(--run-failed "$RAN")
+  [ -z "$AGAIN" ] || args+=(--again "$AGAIN")
   status=0
   python3 -I "$ROOT/tool/perf/compare.py" "${args[@]}" || status=1
   # The display not put back matters more than any number.
@@ -164,7 +169,9 @@ fail() {
   RAN="$*"
   echo "✗ $RAN" >&2
   step "Stopped: $RAN."
-  if declare -F put_back >/dev/null && [ $SWAPPED = 1 ]; then
+  # Back as it was: the saved Dearth if the scenarios went in, the Hub if
+  # the display was reset.
+  if declare -F put_back >/dev/null && { [ $SWAPPED = 1 ] || [ $RESET = 1 ]; }; then
     put_back
     step "Put the installed Dearth back: $RESTORED."
     [ $RESET = 0 ] || step "Rejoined the Hub: $REJOINED."
@@ -172,7 +179,9 @@ fail() {
   finish
 }
 
-# 1. What the display is.
+# 1. What the display is. (A leftover scenario filter from a run that died
+# would quietly skip scenarios.)
+sh_ setprop debug.dearth.perf_only "''" >/dev/null
 INSTALLED=$(sh_ dumpsys package "$APP" | sed -n 's/^ *versionName=//p' | head -n 1)
 SESSION="" MODE=unknown HUB="" DEVICE_ID="" DEVICE_NAME=""
 if [ -n "$INSTALLED" ]; then
@@ -287,6 +296,31 @@ put_back() {
 }
 trap 'put_back; [ ! -f "$RUN.rejoin" ] || echo "The display is still unpaired. Its rejoin code is in $RUN.rejoin (Hub, code): adb -s $SERIAL shell am start -n $APP/.MainActivity --es dearth_hub <Hub> --es dearth_enroll <code>" >&2' EXIT
 
+# --reboot: a fresh boot first. (Not the default: navigate swung between
+# ~95 and ~160 ms on the JT215M with or without one, see PROGRESS
+# 2026-10-10.) ADB over the network drops with the reboot, and so do its
+# reverse ports (a test Hub reached through one): both come back.
+if [ $REBOOT = 1 ]; then
+  up=$(sh_ cat /proc/uptime | cut -d. -f1)
+  reverses=$(adb_ reverse --list 2>/dev/null | awk '{print $2, $3}')
+  say "  rebooting the display (up $((${up:-0} / 3600)) h)…"
+  adb_ reboot >/dev/null 2>&1 || true
+  sleep 20
+  booted=0
+  for _ in $(seq 1 60); do
+    adb connect "$SERIAL" >/dev/null 2>&1 || true
+    [ "$(sh_ getprop sys.boot_completed)" = 1 ] && { booted=1; break; }
+    sleep 5
+  done
+  [ $booted = 1 ] || fail "the display didn't come back within five minutes of the reboot"
+  while read -r remote local; do
+    [ -z "$remote" ] || adb_ reverse "$remote" "$local" >/dev/null 2>&1 || true
+  done <<<"$reverses"
+  # Boot work (FreeKiosk, the media scanner, Dearth's own start) settles.
+  sleep 90
+  step "Rebooted the display (it had been up $((${up:-0} / 3600)) h) and let it settle for 90 s."
+fi
+
 # 4. The scenarios. Results come as `PERF_RESULT {json}` lines on the
 # flutter tag.
 adb_ logcat -c
@@ -313,6 +347,37 @@ elif ! grep -q "^PERF_DONE" "$RUN.log"; then
   RAN="no result within the time limit (log: $RUN.log)"
 fi
 step "Ran $(grep -c . "$RUN.jsonl" || echo 0) scenarios$([ "$SOAK" = 0 ] || printf ' and a %s-minute soak' "$SOAK"); $([ "$RAN" = ok ] && echo "all finished" || echo "$RAN")."
+
+# A scenario slower than the baseline gets a second measurement before it
+# fails the gate: the scenarios read which to run from a property, so the
+# installed build runs again without a new one.
+if [ "$RAN" = ok ] && [ $UPDATE = 0 ] && [ -f "$BASELINE" ]; then
+  slower=$(python3 -I "$ROOT/tool/perf/compare.py" "$RUN.jsonl" "$BASELINE" --list-slower)
+  if [ -n "$slower" ]; then
+    say "  measuring again: $slower…"
+    sh_ setprop debug.dearth.perf_only "$slower"
+    adb_ logcat -c
+    adb -s "$SERIAL" logcat -v raw -s flutter >"$RUN.again.log" 2>/dev/null &
+    LOGCAT_PID=$!
+    adb_ shell am force-stop "$APP" >/dev/null 2>&1 || true
+    adb_ shell am start -n "$APP/.MainActivity" >/dev/null 2>&1 || true
+    deadline=$((SECONDS + 600))
+    while [ $SECONDS -lt $deadline ]; do
+      grep -q "^PERF_DONE\|^PERF_FAILED" "$RUN.again.log" && break
+      sleep 5
+    done
+    kill "$LOGCAT_PID" 2>/dev/null || true
+    LOGCAT_PID=""
+    sh_ setprop debug.dearth.perf_only "''" >/dev/null
+    grep "^PERF_RESULT " "$RUN.again.log" | sed 's/^PERF_RESULT //' >"$RUN.again.jsonl" || true
+    if grep -q . "$RUN.again.jsonl"; then
+      AGAIN="$RUN.again.jsonl"
+      step "Measured again what came out slower than the baseline ($slower)."
+    else
+      step "Couldn't measure $slower again (log: $RUN.again.log); the first run stands."
+    fi
+  fi
+fi
 
 say "  putting the display back…"
 put_back

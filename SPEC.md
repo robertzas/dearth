@@ -2067,8 +2067,15 @@ numbers refer to the JT215M (T1) in **profile** builds unless noted.
   gets FreeKiosk's key again, and the gate waits until it syncs live.
   Solo and Toybox-only displays hold the only copy of their data and demo
   displays have nothing to lose: they're never reset (`--no-reset` skips
-  it for any display). Exit codes: 0 passed, 1 slower or failed, 3 the
-  display couldn't be put back.
+  it for any display). `--reboot` boots the display fresh and lets it
+  settle 90 s first. A scenario slower than the
+  baseline is **measured again** at once (the profile build reads the
+  `debug.dearth.perf_only` property, so no rebuild) and fails only when
+  it's slower both times: Bubble Pop's random bubbles moved its p90 from
+  33 to 42 ms between two runs of one build, and on the JT215M navigate's
+  build p90 swings between ~95 and ~160 ms run to run (same build, same
+  boot), sometimes for minutes at a time. Exit codes: 0 passed, 1
+  slower or failed, 3 the display couldn't be put back.
   **Release builds for displays require a green perf gate on the frame.**
 
   | Scenario | Measures |
