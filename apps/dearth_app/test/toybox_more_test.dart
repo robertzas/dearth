@@ -714,13 +714,17 @@ void main() {
       await pickRight(tester);
       expect(sound.said.last, letterCreatureYesClip(CreaturePart.body, r.steps[0].answer));
       expect(game(tester).debugStep, 1);
-      await tester.pump(const Duration(seconds: 3));
+      // The next part is asked once the yes-line has finished: wait for the
+      // clip's own length, not a guess (a slower voice moves it).
+      await tester.pump(afterVoice(letterCreatureYesClip(CreaturePart.body, r.steps[0].answer)) + const Duration(milliseconds: 300));
       expect(sound.said.last, letterCreatureAskClip(r.steps[1]));
       expect(labelOf(tester, 'lettercreature.ask'), 'Find eyes: ${r.steps[1].letter}');
       await pickRight(tester);
       expect(game(tester).debugDone, isTrue);
       expect(labelOf(tester, 'lettercreature.ask'), "I'm a ${r.creature.name}");
-      await tester.pump(const Duration(seconds: 3));
+      // The creature's name is said once the yes-line has finished: wait for
+      // the clip's own length, not a guess (a slower voice moves it).
+      await tester.pump(afterVoice(letterCreatureYesClip(CreaturePart.face, r.steps[1].answer)) + const Duration(milliseconds: 300));
       expect(sound.said.last, creatureClip(r.creature));
       expect(sound.played.where((p) => p.$1 == Sfx.xylophone), isNotEmpty, reason: 'it dances to a tune');
       await h.settle();

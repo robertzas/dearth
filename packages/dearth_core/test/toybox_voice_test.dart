@@ -328,7 +328,9 @@ void main() {
     test('every line has a measured clip, so a game can let it finish', () {
       // A new or renamed line needs tool/sounds/voice.py, which measures it.
       expect(kVoiceMs.keys.toSet(), kVoiceLines.keys.toSet());
-      expect(kVoiceMs.values.every((ms) => ms > 150 && ms < 10000), isTrue);
+      // Ceiling = runaway-generation guard, not a pace limit: the counting
+      // lines (count_10) run ~11 s at the teacher's unhurried pace.
+      expect(kVoiceMs.values.every((ms) => ms > 150 && ms < 15000), isTrue);
       expect(afterVoice(letterClip('V')), greaterThan(Duration(milliseconds: kVoiceMs[letterClip('V')]!)));
       expect(afterVoice(numberClip(1), atLeast: const Duration(seconds: 2)), const Duration(seconds: 2));
     });
