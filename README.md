@@ -473,11 +473,11 @@ each one links back to its page.
 The Toybox's farm animals are recordings by Joseph Sardin from
 [BigSoundBank.com](https://bigsoundbank.com), released under CC0
 (`tool/sounds/animals.py` rebuilds them). Its voice is
-[Piper](https://github.com/rhasspy/piper) (MIT) speaking with the voice it
-trained on the [LJ Speech](https://keithito.com/LJ-Speech-Dataset/)
-dataset, which is in the public domain; `tool/sounds/voice.py` makes the
-clips from the lines in `dearth_core`. Every other sound is synthesized in
-the app.
+[Maya-1](https://huggingface.co/maya-research/maya1) (Apache-2.0), a
+text-to-speech model whose voice is *designed* in words (a warm preschool
+teacher) rather than cloned from a real person; `tool/sounds/voice.py`
+makes the clips from the lines in `dearth_core`. Every other sound is
+synthesized in the app.
 
 ## License
 

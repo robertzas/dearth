@@ -1,12 +1,14 @@
 # The Toybox voice
 
-The kitchen frame has no text-to-speech engine (SPEC §6), so everything
-the Toybox says is a clip made offline and bundled with the app: Piper
-(MIT) speaking with its `en_US-ljspeech-high` voice, trained on the
-public-domain LJ Speech dataset (FR-TOY-07). You can't hear the clips, so
-correctness comes from three things: lines written in a way Piper reads
-reliably, a check of the phonemes espeak produces, and the owner listening
-on the frame.
+The kitchen frame has no text-to-speech engine (SPEC §6), so everything the
+Toybox says is a clip made offline and bundled with the app: **Maya-1**
+(Apache-2.0, maya-research/maya1) — a text-to-speech model whose voice is
+*designed* in a written description (in `tool/sounds/voice.py`: a warm,
+sunny preschool teacher with slow, clear, sing-song diction). It is an
+original voice, not a clone of a real person. You can't hear the clips you
+make, so correctness comes from three things: lines written in a way the
+model reads reliably, `scripts/preview.py --say` to make and listen to a
+clip before it ships, and the owner listening on the frame.
 
 ## How it fits together
 
@@ -18,12 +20,12 @@ on the frame.
    constants.
 2. `packages/dearth_core/tool/voice_lines.dart` prints `kVoiceLines` as
    JSON.
-3. `tool/sounds/voice.py` speaks every new or changed line with Piper,
-   trims it, levels it (−18 dBFS RMS, like the animal sounds) and writes
-   `apps/dearth_app/assets/voice/<id>.mp3` (MP3, 40 kbps, mono, ~10 KB a
-   clip). `tool/sounds/voice_index.json` remembers a hash of each clip's
-   phonemes and settings, so unchanged lines are kept, and clips no line
-   needs any more are deleted.
+3. `tool/sounds/voice.py` speaks every new or changed line with Maya1,
+   trims it, levels it (−16 dBFS RMS, above the effects) and writes
+   `apps/dearth_app/assets/voice/<id>.mp3` (MP3, 48 kbps, mono).
+   `tool/sounds/voice_index.json` remembers a hash of each clip's final
+   text and settings, so unchanged lines are kept, and clips no line needs
+   any more are deleted.
 4. The game calls `c.say(id)`. One voice plays at a time: a new clip stops
    the one before.
 
@@ -32,73 +34,68 @@ on the frame.
 - **Reuse first.** Numbers ("Three."), counting ("One, two, three."),
   letter names ("B."), "Find the letter B.", letter sounds ("B. Buh, buh,
   ball."), picture words ("Zebra."), colors ("Purple!") already exist.
-- **Counting things on screen: one number clip per thing.** Pop each
-  thing with its own `numberClip(i)`, a beat (~1.3 s) apart. A single
-  "One, two, three." clip runs ahead of the things appearing (Number
-  Tracing did, on the frame).
+- **Counting things on screen: one number clip per thing.** Pop each thing
+  with its own `numberClip(i)`, a beat (~1.3 s) apart. A single "One, two,
+  three." clip runs ahead of the things appearing.
 - **Let a line finish.** A new clip stops the one before, so a timer that
-  starts the next line waits `afterVoice(clip)` (the clip's measured
-  length plus a breath; `atLeast:` for a floor). Never guess a clip's
-  length: they grow when the voice settings change.
+  starts the next line waits `afterVoice(clip)` (the clip's measured length
+  plus a breath; `atLeast:` for a floor). Never guess a clip's length: they
+  change when the voice settings change.
 - **Short and warm**: one idea, 1–3 seconds, words a 3-year-old knows.
   "Find the letter B." "It's a star!" "Let's make a silly creature!"
-- **Write full sentences with punctuation.** Piper takes its intonation
-  from it: a period falls, an exclamation lifts, commas pause.
+- **Write full sentences with punctuation.** Maya1 takes its intonation
+  from it: a period falls, an exclamation lifts, commas pause. Expressive
+  tags (`<laugh>`, `<giggle>`, `<whisper>`…) exist in the model but are not
+  used in the lines; the voice description carries the register.
 - **Ids are file names**: `[a-z0-9_]+`, prefixed by the game or kind
   (`creature_body_2`, `breathe_in`). Build them with `voiceSlug()` from
   words.
 - **Numbers as words** for anything spoken ("Find the number seven.");
   digits work but words are unambiguous.
 
-## Phonemes, and the traps
+## [[ ]] spans and respelling
 
-Text inside `[[ ]]` is in the voice's own phonemes (espeak's IPA, the way
-Piper reads it) and passes through untouched. Use it when spelling can't
-say what you mean:
+Text inside `[[ ]]` is a sound spelled in espeak-style IPA — a letter sound
+that no spelling gives reliably ("buh", a short "a"). Maya1 doesn't read
+IPA, so `voice.py`'s `RESPELL` table turns each span into the spelling it
+says right and **the build fails on a span with no entry** — add one there
+when you invent a new sound. A span that only fixed the old voice's British
+phonemes ("zebra", "tomato", "banana", "one", a mid-sentence "A") is
+already respelled to its plain word: this voice says those American-style
+on its own.
 
-- **Letter sounds**: no spelling gives "buh" or a short "a". Consonants
-  are written with a short "uh" (`[[bˈʌ]]`): alone, the voice slips a
-  vowel in front ("sss" comes out "ess"). Short vowels alone are fine
-  (`[[ˈa]]`). See `kLetterSounds` in `words.dart`.
-- **The letter A** in the middle of a sentence is read as the article:
-  "Start at A." comes out "start at uh". Write `[[ˈeɪ]]`. ("A." alone and
-  "the letter A" are fine.)
-- **British words.** This voice was trained on espeak's English phonemes,
-  which are British. Accents don't matter: the model maps those symbols to
-  LJ's American speech. But where British English uses *a different word
-  or different sounds*, the voice follows the phonemes: the letter Z comes
-  out "zed", a zebra "zebb-ra", a tomato "to-mah-to", a banana
-  "ba-nah-na", and "one" rhymes with "on". Write those in phonemes with American sounds in espeak's
-  symbols: Z `[[zˈiː]]`, zebra `[[zˈiːbɹə]]`, tomato `[[təmˈeɪtəʊ]]`,
-  banana `[[bɐnˈanə]]`, one `[[wˈʌn]]`. They live in `_american` in
-  `voice.dart`, applied to every line in either case.
+- **Letter sounds**: consonants as sound + "uh" (`[[bˈʌ]]` → "buh",
+  `[[ʃˈʌ]]` → "shuh"); alone, the model slips a vowel in front of a bare
+  "sss". Short vowels use auditioned spellings (`[[ˈɛ]]` → "eh") — when a
+  new one is needed, audition two or three spellings with `--say` and keep
+  the one that sounds like the letter's sound.
+- **A letter name in a sentence** is just the capital letter: "Start at
+  [[ˈeɪ]]." → "Start at A."
 
 Check every new line before making clips:
 
 ```bash
-python3 skills/toybox-game/scripts/phonemes.py "Find the number seven." "It's a zebra!"
-python3 skills/toybox-game/scripts/phonemes.py --ids creature_   # every line whose id starts with creature_
+python3 skills/toybox-game/scripts/preview.py "Find the letter Z." "One, two, three!"
+python3 skills/toybox-game/scripts/preview.py --say letter_b          # writes the clip to /tmp/kilo/voice-preview/
+python3 skills/toybox-game/scripts/preview.py --ids creature_         # every line whose id starts with creature_
 ```
-
-It prints espeak's English phonemes (what the voice gets) and American
-English for comparison. Ignore systematic symbol differences (`ɒ`/`ɑː`,
-`əʊ`/`oʊ`, `ə`/`ɚ`, `a`/`æ`, `t`/`ɾ`, a missing `ɹ` after vowels); look for
-a different word or a different stressed vowel, as in `zˈɛd` / `zˈiː`.
 
 ## Making clips
 
 ```bash
 python3 tool/sounds/voice.py                 # new and changed lines only
-python3 tool/sounds/voice.py letter_b find_b # remake these clips
+python3 tool/sounds/voice.py letter_b find_b # remake these clips (and all stale ones)
+python3 tool/sounds/voice.py --just letter_b # audition: ONLY the named clips
 ```
 
-The first run downloads Piper and the voice to `~/.cache/dearth/piper`.
-It needs `dart`, `curl`, `tar`, `ffmpeg` (with libmp3lame) and Python's
-`numpy`. It prints each clip it makes, with its length and words; a clip
-much longer or shorter than its words suggest is worth a second look.
-
-**Don't run `--all`.** Piper speaks a little differently every run, so it
-would change every clip the owner has already listened to and approved.
+The first run builds `~/.cache/dearth/venv-voice` and downloads the model
+(~7 GB, Hugging Face cache). It needs `dart`, `curl`, `uv`, `ffmpeg` (with
+libmp3lame) and an NVIDIA GPU (Maya1 is 3.3 B parameters; a full corpus
+rebuild is a few hours, line changes are seconds each). It prints each clip
+it makes with its length and words; a clip flagged "long for its words"
+looped instead of ending — listen to it, and remake it or shorten the line.
+`DEARTH_VOICE_DESC` swaps the voice description for experiments. You'd only
+want `--all` after a voice change on purpose.
 
 ## The guards
 

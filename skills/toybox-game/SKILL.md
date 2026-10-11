@@ -3,10 +3,10 @@ name: toybox-game
 description: >-
   How to add or rework a game in Dearth's Toybox, the games for kids aged
   2–5 that run on a family wall display, and make it genuinely great:
-  pre-reader design, adaptive levels, code-drawn art, bundled Piper voice
-  clips, the game host, speed on a weak 32-bit frame, unit, widget, layout
-  and end-to-end tests, docs, gate, commit and deploy. Use it whenever
-  someone asks to build, finish, add, polish, fix or test a Toybox game,
+  pre-reader design, adaptive levels, code-drawn art, bundled voice clips
+  (Maya-1 teacher voice), the game host, speed on a weak 32-bit frame,
+  unit, widget, layout and end-to-end tests, docs, gate, commit and
+  deploy. Use it whenever someone asks to build, finish, add, polish, fix or test a Toybox game,
   or one of the games planned in SPEC FR-TOY-03 / Appendix B (Dot-to-Dot,
   Big & Little Letters, Frog Hop, Word Builder, Freeze Dance, Music
   Sequencer, Weather Dress-Up, Who's That?, Story Time…), adds voice lines
@@ -97,14 +97,16 @@ Templates: `references/anatomy.md`.
 
 ## Step 3: Voice
 
-Every line is a clip made offline by Piper and bundled; games ask for
-clips by id. Add the id functions and lines in `toybox/voice.dart`, check
-pronunciations, run `python3 tool/sounds/voice.py` (incremental: it makes
-only new or changed lines), and update the two guard tests. Piper has
-traps (an "A" read as the article, "zed" for Z, consonants that grow a
-vowel), so read `references/voice.md` before writing lines, and use
-`scripts/phonemes.py` to check them. You can't hear the clips; list the
-new ones for the owner to listen to on the frame.
+Every line is a clip made offline by Maya-1 (a voice *designed* in words,
+no person cloned) and bundled; games ask for clips by id. Add the id
+functions and lines in `toybox/voice.dart`, check how they read
+(`scripts/preview.py`, with `--say` to hear one), run `python3
+tool/sounds/voice.py` (incremental: it makes only new or changed lines),
+and update the two guard tests. `[[ ]]` spans (letter sounds like "buh")
+pass through the `RESPELL` table in `voice.py`, which fails the build on an
+unknown span — read `references/voice.md` before writing lines. You can't
+hear the clips as you work; list the new ones for the owner to listen to
+on the frame.
 
 ## Step 4: The playfield (`apps/dearth_app/lib/features/toybox/games/`)
 
@@ -279,21 +281,23 @@ phone-size layout tests had been looking at the launcher, not the game.
   every emoji the Toybox shows; add new picture lists to it.
 - **Riverpod in games**: don't read providers from a game; everything comes
   through `GameController`. No `DateTime.now()` (AGENTS rule 6).
-- **Piper is random on every run**, so `voice.py --all` changes every clip
-  the owner already approved. Remake only what you changed.
+- **Regenerating everything makes every clip anew** (a fresh model run
+  re-reads even unchanged-sounding words), so `voice.py --all` changes
+  clips the owner already approved. Remake only what you changed; the
+  index does that for you.
 
 ## Reference files
 
 - `references/anatomy.md`: file map, the `GameController` and widget
   APIs, sound effects, and code templates (core rules, game widget,
   widget test, E2E journey), with existing games grouped by mechanic.
-- `references/voice.md`: voice lines, Piper and phonemes, pronunciation
-  checks, making clips, the guard tests.
+- `references/voice.md`: voice lines, [[ ]] spans and respelling,
+  pronunciation checks, making clips, the guard tests.
 - `references/checklist.md`: the review checklist to run before
   committing.
 - `scripts/check_game.py <id>`: checks that a game is wired in everywhere
   (catalog, registry, tests, E2E, docs, clips).
-- `scripts/phonemes.py "line" …` or `--ids <prefix>`: shows how the voice
-  will read lines, British and American side by side.
+- `scripts/preview.py "line" …` or `--ids <prefix>`: shows the text the
+  voice synthesizes (spans respelled); `--say` makes the clip to hear it.
 - `scripts/shots_test.dart.tmpl`: the PNG render test for the visual
   review (copy it into the app's tests; delete it after).

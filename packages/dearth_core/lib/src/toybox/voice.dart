@@ -28,15 +28,18 @@ import 'zoo.dart';
 
 // What the Toybox says (SPEC FR-TOY-03). The kitchen frame has no
 // text-to-speech, so every line is a clip bundled with the app
-// (assets/voice/<id>.mp3), made offline by tool/sounds/voice.py with Piper
-// and its public-domain LJSpeech voice. The games ask for clips by the ids
-// built here, and the generator reads [kVoiceLines] (through
+// (assets/voice/<id>.mp3), made offline by tool/sounds/voice.py with
+// Maya-1 (an Apache-2.0 TTS whose voice is designed in words — a warm
+// preschool teacher — not cloned from anyone). The games ask for clips by
+// the ids built here, and the generator reads [kVoiceLines] (through
 // packages/dearth_core/tool/voice_lines.dart), so the two can't disagree.
 
-/// Text inside [[ ]] is in the voice's own phonemes (espeak's IPA, as
-/// Piper reads it): the letter sounds, which no spelling gives ("buh", a
-/// short "a"). Consonants are said with a short "uh": alone, the voice
-/// slips a vowel in front of them ("sss" comes out "ess").
+/// Text inside [[ ]] is a sound that no spelling gives, written in
+/// espeak-style IPA (the letter sounds: "buh", a short "a"). The clip
+/// builder's RESPELL table turns each span into a spelling the voice says
+/// right and fails the build on one it doesn't know. Consonants are said
+/// with a short "uh": alone, a TTS voice slips a vowel in front of them
+/// ("sss" comes out "ess").
 String _sound(LetterSound l) => '[[${l.sound}]]';
 
 String _cap(String s) => s[0].toUpperCase() + s.substring(1);

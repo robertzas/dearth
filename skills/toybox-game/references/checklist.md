@@ -36,8 +36,9 @@ without it.
 
 - [ ] New lines reuse existing clips where they can, and are short and
       warm.
-- [ ] Checked with `scripts/phonemes.py`: no "zed", no article "a" for
-      the letter A, no British words, letter sounds in `[[ ]]`.
+- [ ] Checked with `scripts/preview.py` (respelled text; `--say` to hear
+      tricky ones): letter sounds in `[[ ]]` with a `RESPELL` entry, no
+      invented word the table can't say.
 - [ ] Clips made with `voice.py` (not `--all`); both voice guards pass;
       clips are LFS; the new clip ids are listed in the report.
 
