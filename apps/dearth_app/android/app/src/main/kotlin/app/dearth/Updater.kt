@@ -93,3 +93,25 @@ class UpdateStatus : BroadcastReceiver() {
         }
     }
 }
+
+/**
+ * Brings Dearth back after an update replaced it. A silent install runs
+ * `pm install` through the device's own adbd, which stops this app to
+ * replace it and with it the shell that would have started it again (adbd
+ * ends a shell's whole process group with it, so nothing can be left
+ * running behind it). Android sends this to the new version. Starting an
+ * activity from the background needs "display over other apps", which
+ * tool/deploy_frame.sh grants on frames; elsewhere it's refused, and the
+ * person opens Dearth from Android's installer as usual.
+ */
+class Relaunch : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action != Intent.ACTION_MY_PACKAGE_REPLACED) return
+        try {
+            context.startActivity(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            Log.i(Updater.TAG, "updated: started again")
+        } catch (e: Exception) {
+            Log.w(Updater.TAG, "updated, but not allowed to start from the background: ${e.message}")
+        }
+    }
+}

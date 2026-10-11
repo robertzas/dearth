@@ -88,11 +88,8 @@ class UpdateState {
 class AppUpdater extends Notifier<UpdateState> {
   static const _checkEvery = Duration(hours: 4);
 
-  /// Long enough for pm to replace the app and `am start` to bring it back.
+  /// Long enough for pm to replace the app and the new version to start.
   static const _installGrace = Duration(minutes: 5);
-
-  /// Where the silent install writes pm's answer, read back if it failed.
-  static const _installLog = '/data/local/tmp/dearth-update.log';
 
   String? _abi;
   Timer? _tick;
@@ -261,7 +258,8 @@ class AppUpdater extends Notifier<UpdateState> {
   /// Downloads and installs the latest release: a grown-up's Install, or a
   /// display updating itself ([auto]), which checks again after the
   /// download that it still may. Silently, pm replaces the running app and
-  /// `am start` brings the new one back; elsewhere Android asks first.
+  /// the new one starts itself (Relaunch in Updater.kt); elsewhere Android
+  /// asks first.
   Future<void> install({bool auto = false}) async {
     final r = state.latest;
     if (r == null || _busy) return;
@@ -278,10 +276,18 @@ class AppUpdater extends Notifier<UpdateState> {
       if (state.silent) {
         state = state.copyWith(phase: UpdatePhase.installing, error: null);
         await _saveAttempt(r.version);
+        // pm stops this app to replace it, so a successful install
+        // usually never answers here: the new version starts by itself
+        // (Relaunch in Updater.kt). An answer means pm refused it.
+        final String answer;
         try {
-          await LocalAdb().shell(silentInstallCommand(file.path, file.lengthSync()));
+          answer = await LocalAdb().shell(silentInstallCommand(file.path, file.lengthSync()), timeout: _installGrace);
         } on AdbException catch (e) {
           await _failedToInstall(r.version, '$e');
+          return;
+        }
+        if (!answer.contains('Success')) {
+          await _failedToInstall(r.version, answer.trim().isEmpty ? 'pm said nothing' : answer.trim().split('\n').last);
           return;
         }
         // Still running after the grace period: pm didn't replace us.
@@ -302,11 +308,11 @@ class AppUpdater extends Notifier<UpdateState> {
     }
   }
 
-  /// The shell command that installs [apk] and starts the new app. It runs
-  /// on under nohup after adbd's shell returns, because pm stops this app
-  /// (and so this connection) to replace it.
-  static String silentInstallCommand(String apk, int size) =>
-      "nohup sh -c 'cat $apk | pm install -r -S $size > $_installLog 2>&1; am start -n app.dearth/.MainActivity' > /dev/null 2>&1 &";
+  /// The shell command that installs [apk]. It runs in the foreground:
+  /// adbd kills everything a shell started when it ends (nohup and setsid
+  /// included, tried on the frame), and pm hands the install to the
+  /// system before it stops this app, so the install finishes either way.
+  static String silentInstallCommand(String apk, int size) => "cat '$apk' | pm install -r -S $size 2>&1";
 
   Future<File> _attemptFile() async => File(p.join((await getApplicationSupportDirectory()).path, 'update.json'));
 
@@ -343,14 +349,7 @@ class AppUpdater extends Notifier<UpdateState> {
       if (dir.existsSync()) await dir.delete(recursive: true);
       return;
     }
-    var why = 'Android didn’t install it.';
-    try {
-      final log = (await LocalAdb().shell('cat $_installLog', timeout: const Duration(seconds: 5))).trim();
-      if (log.isNotEmpty) why = log.split('\n').last;
-    } on AdbException {
-      // The reason stays unknown.
-    }
-    await _failedToInstall(attempt, why);
+    await _failedToInstall(attempt, 'Android didn’t install it');
   }
 
   Future<void> _failedToInstall(AppVersion version, String why) async {

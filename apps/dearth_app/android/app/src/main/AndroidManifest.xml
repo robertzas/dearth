@@ -44,6 +44,11 @@
             </intent-filter>
         </receiver>
         <receiver android:name=".UpdateStatus" android:exported="false"/>
+        <receiver android:name=".Relaunch" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+            </intent-filter>
+        </receiver>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

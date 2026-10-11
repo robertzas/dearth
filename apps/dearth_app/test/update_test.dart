@@ -85,12 +85,10 @@ void main() {
       expect(s.copyWith(progress: 0.5).copyWith(phase: UpdatePhase.ready, progress: null).progress, isNull);
     });
 
-    test('the silent install runs on after adbd returns and starts the new app', () {
+    test('the silent install runs pm in the foreground, so its refusal comes back', () {
       final cmd = AppUpdater.silentInstallCommand('/data/user/0/app.dearth/cache/updates/dearth-0.1.97.apk', 47129906);
-      expect(cmd, startsWith('nohup sh -c '));
-      expect(cmd, contains('cat /data/user/0/app.dearth/cache/updates/dearth-0.1.97.apk | pm install -r -S 47129906'));
-      expect(cmd, contains('am start -n app.dearth/.MainActivity'));
-      expect(cmd, endsWith('&'));
+      expect(cmd, "cat '/data/user/0/app.dearth/cache/updates/dearth-0.1.97.apk' | pm install -r -S 47129906 2>&1");
+      expect(cmd, isNot(contains('&;')), reason: 'adbd ends anything left behind its shell');
     });
   });
 
