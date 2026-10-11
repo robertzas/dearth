@@ -6,9 +6,9 @@ import 'rounds.dart';
 
 // Fair Share (SPEC FR-TOY-03, Appendix B: sharing equally). Two or three
 // of Feed the Monster's monsters, empty plates, and a tray of cupcakes:
-// "Share the cupcakes so everyone has the same!" A tap on a plate gives
-// it one (and says its count), a tap on a cupcake takes it back, and the
-// bell checks. Fair: everyone eats, "Three each! Fair and square!".
+// "Share the cupcakes so everyone has the same!" A press on a plate gives
+// it one (and says its count), a cupcake dragged moves it to another plate
+// or back to the tray, and the bell checks. Fair: everyone eats, "Three each! Fair and square!".
 // Unequal: the one with fewest complains ("Hey! I have fewer!"); equal
 // but the tray still holds more than the leftover: "There are more to
 // share!" — a slip either way, and the cupcakes stay to fix. The top

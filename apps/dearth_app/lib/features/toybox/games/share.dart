@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:dearth_core/dearth_core.dart';
 import 'package:dearth_ui/dearth_ui.dart';
+import 'package:flutter/gestures.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/sound.dart';
@@ -14,11 +15,11 @@ import 'voice_widgets.dart';
 
 /// Fair Share (SPEC FR-TOY-03, Appendix B: sharing equally). Two or three
 /// of Feed the Monster's monsters with empty plates, and a tray of
-/// cupcakes: "Share the cupcakes so everyone has the same!" A tap anywhere
-/// on a plate (or its monster) gives it one from the tray and says how many
-/// it has; a cupcake dragged off a plate goes to another plate or back to
-/// the tray, and one dragged off the tray lands on the plate it's dropped
-/// on. The bell checks. Fair and square: everyone eats — "Three each! Fair
+/// cupcakes: "Share the cupcakes so everyone has the same!" A press
+/// anywhere on a plate (or its monster) gives it one from the tray and says
+/// how many it has; a drag that starts anywhere on a plate carries one of
+/// its cupcakes to another plate or back to the tray, and one that starts
+/// on the tray lands on the plate it's dropped on. The bell checks. Fair and square: everyone eats — "Three each! Fair
 /// and square!" Unequal: the one with fewest shakes and complains; equal
 /// but more still on the tray: "There are more to share!" — a slip either
 /// way, and the cupcakes stay to fix. After two slips each plate shows
@@ -55,10 +56,26 @@ class ShareGameState extends State<ShareGame> with TickerProviderStateMixin {
   /// Flights under way: id → (from, to).
   final _flights = <int, (Offset, Offset)>{};
 
-  /// The cupcake under her finger: where it came from and where it is now
-  /// (play-area coordinates).
-  ({int from, Offset at})? _drag;
-  final _area = GlobalKey();
+  /// One finger plays at a time (a second finger or a resting palm can't
+  /// take the cupcake in her hand): the pointer, where it went down, and
+  /// what it went down on (a plate, [_fromTray], or nothing to share).
+  /// Presses and drags are read from raw pointer events over the whole play
+  /// area rather than per-cupcake gesture detectors: a small child's press
+  /// slides, and a tap recognizer drops a press that moves past its slop
+  /// (on a plate it did nothing; on a cupcake it became a drag that floated
+  /// home), and a drag had to start on a cupcake exactly.
+  int? _pointer, _downOn;
+  Offset _downAt = Offset.zero;
+
+  /// The plate (or [_fromTray]) the cupcake in her hand came from.
+  int? _carrying;
+
+  /// The cupcake in her hand (play-area coordinates). Only its overlay and
+  /// the monsters' eyes follow it, not the whole playfield.
+  final _hand = ValueNotifier<Offset>(Offset.zero);
+
+  /// Where the cupcake in her hand would land if she let go now: it glows.
+  int? _hover;
   final _timers = <Timer>[];
   Timer? _idle, _blinker;
   late final List<_Puppet> _puppets;
@@ -102,6 +119,7 @@ class ShareGameState extends State<ShareGame> with TickerProviderStateMixin {
     for (final p in _puppets) {
       p.dispose();
     }
+    _hand.dispose();
     super.dispose();
   }
 
@@ -123,7 +141,7 @@ class ShareGameState extends State<ShareGame> with TickerProviderStateMixin {
     _eaten.clear();
     _flights.clear();
     _plateWiggles.clear();
-    _drag = null;
+    _pointer = _downOn = _carrying = _hover = null;
     _slips = 0;
     _hint = _solved = false;
     _deal++;
@@ -160,24 +178,29 @@ class ShareGameState extends State<ShareGame> with TickerProviderStateMixin {
 
   void _lookAtPlate(int i) {
     final l = _layout;
+    if (l != null) _lookAt(l.plates[i].center);
+  }
+
+  /// Every monster watches [p] (play-area coordinates).
+  void _lookAt(Offset p) {
+    final l = _layout;
     if (l == null) return;
     for (var m = 0; m < _round!.monsters; m++) {
-      final eyes = l.eyes(m);
-      final d = l.plates[i].center - eyes;
+      final d = p - l.eyes(m);
       _puppets[m].look.value = d.distance < 1 ? Offset.zero : d / math.max(d.distance, l.monsters[m].width * 0.6);
     }
   }
 
   /// Cupcakes drawn on plate [i] now: the ones landed, less any eaten and
   /// the one in her hand.
-  int _shownOn(int i) => _plates[i] - (_coming[i] ?? 0) - (_eaten[i] ?? 0) - (_drag?.from == i ? 1 : 0);
+  int _shownOn(int i) => _plates[i] - (_coming[i] ?? 0) - (_eaten[i] ?? 0) - (_carrying == i ? 1 : 0);
 
-  int get _shownOnTray => _tray - _comingTray - (_drag?.from == _fromTray ? 1 : 0);
+  int get _shownOnTray => _tray - _comingTray - (_carrying == _fromTray ? 1 : 0);
 
   /// A tap on a plate, its cupcakes or its monster: one cupcake from the
   /// tray, if there is one.
   void _give(int i) {
-    if (_solved || _drag != null) return;
+    if (_solved || _carrying != null) return;
     _waitIdle();
     _lookAtPlate(i);
     if (_tray == 0) {
@@ -207,62 +230,114 @@ class ShareGameState extends State<ShareGame> with TickerProviderStateMixin {
     _sayAsk();
   }
 
-  Offset _local(Offset global) {
-    final box = _area.currentContext?.findRenderObject() as RenderBox?;
-    return box == null ? global : box.globalToLocal(global);
-  }
+  /// How far a press moves before it picks a cupcake up: a little more
+  /// than a tap's slop, so a press that slides still gives.
+  double _pickUpAfter(_Layout l) => math.max(kTouchSlop, l.cupcake * 0.35);
 
-  /// She picks up a cupcake from plate [from] (or the tray).
-  void _pickUp(int from, Offset global) {
-    if (_solved || _drag != null) return;
-    if (from == _fromTray ? _shownOnTray <= 0 : _shownOn(from) <= 0) return;
-    _waitIdle();
-    widget.c.sound(Sfx.blip, volume: 0.35);
-    setState(() => _drag = (from: from, at: _local(global)));
-  }
-
-  void _dragTo(Offset global) {
-    final d = _drag;
-    if (d == null) return;
-    setState(() => _drag = (from: d.from, at: _local(global)));
-  }
-
-  /// She lets go: on a plate it lands there, on the tray it goes back,
-  /// anywhere else it floats home.
-  void _drop() {
-    final d = _drag;
+  void _down(PointerDownEvent e) {
     final l = _layout;
-    if (d == null || l == null) return;
-    final to = l.dropTarget(d.at);
-    if (to == null || to == d.from) {
-      // Home again: a short flight back to where it was.
-      final home = d.from == _fromTray ? l.traySpot(_shownOnTray, _shownOnTray + 1) : l.spot(d.from, _shownOn(d.from), _shownOn(d.from) + 1);
-      if (d.from == _fromTray) {
-        _comingTray++;
-      } else {
-        _coming[d.from] = (_coming[d.from] ?? 0) + 1;
-      }
-      setState(() => _drag = null);
-      _fly(d.at, home, arriving: d.from);
+    if (l == null || _solved) return;
+    // A new finger takes over unless the one before is carrying a cupcake
+    // (a palm that landed first doesn't lock her out).
+    if (_pointer != null && _carrying != null) return;
+    _pointer = e.pointer;
+    _downAt = e.localPosition;
+    _downOn = l.target(e.localPosition);
+  }
+
+  void _move(PointerMoveEvent e) {
+    final l = _layout;
+    if (e.pointer != _pointer || l == null || _solved) return;
+    final p = e.localPosition;
+    if (_carrying == null) {
+      final from = _downOn;
+      if (from == null || (p - _downAt).distance < _pickUpAfter(l)) return;
+      if (from == _fromTray ? _shownOnTray <= 0 : _shownOn(from) <= 0) return;
+      _waitIdle();
+      widget.c.sound(Sfx.blip, volume: 0.35);
+      setState(() => _carrying = from);
+    }
+    _hand.value = p;
+    _lookAt(p);
+    final over = l.target(p);
+    if (over != _hover) setState(() => _hover = over);
+  }
+
+  void _up(PointerUpEvent e) {
+    final l = _layout;
+    if (e.pointer != _pointer || l == null) return;
+    final p = e.localPosition;
+    final on = _downOn, from = _carrying;
+    _pointer = _downOn = null;
+    if (from == null) {
+      // A press: it counts where it went down, however much it slid.
+      if (on != null && l.target(p) == on) _press(on);
+      return;
+    }
+    if (l.target(p) == from && (p - _downAt).distance < l.cupcake) {
+      // Barely moved and still over where it started: a press that slid.
+      _home(p);
+      _press(from);
+      return;
+    }
+    _drop(p);
+  }
+
+  void _cancel(PointerCancelEvent e) {
+    if (e.pointer != _pointer) return;
+    _pointer = _downOn = null;
+    if (_carrying != null) _home(_hand.value);
+  }
+
+  void _press(int on) => on == _fromTray ? _tapTray() : _give(on);
+
+  /// The cupcake in her hand floats back to where it came from.
+  void _home(Offset at) {
+    final from = _carrying, l = _layout;
+    if (from == null || l == null) return;
+    final home = from == _fromTray ? l.traySpot(_shownOnTray, _shownOnTray + 1) : l.spot(from, _shownOn(from), _shownOn(from) + 1);
+    if (from == _fromTray) {
+      _comingTray++;
+    } else {
+      _coming[from] = (_coming[from] ?? 0) + 1;
+    }
+    _fly(at, home, arriving: from);
+    setState(() => _carrying = _hover = null);
+  }
+
+  /// She lets go at [at]: on a plate it lands there, on the tray it goes
+  /// back, anywhere else it floats home.
+  void _drop(Offset at) {
+    final from = _carrying, l = _layout;
+    if (from == null || l == null) return;
+    final to = l.target(at);
+    if (to == null || to == from) {
+      _home(at);
+      _lookAt(at);
       return;
     }
     _waitIdle();
-    if (d.from == _fromTray) {
+    if (from == _fromTray) {
       _tray--;
     } else {
-      _plates[d.from]--;
+      _plates[from]--;
     }
+    // It settles into its place from her finger.
     if (to == _fromTray) {
       _tray++;
+      _comingTray++;
+      _fly(at, l.traySpot(_tray - 1, _tray), arriving: _fromTray);
       widget.c.sound(Sfx.snap, volume: 0.45);
-      widget.c.say(numberClip(d.from == _fromTray ? _tray : _plates[d.from]));
+      widget.c.say(numberClip(_plates[from]));
     } else {
       _plates[to]++;
+      _coming[to] = (_coming[to] ?? 0) + 1;
+      _fly(at, l.spot(to, _plates[to] - 1, _plates[to]), arriving: to);
       _lookAtPlate(to);
       widget.c.sound(Sfx.pop, volume: 0.5);
       widget.c.say(numberClip(_plates[to]));
     }
-    setState(() => _drag = null);
+    setState(() => _carrying = _hover = null);
   }
 
   /// A cupcake flying [from] → [to]. [arriving] is the plate it lands on,
@@ -283,7 +358,7 @@ class ShareGameState extends State<ShareGame> with TickerProviderStateMixin {
   /// The bell: the round's check.
   void _ring() {
     final r = _round!;
-    if (_solved || _drag != null) return;
+    if (_solved || _carrying != null) return;
     _waitIdle();
     widget.c.sound(Sfx.ding, volume: 0.6);
     setState(() => _bellHops++);
@@ -372,24 +447,25 @@ class ShareGameState extends State<ShareGame> with TickerProviderStateMixin {
             top: 140,
             child: LayoutBuilder(builder: (context, box) {
               final l = _layout = _Layout.of(box.biggest, r.monsters, t.scale);
-              final drag = _drag;
-              return Stack(
-                key: _area,
-                clipBehavior: Clip.none,
-                children: [
-                  for (var i = 0; i < r.monsters; i++)
-                    Positioned.fromRect(
-                      key: ValueKey('m$_deal-$i'),
-                      rect: l.monsters[i],
-                      child: tid(
-                        'share.monster.$i',
-                        Semantics(
-                          button: true,
-                          label: 'Monster ${i + 1}',
-                          excludeSemantics: true,
-                          onTap: () => _give(i),
-                          child: GestureDetector(
-                            excludeFromSemantics: true,
+              return Listener(
+                behavior: HitTestBehavior.opaque,
+                onPointerDown: _down,
+                onPointerMove: _move,
+                onPointerUp: _up,
+                onPointerCancel: _cancel,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    for (var i = 0; i < r.monsters; i++)
+                      Positioned.fromRect(
+                        key: ValueKey('m$_deal-$i'),
+                        rect: l.monsters[i],
+                        child: tid(
+                          'share.monster.$i',
+                          Semantics(
+                            button: true,
+                            label: 'Monster ${i + 1}',
+                            excludeSemantics: true,
                             onTap: () => _give(i),
                             child: RepaintBoundary(
                               child: CustomPaint(painter: MonsterPainter(chew: _puppets[i].chew, shake: _puppets[i].shake, blink: _puppets[i].blink, open: _puppets[i].open, hop: _puppets[i].hop, look: _puppets[i].look, skin: MonsterSkin.values[i % MonsterSkin.values.length])),
@@ -397,31 +473,35 @@ class ShareGameState extends State<ShareGame> with TickerProviderStateMixin {
                           ),
                         ),
                       ),
+                    for (var i = 0; i < r.monsters; i++) ..._plate(i, l),
+                    ..._trayArea(l),
+                    Positioned.fromRect(
+                      rect: l.bell,
+                      child: DPressable(
+                        id: 'share.bell',
+                        semanticLabel: 'Bell',
+                        excludeSemantics: true,
+                        onTap: _ring,
+                        borderRadius: BorderRadius.circular(l.bell.width / 2),
+                        child: Hop(count: _bellHops, child: const RepaintBoundary(child: CustomPaint(painter: BellPainter(), size: Size.infinite))),
+                      ),
                     ),
-                  for (var i = 0; i < r.monsters; i++) ..._plate(i, l),
-                  ..._trayArea(l),
-                  Positioned.fromRect(
-                    rect: l.bell,
-                    child: DPressable(
-                      id: 'share.bell',
-                      semanticLabel: 'Bell',
-                      excludeSemantics: true,
-                      onTap: _ring,
-                      borderRadius: BorderRadius.circular(l.bell.width / 2),
-                      child: Hop(count: _bellHops, child: const RepaintBoundary(child: CustomPaint(painter: BellPainter(), size: Size.infinite))),
-                    ),
-                  ),
-                  for (final e in _flights.entries) _flight(e.key, e.value, l.cupcake),
-                  // The cupcake in her hand, a little bigger, over everything.
-                  if (drag != null)
-                    Positioned(
-                      left: drag.at.dx - l.cupcake * 0.6,
-                      top: drag.at.dy - l.cupcake * 0.6,
-                      width: l.cupcake * 1.2,
-                      height: l.cupcake * 1.2,
-                      child: IgnorePointer(child: Center(child: DEmoji('🧁', size: l.cupcake * 1.2))),
-                    ),
-                ],
+                    for (final e in _flights.entries) _flight(e.key, e.value, l.cupcake),
+                    // The cupcake in her hand, a little bigger, over everything.
+                    if (_carrying != null)
+                      ValueListenableBuilder<Offset>(
+                        valueListenable: _hand,
+                        builder: (context, at, child) => Positioned(
+                          left: at.dx - l.cupcake * 0.7,
+                          top: at.dy - l.cupcake * 0.7,
+                          width: l.cupcake * 1.4,
+                          height: l.cupcake * 1.4,
+                          child: child!,
+                        ),
+                        child: IgnorePointer(child: RepaintBoundary(child: Center(child: DEmoji('🧁', size: l.cupcake * 1.4)))),
+                      ),
+                  ],
+                ),
               );
             }),
           ),
@@ -438,24 +518,15 @@ class ShareGameState extends State<ShareGame> with TickerProviderStateMixin {
     );
   }
 
-  /// A cupcake she can pick up: a tap passes to [onTap] (the plate's give,
-  /// the tray's wiggle), a drag carries it.
-  Widget _cake(String id, String label, int from, VoidCallback onTap, double size) => tid(
+  /// A cupcake: its label and test id (the play area's pointer handler
+  /// does the pressing and carrying).
+  Widget _cake(String id, String label, VoidCallback onTap, double size) => tid(
         id,
         Semantics(
           label: label,
           excludeSemantics: true,
           onTap: onTap,
-          child: GestureDetector(
-            excludeFromSemantics: true,
-            behavior: HitTestBehavior.opaque,
-            onTap: onTap,
-            onPanStart: (e) => _pickUp(from, e.globalPosition),
-            onPanUpdate: (e) => _dragTo(e.globalPosition),
-            onPanEnd: (_) => _drop(),
-            onPanCancel: _drop,
-            child: Center(child: DEmoji('🧁', size: size)),
-          ),
+          child: Center(child: DEmoji('🧁', size: size)),
         ),
       );
 
@@ -476,14 +547,9 @@ class ShareGameState extends State<ShareGame> with TickerProviderStateMixin {
             label: 'Plate ${i + 1}: ${_plates[i]} cupcake${_plates[i] == 1 ? '' : 's'}',
             excludeSemantics: true,
             onTap: () => _give(i),
-            child: GestureDetector(
-              excludeFromSemantics: true,
-              behavior: HitTestBehavior.opaque,
-              onTap: () => _give(i),
-              child: Wiggle(
-                count: _plateWiggles[i] ?? 0,
-                child: RepaintBoundary(child: CustomPaint(size: Size.infinite, painter: _PlatePainter(spots: _hint ? each : 0, cake: l.cakeSize(each) / l.plates[i].width))),
-              ),
+            child: Wiggle(
+              count: _plateWiggles[i] ?? 0,
+              child: RepaintBoundary(child: CustomPaint(size: Size.infinite, painter: _PlatePainter(spots: _hint ? each : 0, cake: l.cakeSize(each) / l.plates[i].width, glow: _hover == i && _carrying != i))),
             ),
           ),
         ),
@@ -499,7 +565,7 @@ class ShareGameState extends State<ShareGame> with TickerProviderStateMixin {
           height: l.cakeSize(shown),
           child: Wiggle(
             count: _hint && k >= each ? _extraWiggles : 0,
-            child: _cake('share.cupcake.$i.$k', 'Cupcake ${k + 1} on plate ${i + 1}', i, () => _give(i), l.cakeSize(shown)),
+            child: _cake('share.cupcake.$i.$k', 'Cupcake ${k + 1} on plate ${i + 1}', () => _give(i), l.cakeSize(shown)),
           ),
         ),
     ];
@@ -515,11 +581,10 @@ class ShareGameState extends State<ShareGame> with TickerProviderStateMixin {
           Semantics(
             label: 'Tray: $_tray cupcake${_tray == 1 ? '' : 's'}',
             excludeSemantics: true,
-            child: GestureDetector(
-              excludeFromSemantics: true,
-              behavior: HitTestBehavior.opaque,
-              onTap: _tapTray,
-              child: Wiggle(count: _trayWiggles, child: const RepaintBoundary(child: CustomPaint(size: Size.infinite, painter: _TrayPainter()))),
+            onTap: _tapTray,
+            child: Wiggle(
+              count: _trayWiggles,
+              child: RepaintBoundary(child: CustomPaint(size: Size.infinite, painter: _TrayPainter(glow: _hover == _fromTray && _carrying != _fromTray))),
             ),
           ),
         ),
@@ -533,7 +598,7 @@ class ShareGameState extends State<ShareGame> with TickerProviderStateMixin {
           top: l.traySpot(k, shown).dy - l.cupcake / 2,
           width: l.cupcake,
           height: l.cupcake,
-          child: _cake('share.traycake.$k', 'Cupcake ${k + 1} on the tray', _fromTray, _tapTray, l.cupcake),
+          child: _cake('share.traycake.$k', 'Cupcake ${k + 1} on the tray', _tapTray, l.cupcake),
         ),
     ];
   }
@@ -643,9 +708,13 @@ class _Layout {
     return tray.center + Offset((col - (inRow - 1) / 2) * cupcake * 1.15, (row - (rows - 1) / 2) * cupcake * 1.1);
   }
 
-  /// Where a cupcake dropped at [p] goes: a plate's index, the tray, or
-  /// null (nowhere: it floats home). Generous edges, for small fingers.
-  int? dropTarget(Offset p) {
+  /// What's under [p]: a plate's index (its monster counts as the plate),
+  /// the tray, or null (the bell, or nothing). A press there gives (or
+  /// wiggles the tray), a drag from there carries one of its cupcakes, and
+  /// a cupcake dropped there lands on it. Generous edges, for small
+  /// fingers.
+  int? target(Offset p) {
+    if (bell.contains(p)) return null;
     for (var i = 0; i < plates.length; i++) {
       if (plates[i].inflate(plates[i].width * 0.15).contains(p) || monsters[i].contains(p)) return i;
     }
@@ -681,8 +750,11 @@ Offset _cakeSpot(int k, int n, Size size) {
 /// A round white plate with a rim, and (after two slips) a dashed spot for
 /// each cupcake of its fair share, where those cupcakes would sit.
 class _PlatePainter extends CustomPainter {
-  const _PlatePainter({required this.spots, required this.cake});
+  const _PlatePainter({required this.spots, required this.cake, this.glow = false});
   final int spots;
+
+  /// A cupcake in her hand would land here.
+  final bool glow;
 
   /// A cupcake's size, as a share of the plate's width.
   final double cake;
@@ -702,6 +774,16 @@ class _PlatePainter extends CustomPainter {
           ..style = PaintingStyle.stroke
           ..strokeWidth = math.max(2, s * 0.02),
       );
+    if (glow) {
+      canvas.drawCircle(
+        c,
+        s * 0.44,
+        Paint()
+          ..color = _glow
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = s * 0.07,
+      );
+    }
     final dash = Paint()
       ..color = const Color(0xFFB9A6E0)
       ..style = PaintingStyle.stroke
@@ -718,12 +800,16 @@ class _PlatePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_PlatePainter old) => old.spots != spots || old.cake != cake;
+  bool shouldRepaint(_PlatePainter old) => old.spots != spots || old.cake != cake || old.glow != glow;
 }
+
+/// Where a cupcake in her hand would land.
+const _glow = Color(0xCCFFC94D);
 
 /// The tray: a flat basket with a rim.
 class _TrayPainter extends CustomPainter {
-  const _TrayPainter();
+  const _TrayPainter({this.glow = false});
+  final bool glow;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -738,8 +824,17 @@ class _TrayPainter extends CustomPainter {
           ..style = PaintingStyle.stroke
           ..strokeWidth = math.max(2, size.height * 0.05),
       );
+    if (glow) {
+      canvas.drawRRect(
+        r.deflate(size.height * 0.08),
+        Paint()
+          ..color = _glow
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = size.height * 0.08,
+      );
+    }
   }
 
   @override
-  bool shouldRepaint(_TrayPainter old) => false;
+  bool shouldRepaint(_TrayPainter old) => old.glow != glow;
 }

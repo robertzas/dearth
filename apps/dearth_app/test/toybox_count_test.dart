@@ -902,6 +902,72 @@ void main() {
       handle.dispose();
     });
 
+    testWidgets('a press that slides still gives, a drag from anywhere on a plate or the tray carries one, and a second finger can’t take it', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'share', sound: sound, level: 2);
+      final r = game(tester).debugRound;
+      await intro(tester);
+      final plate0 = tester.getRect(byId('share.plate.0')), plate1 = tester.getRect(byId('share.plate.1')), tray = tester.getRect(byId('share.tray'));
+
+      /// A press on plate 0 that slides past a tap's slop before it lifts.
+      Future<void> slidingPress() async {
+        final g = await tester.startGesture(plate0.center);
+        await g.moveBy(const Offset(12, 8));
+        await tester.pump();
+        await g.moveBy(const Offset(8, 6));
+        await tester.pump();
+        await g.up();
+        await tester.pump(const Duration(milliseconds: 350));
+      }
+
+      /// A drag from [from] to [to] in small steps, as a finger moves.
+      Future<void> carry(Offset from, Offset to, {int pointer = 1}) async {
+        final g = await tester.startGesture(from, pointer: pointer);
+        for (var k = 1; k <= 6; k++) {
+          await g.moveTo(Offset.lerp(from, to, k / 6)!);
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+        await g.up();
+        await tester.pump(const Duration(milliseconds: 350));
+      }
+
+      await slidingPress();
+      expect(game(tester).debugPlates, [1, 0], reason: 'a press that slides on an empty plate gives');
+      await slidingPress();
+      expect(game(tester).debugPlates, [2, 0], reason: 'a press that slides over its cupcakes gives, it doesn’t pick one up');
+      expect(game(tester).debugTray, r.treats - 2);
+      // From the plate's rim, not on a cupcake.
+      await carry(plate0.topCenter + Offset(0, plate0.height * 0.06), plate1.center);
+      expect(game(tester).debugPlates, [1, 1]);
+      // From the tray's end, past its cupcakes.
+      await carry(tray.centerLeft + const Offset(6, 0), plate1.center);
+      expect(game(tester).debugPlates, [1, 2]);
+      expect(game(tester).debugTray, r.treats - 3);
+      // One cupcake in her hand; another finger lands and slides: it
+      // neither steals the cupcake nor gives.
+      final hand = await tester.startGesture(tray.centerLeft + const Offset(6, 0));
+      for (var k = 1; k <= 3; k++) {
+        await hand.moveTo(Offset.lerp(tray.centerLeft, plate0.center, k / 6)!);
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      final other = await tester.startGesture(plate1.center, pointer: 9);
+      await other.moveBy(const Offset(60, 0));
+      await tester.pump(const Duration(milliseconds: 16));
+      await other.up();
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(game(tester).debugPlates, [1, 2], reason: 'the second finger did nothing');
+      await hand.moveTo(plate0.center);
+      await tester.pump(const Duration(milliseconds: 16));
+      await hand.up();
+      await tester.pump(const Duration(milliseconds: 350));
+      expect(game(tester).debugPlates, [2, 2]);
+      expect(game(tester).debugTray, r.treats - 4);
+      await tester.pump(const Duration(seconds: 12));
+      await h.shutdown();
+      handle.dispose();
+    });
+
     testWidgets('equal plates but the tray still holds more to share', (tester) async {
       final handle = tester.ensureSemantics();
       final sound = RecordingSound();
