@@ -1,3 +1,2 @@
-- Support sharing amazon groups with links like https://www.amazon.com/photos/groups/share/xxxxxxxxxxxxxxxxxx
-- The number game calls out the number of items too fast, before the items show themselves
-- All of the spoken numbers, letters, and items are too fast and not incredibly clear, the frame has poor speakers
+- ✅ share the cupcakes push and drag doesn't work well — 0.1.103: a press that slides still gives, a drag starts anywhere on a plate, its monster or the tray, one finger at a time, the plate it would land on glows (on the frame now)
+- ✅ hub should auto update just like the android app — built in 0.1.97 (Settings → Updates → Dearth Hub: When I tap / Nightly / Right away); your Hub still reports 0.1.0 until its compose.yml and the dearth_update_token secret are updated once (README → Updating the Hub)
