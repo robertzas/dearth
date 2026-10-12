@@ -27,9 +27,23 @@ class _Prop {
   final String value;
 }
 
+/// One VEVENT as parsed, with what [_resolve] needs beyond the draft.
+class _Built {
+  _Built(this.draft, this.rdates, {required this.thisAndFuture});
+  EventDraft draft;
+
+  /// RDATE instants (start, optional end from a PERIOD).
+  final List<(int, int?)> rdates;
+
+  /// A RECURRENCE-ID;RANGE=THISANDFUTURE override: it changes this
+  /// instance and every later one.
+  final bool thisAndFuture;
+}
+
 /// Parses an iCalendar feed into drafts (SPEC §13.3). Defensive: folded
-/// lines, TZID parameters, floating times, DATE values, EXDATE lists,
-/// RECURRENCE-ID overrides, DURATION and text escapes.
+/// lines, TZID parameters, floating times, DATE values, EXDATE and RDATE
+/// lists, RECURRENCE-ID overrides (RANGE=THISANDFUTURE splits the series),
+/// DURATION and text escapes.
 List<EventDraft> parseIcs(String text, {required String defaultTz}) {
   ensureTimeZones();
   final defaultLoc = locationOrUtc(defaultTz);
@@ -43,7 +57,7 @@ List<EventDraft> parseIcs(String text, {required String defaultTz}) {
     }
   }
 
-  final out = <EventDraft>[];
+  final out = <_Built>[];
   List<_Prop>? current;
   var depth = 0;
   for (final line in unfolded) {
@@ -68,7 +82,144 @@ List<EventDraft> parseIcs(String text, {required String defaultTz}) {
     final p = _parseLine(line);
     if (p != null) current.add(p);
   }
+  return _resolve(out, defaultLoc);
+}
+
+/// Applies what spans VEVENTs: THISANDFUTURE overrides end their series at
+/// that instance and start a new one, and RDATEs become events of their own
+/// (an event row holds one RRULE, not a list of extra dates). School and club
+/// feeds use both; dropping them silently put wrong events on the wall.
+List<EventDraft> _resolve(List<_Built> built, tz.Location fallback) {
+  final masters = {for (final b in built) if (b.draft.recurringRemoteId == null && b.draft.rrule != null) b.draft.remoteId: b};
+  final splits = [for (final b in built) if (b.thisAndFuture && masters.containsKey(b.draft.recurringRemoteId)) b]
+    ..sort((a, b) => a.draft.originalStartMs!.compareTo(b.draft.originalStartMs!));
+  for (final s in splits) {
+    final o = s.draft;
+    final from = o.originalStartMs!;
+    // Later splits of the same series cut the newest piece.
+    final series = masters[o.recurringRemoteId]!;
+    final m = series.draft;
+    if (m.rrule == null) continue; // an earlier split used up its count
+    final delta = o.startMs - from;
+    final loc = m.tz == null ? fallback : locationOrUtc(m.tz!);
+    final count = int.tryParse(_ruleParts(m.rrule!)['COUNT'] ?? '');
+    final before = count == null ? 0 : _instancesBefore(m, from, loc);
+    series.draft = _draft(m, rrule: _withEnd(m.rrule!, until: _icsUtc(from - 1000)), exdates: [for (final x in m.exdates) if (x < from) x]);
+    final remaining = count == null ? null : count - before;
+    s.draft = _draft(
+      o,
+      rrule: remaining != null && remaining <= 0 ? null : _withEnd(m.rrule!, count: remaining),
+      exdates: [for (final x in m.exdates) if (x >= from) x + delta],
+      recurringRemoteId: null,
+      originalStartMs: null,
+    );
+    masters[o.recurringRemoteId!] = s;
+    // Overrides of later instances name them by their original times.
+    for (final b in built) {
+      final d = b.draft;
+      if (b != s && d.recurringRemoteId == o.recurringRemoteId && d.originalStartMs != null && d.originalStartMs! > from) {
+        b.draft = _draft(d, recurringRemoteId: o.remoteId, originalStartMs: d.originalStartMs! + delta);
+      }
+    }
+  }
+
+  final overridden = <String, Set<int>>{};
+  for (final b in built) {
+    final d = b.draft;
+    if (d.recurringRemoteId != null && d.originalStartMs != null) overridden.putIfAbsent(d.recurringRemoteId!, () => {}).add(d.originalStartMs!);
+  }
+  final out = <EventDraft>[];
+  for (final b in built) {
+    final d = b.draft;
+    out.add(d);
+    final skip = {...d.exdates, ...?overridden[d.remoteId], d.startMs};
+    for (final (start, end) in b.rdates) {
+      if (!skip.add(start)) continue;
+      final length = end != null && end > start ? end - start : d.endMs - d.startMs;
+      final days = d.allDay ? LocalDate.parse(d.startDate!).daysUntil(LocalDate.parse(d.endDate!)) : 0;
+      final day = d.allDay ? tz.TZDateTime.fromMillisecondsSinceEpoch(fallback, start) : null;
+      final startDate = day == null ? null : LocalDate(day.year, day.month, day.day);
+      out.add(EventDraft(
+        remoteId: '${d.remoteId}#rdate:$start',
+        title: d.title,
+        allDay: d.allDay,
+        startMs: start,
+        endMs: start + length,
+        startDate: startDate?.iso,
+        endDate: startDate?.addDays(days < 1 ? 1 : days).iso,
+        tz: d.tz,
+        location: d.location,
+        notes: d.notes,
+        status: d.status,
+        updatedMs: d.updatedMs,
+      ));
+    }
+  }
   return out;
+}
+
+/// [d] with some fields replaced; [_keep] tells "unchanged" apart from null.
+EventDraft _draft(
+  EventDraft d, {
+  Object? rrule = _keep,
+  List<int>? exdates,
+  Object? recurringRemoteId = _keep,
+  Object? originalStartMs = _keep,
+}) =>
+    EventDraft(
+      remoteId: d.remoteId,
+      title: d.title,
+      allDay: d.allDay,
+      startMs: d.startMs,
+      endMs: d.endMs,
+      startDate: d.startDate,
+      endDate: d.endDate,
+      tz: d.tz,
+      etag: d.etag,
+      location: d.location,
+      notes: d.notes,
+      rrule: identical(rrule, _keep) ? d.rrule : rrule as String?,
+      exdates: exdates ?? d.exdates,
+      recurringRemoteId: identical(recurringRemoteId, _keep) ? d.recurringRemoteId : recurringRemoteId as String?,
+      originalStartMs: identical(originalStartMs, _keep) ? d.originalStartMs : originalStartMs as int?,
+      status: d.status,
+      updatedMs: d.updatedMs,
+      reminders: d.reminders,
+      keptReminders: d.keptReminders,
+    );
+
+const Object _keep = Object();
+
+Map<String, String> _ruleParts(String rrule) => {
+      for (final part in rrule.replaceFirst(RegExp('^RRULE:', caseSensitive: false), '').split(';'))
+        if (part.contains('=')) part.substring(0, part.indexOf('=')).toUpperCase(): part.substring(part.indexOf('=') + 1),
+    };
+
+/// [rrule] ending at [until] (UTC) or after [count] instances instead of how
+/// it ended before.
+String _withEnd(String rrule, {String? until, int? count}) => [
+      for (final e in _ruleParts(rrule).entries)
+        if (e.key != 'COUNT' && e.key != 'UNTIL') '${e.key}=${e.value}',
+      if (until != null) 'UNTIL=$until',
+      if (count != null) 'COUNT=$count',
+    ].join(';');
+
+String _icsUtc(int ms) {
+  final t = DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true);
+  String two(int n) => n.toString().padLeft(2, '0');
+  return '${t.year.toString().padLeft(4, '0')}${two(t.month)}${two(t.day)}T${two(t.hour)}${two(t.minute)}${two(t.second)}Z';
+}
+
+/// How many of [m]'s instances start before [ms].
+int _instancesBefore(EventDraft m, int ms, tz.Location loc) {
+  final rule = parseRrule(m.rrule!, loc);
+  if (rule == null) return 0;
+  DateTime floating(int at) {
+    final t = tz.TZDateTime.fromMillisecondsSinceEpoch(loc, at);
+    return DateTime.utc(t.year, t.month, t.day, t.hour, t.minute, t.second);
+  }
+
+  return rule.getInstances(start: floating(m.startMs), before: floating(ms)).take(10000).length;
 }
 
 _Prop? _parseLine(String line) {
@@ -134,7 +285,7 @@ int? _durationMs(String v) {
   return m[1] == '-' ? -ms : ms;
 }
 
-EventDraft? _build(List<_Prop> props, tz.Location fallback) {
+_Built? _build(List<_Prop> props, tz.Location fallback) {
   _Prop? first(String name) => props.where((p) => p.name == name).firstOrNull;
   final uid = first('UID')?.value.trim();
   final dtStart = first('DTSTART');
@@ -168,6 +319,17 @@ EventDraft? _build(List<_Prop> props, tz.Location fallback) {
       if (t != null) exdates.add(t.$1);
     }
   }
+  final rdates = <(int, int?)>[];
+  for (final p in props.where((p) => p.name == 'RDATE')) {
+    for (final v in p.value.split(',')) {
+      // VALUE=PERIOD: start/end or start/duration.
+      final period = v.split('/');
+      final t = _time(period.first, p.params, fallback);
+      if (t == null) continue;
+      final end = period.length < 2 ? null : (_time(period[1], p.params, fallback)?.$1 ?? (_durationMs(period[1]) == null ? null : t.$1 + _durationMs(period[1])!));
+      rdates.add((t.$1, end));
+    }
+  }
   final recurrenceId = first('RECURRENCE-ID');
   final recurrenceTime = recurrenceId == null ? null : _time(recurrenceId.value, recurrenceId.params, fallback);
   final rrule = first('RRULE')?.value;
@@ -175,7 +337,7 @@ EventDraft? _build(List<_Prop> props, tz.Location fallback) {
   final lastMod = first('LAST-MODIFIED') ?? first('DTSTAMP');
   final updated = lastMod == null ? null : _time(lastMod.value, lastMod.params, fallback)?.$1;
 
-  return EventDraft(
+  final draft = EventDraft(
     remoteId: recurrenceId == null ? uid : '$uid#${recurrenceId.value.trim()}',
     title: _unescape(first('SUMMARY')?.value ?? '(No title)').trim(),
     allDay: allDay,
@@ -193,4 +355,5 @@ EventDraft? _build(List<_Prop> props, tz.Location fallback) {
     status: status,
     updatedMs: updated,
   );
+  return _Built(draft, rdates, thisAndFuture: recurrenceId != null && recurrenceId.params['RANGE']?.toUpperCase() == 'THISANDFUTURE');
 }

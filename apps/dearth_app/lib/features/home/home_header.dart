@@ -22,7 +22,10 @@ class HomeHeader extends ConsumerWidget {
     final t = DTheme.of(context);
     final today = ref.watch(todayProvider);
     final name = ref.watch(householdProvider.select((h) => h.value?.name));
-    final hour = ref.watch(householdTimeProvider.select((ht) => ht.now().hour));
+    // From the minute ticker (householdTimeProvider only changes with the
+    // zone), selected down to the hour so the header rebuilds hourly.
+    final time = ref.watch(householdTimeProvider);
+    final hour = ref.watch(nowMinuteMsProvider.select((ms) => time.minuteOfDay(ms) ~/ 60));
     final isDemo = ref.watch(sessionProvider.select((s) => s.isDemo));
 
     final dateBlock = Column(

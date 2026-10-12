@@ -48,12 +48,21 @@ void main() {
       expect(isDueOn('FREQ=DAILY', fri, fri.addDays(-1)), isFalse, reason: 'before anchor');
     });
 
+    test('a row without an anchor keeps its interval instead of being due daily', () {
+      final biweekly = [chore('bins', rrule: 'FREQ=WEEKLY;INTERVAL=2;BYDAY=MO')];
+      const monday = LocalDate(2026, 10, 5);
+      final due = [for (var w = 0; w < 4; w++) dueChores(biweekly, monday.addDays(7 * w)).isNotEmpty];
+      expect(due.where((d) => d).length, 2);
+      expect(due[0], isNot(due[1]));
+      expect(dueChores(biweekly, monday.addDays(1)), isEmpty);
+    });
+
     test('expands assignees and the Anyone pool with deterministic ids', () {
       final due = dueChores([
         chore('toys', assignees: '["ava"]'),
         chore('pet'),
         chore('off', active: false),
-      ], fri, defaultAnchor: fri);
+      ], fri);
       expect(due.map((d) => '${d.chore.id}:${d.profileId}'), ['toys:ava', 'pet:null']);
       expect(due.first.instanceId, choreInstanceId('toys', fri, 'ava'));
       expect(choreInstanceId('toys', fri, 'ava'), isNot(choreInstanceId('toys', fri.addDays(1), 'ava')));

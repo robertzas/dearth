@@ -91,7 +91,7 @@ Quantity? parseQuantity(String raw) {
   if (s.isEmpty) return null;
   double? one(String t) {
     final mixed = RegExp(r'^(\d+)\s+(\d+)/(\d+)$').firstMatch(t);
-    if (mixed != null) return int.parse(mixed[1]!) + int.parse(mixed[2]!) / int.parse(mixed[3]!);
+    if (mixed != null && int.parse(mixed[3]!) != 0) return int.parse(mixed[1]!) + int.parse(mixed[2]!) / int.parse(mixed[3]!);
     final frac = RegExp(r'^(\d+)/(\d+)$').firstMatch(t);
     if (frac != null && int.parse(frac[2]!) != 0) return int.parse(frac[1]!) / int.parse(frac[2]!);
     return double.tryParse(t);

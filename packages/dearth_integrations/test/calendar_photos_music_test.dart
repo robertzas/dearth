@@ -51,7 +51,81 @@ END:VEVENT
 END:VCALENDAR
 ''';
 
+const _icsSplit = '''
+BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:piano@club.test
+DTSTART;TZID=America/Denver:20261001T160000
+DTEND;TZID=America/Denver:20261001T163000
+RRULE:FREQ=WEEKLY;BYDAY=TH;COUNT=6
+SUMMARY:Piano
+END:VEVENT
+BEGIN:VEVENT
+UID:piano@club.test
+RECURRENCE-ID;RANGE=THISANDFUTURE;TZID=America/Denver:20261022T160000
+DTSTART;TZID=America/Denver:20261022T170000
+DTEND;TZID=America/Denver:20261022T173000
+SUMMARY:Piano (new time)
+END:VEVENT
+BEGIN:VEVENT
+UID:piano@club.test
+RECURRENCE-ID;TZID=America/Denver:20261029T160000
+DTSTART;TZID=America/Denver:20261030T160000
+DTEND;TZID=America/Denver:20261030T163000
+SUMMARY:Piano (moved)
+END:VEVENT
+BEGIN:VEVENT
+UID:books@club.test
+DTSTART;TZID=America/Denver:20261007T190000
+DTEND;TZID=America/Denver:20261007T200000
+RDATE;TZID=America/Denver:20261021T190000,20261104T190000
+EXDATE;TZID=America/Denver:20261104T190000
+SUMMARY:Book club
+END:VEVENT
+END:VCALENDAR
+''';
+
+Event _row(EventDraft d) {
+  final f = d.toFields('src1');
+  return Event(
+    id: EventDraft.localId('src1', d.remoteId),
+    syncClock: '{}', syncHlc: '', syncSeq: 0, deleted: false, //
+    sourceId: 'src1', title: d.title, startMs: d.startMs, endMs: d.endMs, allDay: d.allDay,
+    startDate: d.startDate, endDate: d.endDate, tz: d.tz, rrule: d.rrule,
+    exdates: encodeJson(d.exdates), recurringParentId: f['recurring_parent_id'] as String?,
+    originalStartMs: d.originalStartMs, countdown: false, reminders: '[]', profileIds: '[]', status: d.status,
+  );
+}
+
 void main() {
+  group('ICS: RDATE and RANGE=THISANDFUTURE (FR-CAL-01)', () {
+    final denver = HouseholdTime.named('America/Denver');
+    List<String> shown(String prefix) => [
+          for (final o in RecurrenceExpander(denver).expand(
+            parseIcs(_icsSplit, defaultTz: 'America/Denver').map(_row),
+            fromMs: denver.msAt(const LocalDate(2026, 9, 1), 0),
+            toMs: denver.msAt(const LocalDate(2026, 12, 31), 0),
+          ))
+            if (o.event.title.startsWith(prefix)) '${denver.dateOfMs(o.startMs).month}/${denver.dateOfMs(o.startMs).day}@${denver.minuteOfDay(o.startMs) ~/ 60} ${o.event.title}',
+        ];
+
+    test('THISANDFUTURE ends the series and starts the rest anew, keeping later overrides', () {
+      expect(shown('Piano'), [
+        '10/1@16 Piano',
+        '10/8@16 Piano',
+        '10/15@16 Piano',
+        '10/22@17 Piano (new time)',
+        '10/30@16 Piano (moved)',
+        '11/5@17 Piano (new time)',
+      ]);
+    });
+
+    test('RDATEs are extra events; EXDATE still removes one', () {
+      expect(shown('Book'), ['10/7@19 Book club', '10/21@19 Book club']);
+    });
+  });
+
   group('ICS (FR-CAL-01)', () {
     final drafts = parseIcs(_ics, defaultTz: 'America/Denver');
     final denver = HouseholdTime.named('America/Denver');
@@ -88,20 +162,8 @@ void main() {
     });
 
     test('expanding imported events honors EXDATE and the moved instance', () {
-      Event row(EventDraft d) {
-        final f = d.toFields('src1');
-        return Event(
-          id: EventDraft.localId('src1', d.remoteId),
-          syncClock: '{}', syncHlc: '', syncSeq: 0, deleted: false, //
-          sourceId: 'src1', title: d.title, startMs: d.startMs, endMs: d.endMs, allDay: d.allDay,
-          startDate: d.startDate, endDate: d.endDate, tz: d.tz, rrule: d.rrule,
-          exdates: encodeJson(d.exdates), recurringParentId: f['recurring_parent_id'] as String?,
-          originalStartMs: d.originalStartMs, countdown: false, reminders: '[]', profileIds: '[]', status: d.status,
-        );
-      }
-
       final occ = RecurrenceExpander(denver).expand(
-        drafts.map(row),
+        drafts.map(_row),
         fromMs: denver.msAt(const LocalDate(2026, 10, 1), 0),
         toMs: denver.msAt(const LocalDate(2026, 11, 30), 0),
       );

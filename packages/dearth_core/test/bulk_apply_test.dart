@@ -41,10 +41,16 @@ void main() {
             if (r.nextBool()) 'checked': r.nextBool(),
             if (r.nextBool()) 'qty': r.nextDouble() * 4,
           },
-        'ledger_entries' => {'delta': r.nextInt(5) - 2, 'reason': 'r${r.nextInt(3)}'},
+        // Varying field sets, so a winning insert has leftovers to clear.
+        'ledger_entries' => {
+            'delta': r.nextInt(5) - 2,
+            if (r.nextBool()) 'reason': 'r${r.nextInt(3)}',
+            if (r.nextBool()) 'note': 'N${r.nextInt(3)}',
+            if (r.nextInt(3) == 0) 'ref_id': 'x${r.nextInt(2)}',
+          },
         _ => {if (r.nextBool()) 'body': 'B${r.nextInt(5)}', if (r.nextBool()) 'pinned': r.nextBool()},
       };
-      final kind = table == 'ledger_entries' ? OpKind.insertOnly : (r.nextInt(7) == 0 ? OpKind.delete : OpKind.upsert);
+      final kind = r.nextInt(7) == 0 ? OpKind.delete : (table == 'ledger_entries' ? OpKind.insertOnly : OpKind.upsert);
       final op = Op(id: 'op$i', table: table, rowId: ids[r.nextInt(ids.length)], kind: kind, fields: kind == OpKind.delete ? const {} : fields, hlc: hlc);
       seq += r.nextInt(3);
       out.add((op, seq));

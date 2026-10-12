@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dearth_core/dearth_core.dart';
 import 'package:test/test.dart';
 
@@ -42,5 +44,41 @@ void main() {
 
   test('unknown message type is a FormatException', () {
     expect(() => SyncMessage.decode('{"type":"nope"}'), throwsFormatException);
+  });
+
+  group('malformed frames', () {
+    test('an op missing a required key is a FormatException, not a TypeError', () {
+      for (final key in ['op', 't', 'id', 'k', 'f', 'h']) {
+        final j = op.toJson()..remove(key);
+        expect(() => Op.fromJson(j), throwsFormatException, reason: key);
+      }
+      expect(() => Op.fromJson(op.toJson()..['f'] = 'oops'), throwsFormatException);
+      expect(() => Op.fromJson(op.toJson()..['a'] = 7), throwsFormatException);
+      expect(() => SeqOp.fromJson({'s': 'x', 'o': op.toJson()}), throwsFormatException);
+    });
+
+    test('a catch-up page skips a bad op and keeps the rest and the cursor', () {
+      final frame = jsonEncode({
+        'type': 'ops',
+        'ops': [
+          const SeqOp(7, op).toJson(),
+          {'s': 8, 'o': {'op': 'bad', 't': 'events'}},
+          'not an object',
+          SeqOp(10, Op.fromJson(op.toJson()..['op'] = 'op3')).toJson(),
+        ],
+        'upTo': 10,
+      });
+      final m = SyncMessage.decode(frame) as OpsMsg;
+      expect(m.ops.map((o) => o.seq), [7, 10]);
+      expect(m.upTo, 10);
+      expect(m.skipped, 2);
+    });
+
+    test('a frame of the wrong shape is a FormatException', () {
+      expect(() => SyncMessage.decode('[1]'), throwsFormatException);
+      expect(() => SyncMessage.decode('{"type":"ops","ops":"nope"}'), throwsFormatException);
+      expect(() => SyncMessage.decode('{"type":"push","ops":[{"op":1}]}'), throwsFormatException);
+      expect(() => SyncMessage.decode('{"type":"ack","rejected":[5]}'), throwsFormatException);
+    });
   });
 }

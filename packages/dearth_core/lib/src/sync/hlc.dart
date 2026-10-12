@@ -84,11 +84,16 @@ class HlcClock {
   final int Function() _wall;
   Hlc _last;
 
+  /// Added to the wall clock: a device sets it from the Hub's time when its
+  /// own clock is wrong. Running fast, the Hub would reject every op as
+  /// drift; running slow, every edit would lose to older ones.
+  int offsetMs = 0;
+
   Hlc get last => _last;
 
   /// Timestamp for a new local event (strictly greater than anything seen).
   Hlc tick() {
-    final wall = _wall();
+    final wall = _wall() + offsetMs;
     if (wall > _last.millis) {
       _last = Hlc(wall, 0, node);
     } else {
@@ -100,7 +105,7 @@ class HlcClock {
   /// Advances the clock past a remote timestamp. Throws [ClockDriftException]
   /// if [remote] is more than [maxDriftMs] ahead of the wall clock.
   void observe(Hlc remote) {
-    final wall = _wall();
+    final wall = _wall() + offsetMs;
     if (remote.millis - wall > maxDriftMs) {
       throw ClockDriftException(remote, remote.millis - wall);
     }

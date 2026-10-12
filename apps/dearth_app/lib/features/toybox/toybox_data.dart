@@ -149,8 +149,9 @@ List<WhoFace> whoFaces(List<Profile> people, String kidId, {bool photosOnly = tr
 
 // ─────────────────────────────── Rounds & levels ────────────────────────────
 
-/// A kid's recent rounds, newest first (enough for every game's ladder and
-/// today's time).
+/// A kid's recent rounds, newest first (the launcher's order and today's
+/// time). Ladders don't read it: a game untouched for a few busy weeks falls
+/// out of any shared window.
 final _kidRoundsProvider = StreamProvider.family<List<GameEvent>, String>((ref, kidId) {
   final db = ref.watch(dbProvider);
   return (db.select(db.gameEvents)
@@ -160,11 +161,40 @@ final _kidRoundsProvider = StreamProvider.family<List<GameEvent>, String>((ref, 
       .watch();
 });
 
+/// Every game's latest rounds for a kid, oldest first: the newest
+/// [_ladderDepth] scored rounds and free-play sessions of each game, however
+/// long ago it was played. That covers the ladder (its newest three scored
+/// rounds) and free play's unlocks (a level per three sessions).
+final _kidLaddersProvider = StreamProvider.family<Map<String, List<GameRound>>, String>((ref, kidId) {
+  final db = ref.watch(dbProvider);
+  return db
+      .customSelect(
+        'SELECT game, level, result FROM ('
+        '  SELECT game, level, result, at_ms,'
+        "    ROW_NUMBER() OVER (PARTITION BY game, result = 'played' ORDER BY at_ms DESC) AS rn"
+        '  FROM game_events WHERE profile_id = ? AND deleted = 0'
+        ') WHERE rn <= ? ORDER BY at_ms',
+        variables: [Variable<String>(kidId), Variable<int>(_ladderDepth)],
+        readsFrom: {db.gameEvents},
+      )
+      .watch()
+      .map((rows) {
+        final out = <String, List<GameRound>>{};
+        for (final r in rows) {
+          out.putIfAbsent(r.read<String>('game'), () => []).add((level: r.read<int>('level'), result: r.read<String>('result')));
+        }
+        return out;
+      });
+});
+
+/// Enough for the ladder's streak of three and free play's top unlock (three
+/// sessions a level).
+final int _ladderDepth = [for (final g in kGames) g.freePlay ? 3 * g.levels : 3].reduce((a, b) => a > b ? a : b);
+
 /// A kid's rounds of a game, oldest first.
 final gameRoundsProvider = Provider.family<List<GameRound>, (String, String)>((ref, key) {
   final (kidId, gameId) = key;
-  final events = ref.watch(_kidRoundsProvider(kidId)).value ?? const <GameEvent>[];
-  return [for (final e in events.reversed) if (e.game == gameId) (level: e.level, result: e.result)];
+  return ref.watch(_kidLaddersProvider(kidId).select((v) => v.value?[gameId])) ?? const <GameRound>[];
 });
 
 /// The level [game] starts at for a kid (FR-TOY-04).

@@ -116,6 +116,7 @@ class SyncClient {
   Set<String> _inflightOps = const {};
   String? deviceId;
   String? role;
+  int _helloSentMs = 0;
 
   void _set(SyncState s) {
     _state = s;
@@ -199,6 +200,7 @@ class SyncClient {
         cancelOnError: true,
       );
       final since = int.tryParse(await db.kvGet(cursorKey) ?? '') ?? 0;
+      _helloSentMs = DateTime.now().millisecondsSinceEpoch;
       _send(HelloMsg(token: token, since: since, appVersion: appVersion, platform: platform));
     } on Object catch (e) {
       debugPrint('sync: connect failed: $e');
@@ -298,6 +300,7 @@ class SyncClient {
     _welcomed = true;
     deviceId = w.deviceId;
     role = w.role;
+    _syncClock(w.hubTimeMs);
     if (w.snapshotRequired) {
       await _bootstrap();
     } else {
@@ -350,6 +353,7 @@ class SyncClient {
   }
 
   Future<void> _applyOps(OpsMsg m) async {
+    if (m.skipped > 0) debugPrint('sync: skipped ${m.skipped} malformed op(s) up to seq ${m.upTo}');
     if (m.ops.isNotEmpty || m.upTo > 0) {
       final seqs = <Op, int>{};
       for (final so in m.ops) {
@@ -366,6 +370,16 @@ class SyncClient {
       });
     }
     if (m.live && _state.phase != SyncPhase.live) _set(_state.copyWith(phase: SyncPhase.live));
+  }
+
+  /// Stamps ops in the Hub's time when this device's clock is off by more
+  /// than a few seconds (the welcome's hub time, plus half the round trip).
+  void _syncClock(int hubTimeMs) {
+    if (hubTimeMs <= 0) return;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final offset = hubTimeMs + (now - _helloSentMs) ~/ 2 - now;
+    clock.offsetMs = offset.abs() > 5000 ? offset : 0;
+    if (clock.offsetMs != 0) debugPrint('sync: device clock is ${offset ~/ 1000}s off the Hub; stamping ops in Hub time');
   }
 
   void _observe(Hlc h) {
@@ -438,6 +452,6 @@ class SyncClient {
 
   void _sendTelemetry() {
     if (!_welcomed) return;
-    _send(TelemetryMsg({'app': appVersion, 'platform': platform, ...?telemetry?.call()}));
+    _send(TelemetryMsg({'app': appVersion, 'platform': platform, if (clock.offsetMs != 0) 'clockOffsetMs': clock.offsetMs, ...?telemetry?.call()}));
   }
 }

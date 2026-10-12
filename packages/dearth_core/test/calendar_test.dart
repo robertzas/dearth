@@ -203,6 +203,20 @@ void main() {
       expect(span.endDate, const LocalDate(2026, 10, 8));
     });
 
+    test('a bare start borrows the other meridiem when the end comes first', () {
+      final r = q('Soccer 11-1pm')!;
+      expect(r.startMinute, 11 * 60);
+      expect(r.durationMinutes, 120);
+      expect(q('Camp 9-2pm')!.startMinute, 9 * 60);
+      expect(q('Camp 9-2pm')!.durationMinutes, 5 * 60);
+      expect(q('Lunch 11-12pm')!.startMinute, 11 * 60);
+      expect(q('Lunch 11-12pm')!.durationMinutes, 60);
+      expect(q('Nap 1-3pm')!.startMinute, 13 * 60);
+      final morning = q('Brunch 10-12am')!;
+      expect(morning.startMinute, 10 * 60);
+      expect(morning.durationMinutes, 120);
+    });
+
     test('empty or title-less input', () {
       expect(q('   '), isNull);
       expect(q('tomorrow 9am'), isNull);

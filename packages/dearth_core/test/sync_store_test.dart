@@ -80,6 +80,22 @@ void main() {
     expect(entry.delta, 1);
   });
 
+  test('a winning insert-only op replaces the row, not just its own fields', () async {
+    final early = op('ledger_entries', 'l1', {'delta': 1}, h(10, 'a'), kind: OpKind.insertOnly);
+    final late = op('ledger_entries', 'l1', {'delta': 5, 'note': 'extra', 'reason': 'chore'}, h(20, 'b'), kind: OpKind.insertOnly);
+    final gone = op('ledger_entries', 'l1', const {}, h(30, 'c'), kind: OpKind.delete);
+    final db2 = memoryDb();
+    addTearDown(db2.close);
+    await store.applyOps([late, gone, early]);
+    await SyncStore(db2).applyOps([early, gone, late]);
+    expect(await rows(db, 'ledger_entries'), await rows(db2, 'ledger_entries'));
+    final entry = await db.select(db.ledgerEntries).getSingle();
+    expect(entry.delta, 1);
+    expect(entry.note, isNull);
+    expect(entry.reason, 'manual');
+    expect(entry.deleted, isTrue, reason: 'the tombstone outlives the replaced insert');
+  });
+
   test('unknown columns and system columns in ops are ignored', () async {
     await store.applyOp(op('events', 'e1', {'title': 'x', 'from_the_future': 1, 'sync_seq': 999}, h(1)));
     final ev = await db.select(db.events).getSingle();
@@ -143,7 +159,14 @@ void main() {
               if (r.nextBool()) 'checked': r.nextBool(),
               if (r.nextBool()) 'qty': r.nextInt(10) / 2,
             },
-          _ => {'delta': r.nextInt(5) + 1, 'reason': 'chore'},
+          // Two devices creating the same append-only row with different
+          // field sets: the winner must replace the row, not merge into it.
+          _ => {
+              'delta': r.nextInt(5) + 1,
+              if (r.nextBool()) 'reason': 'chore',
+              if (r.nextBool()) 'note': ['a', 'b'][r.nextInt(2)],
+              if (r.nextInt(3) == 0) 'ref_id': 'r${r.nextInt(2)}',
+            },
         };
 
     for (var seed = 0; seed < 60; seed++) {
@@ -161,12 +184,14 @@ void main() {
           if (fields.isEmpty) continue;
           // Nodes occasionally observe each other's latest stamp.
           if (ops.isNotEmpty && r.nextBool()) clocks[node].observe(Hlc.parse(ops[r.nextInt(ops.length)].hlc));
+          final appendOnly = table == 'ledger_entries';
+          final delete = appendOnly && r.nextInt(6) == 0;
           ops.add(Op(
             id: 'op$i',
             table: table,
             rowId: rowId,
-            kind: table == 'ledger_entries' ? OpKind.insertOnly : OpKind.upsert,
-            fields: fields,
+            kind: delete ? OpKind.delete : (appendOnly ? OpKind.insertOnly : OpKind.upsert),
+            fields: delete ? const {} : fields,
             hlc: clocks[node].tick().pack(),
           ));
         }

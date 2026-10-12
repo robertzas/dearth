@@ -80,7 +80,7 @@ final kidDayProvider = Provider.family<KidDay, (String?, LocalDate)>((ref, key) 
         ? ref.watch(kidRoutinesTodayProvider(kidId))
         : [
             for (final r in ref.watch(routinesProvider).value ?? const <Routine>[])
-              if (_forKid(r, kidId) && isDueOn(r.rrule, LocalDate.tryParse(r.anchorDate) ?? date, date)) RoutineToday(r, decodeSteps(r.steps), null, date, kidId),
+              if (_forKid(r, kidId) && isDueOn(r.rrule, scheduleAnchor(r.anchorDate), date)) RoutineToday(r, decodeSteps(r.steps), null, date, kidId),
           ];
     for (final r in routines) {
       final at = _minuteOf(r.routine.startTime);

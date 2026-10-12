@@ -54,6 +54,13 @@ void main() {
       expect(() => clock.observe(const Hlc(5000, 0, 'n2')), throwsA(isA<ClockDriftException>()));
     });
 
+    test('an offset puts a wrong wall clock on the Hub\'s time', () {
+      final clock = HlcClock('n1', wallClock: () => 0, maxDriftMs: 1000)..offsetMs = 5000;
+      expect(clock.tick().millis, 5000);
+      clock.observe(const Hlc(5500, 0, 'n2'));
+      expect(clock.tick().millis, greaterThanOrEqualTo(5500));
+    });
+
     test('counter overflow rolls into the next millisecond', () {
       final clock = HlcClock('n1', wallClock: () => 10);
       clock.observe(const Hlc(10, Hlc.maxCounter, 'n2'));

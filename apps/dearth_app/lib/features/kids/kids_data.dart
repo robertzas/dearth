@@ -86,7 +86,7 @@ final kidRoutinesTodayProvider = Provider.family<List<RoutineToday>, String>((re
   final runs = {for (final r in ref.watch(_routineRunsProvider(today.iso)).value ?? const <RoutineRun>[]) r.id: r};
   return [
     for (final r in routines)
-      if (_forKid(r, kidId) && isDueOn(r.rrule, LocalDate.tryParse(r.anchorDate) ?? today, today))
+      if (_forKid(r, kidId) && isDueOn(r.rrule, scheduleAnchor(r.anchorDate), today))
         RoutineToday(r, decodeSteps(r.steps), runs[routineRunId(r.id, today, kidId)], today, kidId),
   ];
 });

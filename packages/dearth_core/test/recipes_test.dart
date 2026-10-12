@@ -18,6 +18,8 @@ void main() {
       expect(parseQuantity('1½')!.value, 1.5);
       expect(parseQuantity('2-3')!.max, 3);
       expect(parseQuantity('abc'), isNull);
+      expect(parseQuantity('1 1/0'), isNull, reason: 'a typo, not infinity');
+      expect(parseQuantity('1/0'), isNull);
     });
 
     test('friendly formatting', () {
@@ -70,6 +72,24 @@ void main() {
       expect(parseIngredientLine('Salt to taste').qty, isNull);
       expect(parseIngredientLine('1 bunch cilantro').aisle, Aisle.produce);
       expect(parseIngredientLine('1 lb boneless skinless chicken thighs').aisle, Aisle.meatSeafood);
+    });
+
+    test('aisles match whole words and the head noun', () {
+      expect(aisleFor('coconut milk'), Aisle.pantry);
+      expect(aisleFor('peanut butter'), Aisle.pantry);
+      expect(aisleFor('eggplant'), Aisle.produce);
+      expect(aisleFor('goat cheese'), Aisle.dairyEggs);
+      expect(aisleFor('nutmeg'), Aisle.spices);
+      expect(aisleFor('chicken broth'), Aisle.pantry);
+      expect(aisleFor('tortilla chips'), Aisle.snacks);
+      expect(aisleFor('tomato sauce'), Aisle.pantry);
+      expect(aisleFor('garlic clove'), Aisle.produce);
+      expect(aisleFor('strawberries'), Aisle.produce);
+      expect(aisleFor('anchovies'), Aisle.meatSeafood);
+      expect(aisleFor('milk'), Aisle.dairyEggs);
+      expect(aisleFor('eggs'), Aisle.dairyEggs);
+      expect(aisleFor('chickpea'), Aisle.pantry);
+      expect(aisleFor('something odd'), Aisle.other);
     });
 
     test('TheMealDB measure + name pairs', () {

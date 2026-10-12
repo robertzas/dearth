@@ -9,9 +9,18 @@ import '../sync/sync_specs.dart';
 import 'database.dart';
 
 class _TableMeta {
-  _TableMeta(this.info) : types = {for (final c in info.$columns) c.name: c.type};
+  _TableMeta(this.info)
+      : types = {for (final c in info.$columns) c.name: c.type},
+        defaults = {
+          for (final c in info.$columns)
+            if (!kSyncSystemColumns.contains(c.name)) c.name: switch (c.defaultValue) { final Constant<Object> d => d.value, _ => null },
+        };
   final TableInfo<Table, Object?> info;
   final Map<String, Object> types;
+
+  /// Data column → its schema default (synced columns are all nullable or
+  /// constant-defaulted, SPEC §8.3).
+  final Map<String, Object?> defaults;
 }
 
 /// Thrown for ops that reference unknown tables (programming or version error).
@@ -77,16 +86,19 @@ class SyncStore {
     final String rowHlc;
 
     if (op.kind == OpKind.insertOnly) {
-      // Append-only rows: FIRST writer wins (lowest HLC). Unlike "ignore if
-      // present", this converges regardless of arrival order (SPEC §8.4.4).
-      final existingHlc = existing?.read<String>('sync_hlc') ?? '';
-      if (existing != null && existingHlc.isNotEmpty && op.hlc.compareTo(existingHlc) >= 0) {
+      final won = _insertOnly(
+        meta,
+        op,
+        present: existing != null,
+        clock: existing == null ? const {} : decodeClock(existing.read<String>('sync_clock')),
+        rowHlc: existing?.read<String>('sync_hlc') ?? '',
+      );
+      if (won == null) {
         await _bumpSeq(meta, op.rowId, seq, existingSeq);
         return false;
       }
-      final changes = {for (final e in op.fields.entries) if (known(e.key)) e.key: e.value};
-      result = MergeResult(changes, {for (final k in changes.keys) k: op.hlc});
-      rowHlc = op.hlc;
+      result = MergeResult(won.changes, won.clock);
+      rowHlc = won.hlc;
     } else {
       final fields = op.kind == OpKind.delete ? {...op.fields, 'deleted': true} : op.fields;
       final clock = existing == null ? <String, String>{} : decodeClock(existing.read<String>('sync_clock'));
@@ -204,15 +216,14 @@ class SyncStore {
         final seq = seqOf?.call(op) ?? 0;
         bool known(String f) => meta.types.containsKey(f) && !kSyncSystemColumns.contains(f);
         if (op.kind == OpKind.insertOnly) {
-          // First writer (lowest HLC) wins, as in [applyOp].
-          if (row.present && row.hlc.isNotEmpty && op.hlc.compareTo(row.hlc) >= 0) {
+          final won = _insertOnly(meta, op, present: row.present, clock: row.clock, rowHlc: row.hlc);
+          if (won == null) {
             row.bump(seq);
             continue;
           }
-          final values = {for (final f in op.fields.entries) if (known(f.key)) f.key: f.value};
-          row.values.addAll(values);
-          row.clock = {for (final k in values.keys) k: op.hlc};
-          row.hlc = op.hlc;
+          row.values.addAll(won.changes);
+          row.clock = won.clock;
+          row.hlc = won.hlc;
         } else {
           final fields = op.kind == OpKind.delete ? {...op.fields, 'deleted': true} : op.fields;
           final result = mergeFields(clock: row.clock, fields: fields, hlc: op.hlc, isKnown: known);
@@ -262,6 +273,46 @@ class SyncStore {
       if (touched.isNotEmpty) db.notifyUpdates({for (final t in touched) TableUpdate.onTable(_tables[t]!.info)});
     });
     return changed;
+  }
+
+  /// Append-only rows (SPEC §8.4.4): the FIRST writer (lowest HLC) wins,
+  /// which converges whatever the arrival order. Returns null when [op]
+  /// loses. Shared by [applyOp] and [applyOpsBulk] so the two can't drift.
+  ///
+  /// A winner replaces the row wholesale: data columns its op doesn't carry
+  /// go back to their defaults, or a replica that met the later insert first
+  /// would keep its extra columns. The one thing kept is a tombstone, which
+  /// came from a delete, not from the losing insert.
+  ({Map<String, Object?> changes, Map<String, String> clock, String hlc})? _insertOnly(
+    _TableMeta meta,
+    Op op, {
+    required bool present,
+    required Map<String, String> clock,
+    required String rowHlc,
+  }) {
+    // Every non-tombstone clock entry carries the insert's HLC; a row only a
+    // delete has reached has no insert yet.
+    final inserted = [for (final e in clock.entries) if (e.key != 'deleted') e.value];
+    final insertHlc = inserted.isNotEmpty
+        ? inserted.reduce((a, b) => a.compareTo(b) <= 0 ? a : b)
+        : (present && !clock.containsKey('deleted') && rowHlc.isNotEmpty ? rowHlc : null);
+    if (insertHlc != null && op.hlc.compareTo(insertHlc) >= 0) return null;
+    bool known(String f) => meta.types.containsKey(f) && !kSyncSystemColumns.contains(f);
+    final tomb = clock['deleted'];
+    final keepTomb = tomb != null && !op.fields.containsKey('deleted');
+    final changes = <String, Object?>{
+      if (present)
+        for (final d in meta.defaults.entries)
+          if (!(keepTomb && d.key == 'deleted')) d.key: d.value,
+      for (final f in op.fields.entries)
+        if (known(f.key)) f.key: f.value,
+    };
+    final next = <String, String>{
+      for (final k in op.fields.keys)
+        if (known(k)) k: op.hlc,
+      if (keepTomb) 'deleted': tomb,
+    };
+    return (changes: changes, clock: next, hlc: keepTomb ? _maxString(op.hlc, tomb) : op.hlc);
   }
 
   Future<void> _bumpSeq(_TableMeta meta, String rowId, int seq, int existingSeq) async {

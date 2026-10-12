@@ -162,11 +162,18 @@ QuickAddResult? parseQuickAdd(
     if (range != null) {
       final endMer = range[6] ?? range[3];
       final startMer = range[3] ?? endMer;
-      final s = _toMinutes(int.parse(range[1]!), int.parse(range[2] ?? '0'), startMer);
+      final sh = int.parse(range[1]!), sm = int.parse(range[2] ?? '0');
+      var s = _toMinutes(sh, sm, startMer);
       final e = _toMinutes(int.parse(range[4]!), int.parse(range[5] ?? '0'), endMer);
+      // "11-1pm", "9-2pm": a start that borrowed the end's meridiem and lands
+      // after the end belongs to the other half of the day.
+      if (range[3] == null && endMer != null && s != null && e != null && e <= s) {
+        final flipped = _toMinutes(sh, sm, endMer.startsWith('p') ? 'am' : 'pm');
+        if (flipped != null && flipped < e) s = flipped;
+      }
       if (s != null && e != null) {
         start = s;
-        // "11-1pm": the end is after the start, so the start must be am.
+        // "10-12am" reads as the morning, so a later end rolls forward 12 h.
         end = e > s ? e : e + 12 * 60;
         if (end > 24 * 60) end = e;
         continue;

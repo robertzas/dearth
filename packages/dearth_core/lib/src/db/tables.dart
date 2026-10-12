@@ -397,7 +397,10 @@ class FeelingEntries extends Table with SyncRow {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+// Grows forever and is read per kid, newest first (launcher, ladders, the
+// daily budget).
 @DataClassName('GameEvent')
+@TableIndex(name: 'game_events_kid', columns: {#profileId, #atMs})
 class GameEvents extends Table with SyncRow {
   TextColumn get profileId => text().nullable()();
   TextColumn get game => text().withDefault(const Constant(''))();

@@ -30,4 +30,22 @@ void main() {
     expect((await db.select(db.jobStates).get()).single.id, 'photos');
     expect(await db.customSelect('PRAGMA user_version').map((r) => r.read<int>('user_version')).getSingle(), db.schemaVersion);
   });
+
+  test('version 2 → 3: game events gain their per-kid index; rows stay', () async {
+    final dir = await Directory.systemTemp.createTemp('dearth-schema');
+    addTearDown(() => dir.delete(recursive: true));
+    final file = File('${dir.path}/dearth.db');
+
+    var db = DearthDb(NativeDatabase(file));
+    await db.into(db.gameEvents).insert(GameEventsCompanion.insert(id: 'g1', profileId: const Value('ava'), game: const Value('dots')));
+    await db.customStatement('DROP INDEX game_events_kid');
+    await db.customStatement('PRAGMA user_version = 2');
+    await db.close();
+
+    db = DearthDb(NativeDatabase(file));
+    addTearDown(db.close);
+    final indexes = await db.customSelect("SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'game_events'").map((r) => r.read<String>('name')).get();
+    expect(indexes, contains('game_events_kid'));
+    expect((await db.select(db.gameEvents).get()).single.id, 'g1');
+  });
 }

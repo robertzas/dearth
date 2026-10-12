@@ -57,7 +57,7 @@ class DearthDb extends _$DearthDb {
   DearthDb(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -65,6 +65,9 @@ class DearthDb extends _$DearthDb {
         onUpgrade: (m, from, to) async {
           // Additive migrations go here, keyed by version (SPEC §8.4.5).
           if (from < 2) await m.createTable(recipeCache);
+          // IF NOT EXISTS: a database first made at version 1 or 2 by this
+          // code's createAll already has it.
+          if (from < 3) await customStatement('CREATE INDEX IF NOT EXISTS game_events_kid ON game_events (profile_id, at_ms)');
         },
       );
 

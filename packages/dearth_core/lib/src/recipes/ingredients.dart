@@ -318,7 +318,7 @@ const List<(Aisle, List<String>)> _aisleKeywords = [
   (Aisle.frozen, ['frozen', 'ice cream']),
   (Aisle.meatSeafood, [
     'chicken', 'beef', 'pork', 'lamb', 'turkey', 'bacon', 'sausage', 'ham', 'steak', 'salmon', 'tuna', //
-    'cod', 'shrimp', 'crab', 'lobster', 'fish', 'tilapia', 'trout', 'anchov', 'sardine', 'duck', 'veal', //
+    'cod', 'shrimp', 'crab', 'lobster', 'fish', 'tilapia', 'trout', 'anchovy', 'sardine', 'duck', 'veal', //
     'chorizo', 'prosciutto', 'pancetta', 'mince', 'meatball', 'scallop', 'mussel', 'clam',
   ]),
   (Aisle.deli, ['salami', 'pepperoni', 'hummus', 'deli']),
@@ -335,11 +335,12 @@ const List<(Aisle, List<String>)> _aisleKeywords = [
   (Aisle.produce, [
     'onion', 'garlic', 'tomato', 'potato', 'carrot', 'celery', 'bell pepper', 'chili pepper', 'jalapeno', //
     'broccoli', 'spinach', 'lettuce', 'cucumber', 'mushroom', 'zucchini', 'eggplant', 'corn', 'pea', 'cabbage', //
-    'kale', 'avocado', 'lemon', 'lime', 'orange', 'apple', 'banana', 'berry', 'strawberr', 'blueberr', //
-    'raspberr', 'grape', 'melon', 'pineapple', 'mango', 'peach', 'pear', 'plum', 'ginger', 'basil', //
+    'kale', 'avocado', 'lemon', 'lime', 'orange', 'apple', 'banana', 'berry', 'strawberry', 'blueberry', //
+    'raspberry', 'grape', 'melon', 'pineapple', 'mango', 'peach', 'pear', 'plum', 'ginger', 'basil', //
     'parsley', 'cilantro', 'thyme', 'rosemary', 'dill', 'mint', 'chive', 'leek', 'shallot', 'squash', //
     'sweet potato', 'beet', 'radish', 'cauliflower', 'asparagus', 'arugula', 'fennel', 'bok choy', 'chard', //
-    'sprout', 'herb', 'salad', 'green bean', 'okra', 'pumpkin', 'cherry', 'kiwi', 'watermelon',
+    'sprout', 'herb', 'salad', 'green bean', 'okra', 'pumpkin', 'cherry', 'kiwi', 'watermelon', //
+    'garlic clove', 'lemon juice', 'lime juice',
   ]),
   (Aisle.bakery, ['bread', 'baguette', 'croissant', 'bun', 'roll', 'bagel', 'pita', 'naan', 'tortilla', 'brioche', 'sourdough', 'english muffin']),
   (Aisle.grains, [
@@ -358,15 +359,51 @@ const List<(Aisle, List<String>)> _aisleKeywords = [
   (Aisle.household, ['paper towel', 'foil', 'plastic wrap', 'parchment', 'napkin', 'detergent', 'soap', 'trash bag']),
 ];
 
-/// Aisle for a normalized ingredient key (first keyword hit wins).
-Aisle aisleFor(String key) {
-  final k = ' $key ';
-  for (final (aisle, words) in _aisleKeywords) {
-    for (final w in words) {
-      if (k.contains(w)) return aisle;
+/// Keyword phrases by their first word (every plural form of it for one-word
+/// keywords), as (aisle, the phrase's words).
+final Map<String, List<(Aisle, List<String>)>> _aisleIndex = () {
+  final index = <String, List<(Aisle, List<String>)>>{};
+  for (final (aisle, keywords) in _aisleKeywords) {
+    for (final kw in keywords) {
+      final words = kw.split(' ');
+      for (final first in words.length == 1 ? _wordForms(kw) : [words.first]) {
+        index.putIfAbsent(first, () => []).add((aisle, words));
+      }
     }
   }
-  return Aisle.other;
+  return index;
+}();
+
+/// A keyword's last word as written and in its plural forms.
+List<String> _wordForms(String w) => [w, '${w}s', '${w}es', if (w.endsWith('y')) '${w.substring(0, w.length - 1)}ies'];
+
+/// Aisle for a normalized ingredient key. Keywords match whole words (plurals
+/// allowed), so "eggplant" isn't an egg and "goat cheese" isn't oats. Among
+/// the hits, the one ending last wins: English puts the head noun last
+/// ("chicken broth" is broth, "tortilla chips" are chips). A tie goes to the
+/// longer phrase ("coconut milk" over "milk", "peanut butter" over "butter").
+Aisle aisleFor(String key) {
+  final words = key.toLowerCase().split(RegExp(r'[^a-z]+')).where((w) => w.isNotEmpty).toList();
+  Aisle? best;
+  var bestEnd = -1, bestLen = 0;
+  for (var i = 0; i < words.length; i++) {
+    for (final (aisle, kw) in _aisleIndex[words[i]] ?? const <(Aisle, List<String>)>[]) {
+      final end = i + kw.length - 1;
+      if (end >= words.length) continue;
+      var hit = true;
+      for (var j = 1; j < kw.length && hit; j++) {
+        hit = j == kw.length - 1 ? _wordForms(kw[j]).contains(words[i + j]) : words[i + j] == kw[j];
+      }
+      if (!hit) continue;
+      final len = kw.join(' ').length;
+      if (end > bestEnd || (end == bestEnd && len > bestLen)) {
+        best = aisle;
+        bestEnd = end;
+        bestLen = len;
+      }
+    }
+  }
+  return best ?? Aisle.other;
 }
 
 const Map<String, int> _perish = {

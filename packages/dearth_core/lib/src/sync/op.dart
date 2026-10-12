@@ -36,16 +36,23 @@ class Op {
     this.schema = kSchemaMajor,
   });
 
-  factory Op.fromJson(Map<String, Object?> j) => Op(
-        id: j['op']! as String,
-        table: j['t']! as String,
-        rowId: j['id']! as String,
-        kind: OpKind.fromCode(j['k']! as String),
-        fields: Map<String, Object?>.from(j['f']! as Map),
-        hlc: j['h']! as String,
-        actor: j['a'] as String?,
-        schema: (j['v'] as num?)?.toInt() ?? kSchemaMajor,
-      );
+  /// Throws [FormatException] (never a `TypeError`) on a malformed op, so a
+  /// receiver can drop that one op and keep going.
+  factory Op.fromJson(Map<String, Object?> j) {
+    final actor = j['a'], schema = j['v'];
+    if (actor != null && actor is! String) throw FormatException('Op ${j['op']}: bad actor', actor);
+    if (schema != null && schema is! num) throw FormatException('Op ${j['op']}: bad schema', schema);
+    return Op(
+      id: _req<String>(j, 'op'),
+      table: _req<String>(j, 't'),
+      rowId: _req<String>(j, 'id'),
+      kind: OpKind.fromCode(_req<String>(j, 'k')),
+      fields: Map<String, Object?>.from(_req<Map<String, Object?>>(j, 'f')),
+      hlc: _req<String>(j, 'h'),
+      actor: actor as String?,
+      schema: (schema as num?)?.toInt() ?? kSchemaMajor,
+    );
+  }
 
   final String id;
   final String table;
@@ -79,11 +86,16 @@ class Op {
 @immutable
 class SeqOp {
   const SeqOp(this.seq, this.op);
-  factory SeqOp.fromJson(Map<String, Object?> j) =>
-      SeqOp((j['s']! as num).toInt(), Op.fromJson(Map<String, Object?>.from(j['o']! as Map)));
+  factory SeqOp.fromJson(Map<String, Object?> j) => SeqOp(_req<num>(j, 's').toInt(), Op.fromJson(_req<Map<String, Object?>>(j, 'o')));
 
   final int seq;
   final Op op;
 
   Map<String, Object?> toJson() => {'s': seq, 'o': op.toJson()};
+}
+
+T _req<T>(Map<String, Object?> j, String key) {
+  final v = j[key];
+  if (v is T) return v;
+  throw FormatException('Op ${j['op'] ?? ''}: missing or bad "$key"', v);
 }

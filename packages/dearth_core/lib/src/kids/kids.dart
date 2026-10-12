@@ -29,6 +29,12 @@ bool isDueOn(String rrule, LocalDate anchor, LocalDate day) {
   return hits.isNotEmpty;
 }
 
+/// The series start for a chore or routine row. Every writer sets
+/// `anchor_date`, but older or imported rows may not; anchoring those at the
+/// queried day would make "every other week" due every day, so they get one
+/// fixed Monday instead.
+LocalDate scheduleAnchor(String? anchorDate) => LocalDate.tryParse(anchorDate) ?? const LocalDate(2024, 1, 1);
+
 /// Deterministic ids so offline devices converge (SPEC §8.3).
 String choreInstanceId(String choreId, LocalDate date, String? profileId) =>
     stableId('chore_instance', [choreId, date.iso, profileId ?? 'anyone']);
@@ -53,12 +59,11 @@ class DueChore {
 }
 
 /// Expands active chores into due items for [day].
-List<DueChore> dueChores(Iterable<Chore> chores, LocalDate day, {LocalDate? defaultAnchor}) {
+List<DueChore> dueChores(Iterable<Chore> chores, LocalDate day) {
   final out = <DueChore>[];
   for (final c in chores) {
     if (c.deleted || !c.active) continue;
-    final anchor = LocalDate.tryParse(c.anchorDate) ?? defaultAnchor ?? day;
-    if (!isDueOn(c.rrule, anchor, day)) continue;
+    if (!isDueOn(c.rrule, scheduleAnchor(c.anchorDate), day)) continue;
     final assignees = decodeStringList(c.assignees);
     if (assignees.isEmpty) {
       out.add(DueChore(c, day, null));

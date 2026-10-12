@@ -28240,6 +28240,10 @@ abstract class _$DearthDb extends GeneratedDatabase {
     'ledger_profile',
     'CREATE INDEX ledger_profile ON ledger_entries (profile_id)',
   );
+  late final Index gameEventsKid = Index(
+    'game_events_kid',
+    'CREATE INDEX game_events_kid ON game_events (profile_id, at_ms)',
+  );
   late final Index photoItemsSource = Index(
     'photo_items_source',
     'CREATE INDEX photo_items_source ON photo_items (source_id)',
@@ -28300,6 +28304,7 @@ abstract class _$DearthDb extends GeneratedDatabase {
     mealEntriesDate,
     choreInstancesDate,
     ledgerProfile,
+    gameEventsKid,
     photoItemsSource,
     opLogRow,
   ];

@@ -83,6 +83,25 @@ void main() {
     await h.shutdown();
   });
 
+  testWidgets('FR-TOY-04: a game left alone for weeks keeps its level while others fill the history', (tester) async {
+    final h = await AppHarness.demo(tester);
+    final level = h.container.listen(gameLevelProvider(('p-ava', 'compare')), (_, _) {});
+    final paint = h.container.listen(gameLevelProvider(('p-ava', 'paint')), (_, _) {});
+    final now = h.container.read(householdTimeProvider).nowMs();
+    const day = 86400000;
+    await h.write((w) => [
+          for (var i = 0; i < 3; i++) w.op('game_events', 'ge-old-$i', {'profile_id': 'p-ava', 'game': 'compare', 'level': 2, 'result': 'win', 'duration_ms': 30000, 'at_ms': now - 40 * day - i * 60000}, kind: OpKind.insertOnly),
+          for (var i = 0; i < 6; i++) w.op('game_events', 'ge-paint-$i', {'profile_id': 'p-ava', 'game': 'paint', 'level': 1, 'result': 'played', 'duration_ms': 30000, 'at_ms': now - 35 * day - i * 60000}, kind: OpKind.insertOnly),
+          for (var i = 0; i < 600; i++) w.op('game_events', 'ge-busy-$i', {'profile_id': 'p-ava', 'game': 'bubbles', 'level': 1, 'result': i.isEven ? 'win' : 'miss', 'duration_ms': 1000, 'at_ms': now - i * 60000}, kind: OpKind.insertOnly),
+        ]);
+    await h.settle();
+    expect(level.read(), 3, reason: 'three wins at level 2, six weeks and 600 rounds ago, still move her up');
+    expect(paint.read(), 3, reason: 'six free-play sessions unlock level 3');
+    level.close();
+    paint.close();
+    await h.shutdown();
+  });
+
   testWidgets('FR-TOY-02/04: twelve pops finish a Bubble Pop round: recorded as a win and celebrated', (tester) async {
     final handle = tester.ensureSemantics();
     final sound = RecordingSound();

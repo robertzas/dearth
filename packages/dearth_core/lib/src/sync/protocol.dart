@@ -16,10 +16,17 @@ sealed class SyncMessage {
   Map<String, Object?> toJson() => {'type': type, ...body()};
   String encode() => jsonEncode(toJson());
 
+  /// Throws only [FormatException]. A frame of the wrong shape surfaces from
+  /// the casts below as a `TypeError`; receivers catch `FormatException`, so a
+  /// `TypeError` would escape them and the frame would vanish unanswered.
   static SyncMessage decode(String frame) {
     final j = jsonDecode(frame);
     if (j is! Map<String, Object?>) throw const FormatException('Sync frame is not an object');
-    return fromJson(j);
+    try {
+      return fromJson(j);
+    } on TypeError catch (e) {
+      throw FormatException('Malformed ${j['type']} frame: $e');
+    }
   }
 
   static SyncMessage fromJson(Map<String, Object?> j) {
@@ -55,11 +62,19 @@ sealed class SyncMessage {
           ],
         );
       case 'ops':
-        return OpsMsg(
-          ops: [for (final o in (j['ops'] as List? ?? const [])) SeqOp.fromJson(Map<String, Object?>.from(o as Map))],
-          upTo: (j['upTo'] as num?)?.toInt() ?? 0,
-          live: j['live'] as bool? ?? false,
-        );
+        // A malformed op can never be applied, so it is skipped and the rest
+        // of the page still lands and advances the cursor; failing the whole
+        // frame would replay it from the same cursor on every reconnect.
+        final good = <SeqOp>[];
+        var skipped = 0;
+        for (final o in (j['ops'] as List? ?? const [])) {
+          try {
+            good.add(SeqOp.fromJson(o is Map<String, Object?> ? o : throw FormatException('Op entry is not an object', o)));
+          } on FormatException {
+            skipped++;
+          }
+        }
+        return OpsMsg(ops: good, upTo: (j['upTo'] as num?)?.toInt() ?? 0, live: j['live'] as bool? ?? false, skipped: skipped);
       case 'eph':
         return EphemeralMsg(j['channel'] as String? ?? '', Map<String, Object?>.from(j['data'] as Map? ?? const {}));
       case 'cmd':
@@ -169,10 +184,13 @@ class AckMsg extends SyncMessage {
 
 /// Hub → device: ops in sequence order. [live] marks the end of catch-up.
 class OpsMsg extends SyncMessage {
-  const OpsMsg({required this.ops, required this.upTo, this.live = false});
+  const OpsMsg({required this.ops, required this.upTo, this.live = false, this.skipped = 0});
   final List<SeqOp> ops;
   final int upTo;
   final bool live;
+
+  /// Malformed ops dropped while decoding (not on the wire).
+  final int skipped;
   @override
   String get type => 'ops';
   @override
