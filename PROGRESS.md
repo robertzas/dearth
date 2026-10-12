@@ -50,7 +50,7 @@ Useful commands (details in `README.md`):
 - Done (2026-10-08): the family Google calendar offer (FR-CAL-04) and the Google reminders mapping on the Hub (FR-CAL-20, §13.2). The owner's Google project needs `calendar.app.created` and `calendar.acls` on its consent screen before accepting the offer.
 - Done (2026-10-08, owner request after the second set): the launcher puts new games (added in the last 30 days, not yet played) first, then her favorites of the last two weeks, then the rest by age (FR-TOY-01).
 - Done (owner: "continue", 2026-10-09): 7.1 `tool/perf_gate.sh`, the frame perf gate, with a JT215M baseline ✅ (2026-10-09). What it measured is under Decisions & findings; the calendar's week and month builds are the worst.
-- Next: what the perf gate found on the frame (2026-10-09 baseline): the calendar's week paging (build p90 216 ms) and month view (370 ms), destination switches (98 ms builds), the photo frame's crossfade (raster p90 50 ms), memory after a run (PSS 268 MB, budget 220). Then the open items in Phases 4–6. 6.3 Music box is **deferred** (owner, 2026-10-05): skip it until the owner brings it back.
+- Next: what the perf gate found on the frame (2026-10-09 baseline): the calendar's week paging (build p90 216 ms) and month view (370 ms), destination switches (98 ms builds), the photo frame's crossfade (raster p90 50 ms), memory after a run (PSS 268 MB; the 220 MB budget was dropped by the owner on 2026-10-11, growth is what's watched). Then the open items in Phases 4–6. 6.3 Music box is **deferred** (owner, 2026-10-05): skip it until the owner brings it back.
 
 ## Plan & status
 

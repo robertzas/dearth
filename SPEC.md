@@ -140,7 +140,7 @@ photos (local or shared-link), recipes, chores and the toybox (§7.2).
 | Screensaver crossfade between 1080p photos | 0 dropped frames, p99 ≤ 17.9 ms |
 | Cold start → interactive Home | ≤ 3.5 s |
 | Resume from background | ≤ 300 ms |
-| Memory (PSS), kitchen role, 24 h uptime | ≤ 220 MB steady state; < 10 % growth over 7 days |
+| Memory (PSS), kitchen role, 24 h uptime | < 10 % growth over 7 days; never killed by Android's low-memory killer (no fixed ceiling: 2 GB is enough, leaks are what hurt) |
 | CPU, idle Home (no animation) / screensaver | ≤ 3 % / ≤ 12 % of total CPU |
 | Change on phone → visible on LAN displays | p95 ≤ 1 s |
 | Google Calendar change → visible on display | ≤ 15 s with push channels; ≤ 10 min fallback |
@@ -1911,7 +1911,7 @@ numbers refer to the JT215M (T1) in **profile** builds unless noted.
 | Frame (56 Hz) | 17.9 ms total. UI thread (build + layout + paint record) p90 ≤ 7 ms; raster p90 ≤ 10 ms |
 | Jank | < 1 % janky frames per scenario; no frame > 50 ms outside cold start |
 | Cold start → Home interactive | ≤ 3.5 s (splash shows the clock within 1 s) |
-| Memory (PSS) | ≤ 220 MB steady; ≤ 300 MB peak (photo transitions + cook mode) |
+| Memory (PSS) | No fixed ceiling (owner, 2026-10-11: the 2 GB frame has room; 220 MB was never a real limit). What counts: no growth over a soak, and no rise against the perf gate's baseline without a reason |
 | Dart heap | ≤ 60 MB steady |
 | Image cache | T1 48 MB / T2 96 MB / T3 160 MB (`PaintingBinding.imageCache`) |
 | CPU | Idle Home ≤ 3 %; screensaver ≤ 12 %; Toybox games ≤ 45 % |

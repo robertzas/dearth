@@ -24,7 +24,6 @@ import sys
 # SPEC §12.1, per scenario where they differ.
 BUDGET = {"buildP90": 7.0, "rasterP90": 10.0, "jankPct": 1.0, "over50": 0}
 CPU_BUDGET = {"home_idle": 3.0, "screensaver": 12.0, "bubbles": 45.0, "paint": 45.0}
-PSS_BUDGET_MB = 220
 
 # What counts as worse than the baseline. Measured on the JT215M, three
 # runs apart differ by up to ~20 % in p90 times and ~10 % in frames over
@@ -139,7 +138,7 @@ def main():
             print(f"{'':<14}   {label:<12} {part['frames']:>4} frames, build p90 {part['buildP90']:.1f} ms, total p90 {part['totalP90']:.1f} ms")
         rows.append((name, r, [] if name == "soak" else over_budget(name, r), worse))
     print()
-    print(f"Memory (PSS) at the end: {pss_mb} MB (budget {PSS_BUDGET_MB} MB steady)")
+    print(f"Memory (PSS) at the end: {pss_mb} MB (no fixed budget, SPEC §12.1: watch growth and the baseline)")
     if a.run_failed:
         verdict, code = f"✗ Failed: {a.run_failed}. The scenarios that finished are below.", 1
     elif a.update:
@@ -187,7 +186,7 @@ def write_report(path, a, rows, base, pss_mb, verdict):
             for label, p in parts.items():
                 b = f" ({was[label]['totalP90']:.1f})" if label in was else ""
                 md.append(f"| `{label}` | {p['frames']} | {p['buildP90']:.1f} | {p['totalP90']:.1f}{b} |")
-    md += ["", f"Memory (PSS) at the end: **{pss_mb} MB** (budget {PSS_BUDGET_MB} MB; baseline {json.loads(pathlib.Path(a.baseline).read_text()).get('pssMb', '?') if pathlib.Path(a.baseline).exists() else '?'} MB)."]
+    md += ["", f"Memory (PSS) at the end: **{pss_mb} MB** (baseline {json.loads(pathlib.Path(a.baseline).read_text()).get('pssMb', '?') if pathlib.Path(a.baseline).exists() else '?'} MB)."]
     if ctx.get("files"):
         md += ["", "## Files", ""] + [f"- {label}: `{value}`" for label, value in ctx["files"]]
     path.write_text("\n".join(md) + "\n")
