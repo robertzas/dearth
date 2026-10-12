@@ -1014,8 +1014,11 @@ void main() {
       await tester.pump(const Duration(milliseconds: 700));
       expect(labelOf(tester, 'share.ask'), '${r.each} each, 1 left over');
       expect(sound.said, contains(shareEachClip(r.each)));
-      await tester.pump(afterVoice(shareEachClip(r.each)) + const Duration(milliseconds: 100));
+      // The bell rang 700 ms ago; "one left over" follows "N each".
+      await tester.pump(afterVoice(shareEachClip(r.each)) - const Duration(milliseconds: 600));
       expect(sound.said.last, VoiceLine.shareLeft);
+      await tester.pump(afterVoice(VoiceLine.shareLeft) - const Duration(milliseconds: 200));
+      expect(sound.said.last, VoiceLine.shareLeft, reason: 'the next round waits for it to finish');
       await tester.pump(const Duration(seconds: 3));
       await h.settle();
       expect(await toyboxRounds(h), [('share', 4, 'win')]);

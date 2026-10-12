@@ -182,11 +182,13 @@ const Set<String> _noSingular = {
   'swiss', 'brussels', 'grits', 'greens', 'chives', 'peas', 'lentils',
 };
 
+final _sibilantPlural = RegExp(r'(sh|ch|ss|x|z)es$');
+
 String _singular(String w) {
   if (_noSingular.contains(w) || w.length <= 3) return w;
   if (w.endsWith('ies')) return '${w.substring(0, w.length - 3)}y';
   if (w.endsWith('oes')) return w.substring(0, w.length - 2);
-  if (RegExp(r'(sh|ch|ss|x|z)es$').hasMatch(w)) return w.substring(0, w.length - 2);
+  if (_sibilantPlural.hasMatch(w)) return w.substring(0, w.length - 2);
   if (w.endsWith('s') && !w.endsWith('ss') && !w.endsWith('us')) return w.substring(0, w.length - 1);
   return w;
 }
@@ -200,12 +202,22 @@ class NormalizedName {
   final double confidence;
 }
 
+// Compiled once: a recipe import or a shopping list consolidation runs every
+// ingredient line through ~90 of these.
+RegExp _word(String w) => RegExp('\\b${RegExp.escape(w)}\\b');
+final List<(String, RegExp)> _prepPatterns = [for (final p in _prepWords) (p, _word(p))];
+final List<RegExp> _qualifierPatterns = [for (final q in _qualifiers) _word(q)];
+final _parenthetical = RegExp(r'\(([^)]*)\)');
+final _articles = RegExp(r'\b(of|the|a|an)\b');
+final _nonName = RegExp(r"[^a-z' -]");
+final _spaces = RegExp(r'\s+');
+
 /// Normalizes an ingredient name to a canonical matching key. Confidence
 /// ≥ 0.85 means "safe to consolidate" (SPEC FR-SHOP-01).
 NormalizedName normalizeIngredientName(String name) {
   var s = ' ${name.toLowerCase().trim()} ';
   final preps = <String>[];
-  s = s.replaceAllMapped(RegExp(r'\(([^)]*)\)'), (m) {
+  s = s.replaceAllMapped(_parenthetical, (m) {
     preps.add(m[1]!.trim());
     return ' ';
   });
@@ -214,17 +226,16 @@ NormalizedName normalizeIngredientName(String name) {
     preps.add(s.substring(comma + 1).trim());
     s = s.substring(0, comma);
   }
-  for (final p in _prepWords) {
-    final re = RegExp('\\b${RegExp.escape(p)}\\b');
+  for (final (p, re) in _prepPatterns) {
     if (re.hasMatch(s)) {
       preps.add(p);
       s = s.replaceAll(re, ' ');
     }
   }
-  for (final q in _qualifiers) {
-    s = s.replaceAll(RegExp('\\b${RegExp.escape(q)}\\b'), ' ');
+  for (final re in _qualifierPatterns) {
+    s = s.replaceAll(re, ' ');
   }
-  s = s.replaceAll(RegExp(r'\b(of|the|a|an)\b'), ' ').replaceAll(RegExp(r"[^a-z' -]"), ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+  s = s.replaceAll(_articles, ' ').replaceAll(_nonName, ' ').replaceAll(_spaces, ' ').trim();
   final prep = preps.where((p) => p.isNotEmpty).join(', ');
   if (s.isEmpty) return NormalizedName(name.toLowerCase().trim(), prep, 0.3);
 

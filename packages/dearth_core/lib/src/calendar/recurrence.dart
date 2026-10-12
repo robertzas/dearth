@@ -33,7 +33,17 @@ class Occurrence {
 
   /// Stable key for widgets and selection.
   String get key => '${event.id}@$startMs';
-  List<String> get profileIds => decodeStringList(event.profileIds);
+  /// Decoded once per distinct value (lanes, filters and chips ask on every
+  /// build and paint; a household has a few dozen combinations).
+  List<String> get profileIds {
+    final raw = event.profileIds;
+    final hit = _profileIds[raw];
+    if (hit != null) return hit;
+    if (_profileIds.length > 512) _profileIds.clear();
+    return _profileIds[raw] = List.unmodifiable(decodeStringList(raw));
+  }
+
+  static final Map<String, List<String>> _profileIds = {};
   int get durationMs => endMs - startMs;
 
   /// Days this occurrence touches (household-local), inclusive.
@@ -59,7 +69,10 @@ class RecurrenceExpander {
 
   final HouseholdTime time;
   final int maxInstancesPerEvent;
-  final Map<String, RecurrenceRule?> _ruleCache = {};
+
+  /// Shared by every expander: providers make a new one on each recompute,
+  /// and a household has a handful of distinct rules.
+  static final Map<String, RecurrenceRule?> _ruleCache = {};
 
   /// Occurrences overlapping [fromMs, toMs), sorted by start then title.
   List<Occurrence> expand(Iterable<Event> events, {required int fromMs, required int toMs}) {

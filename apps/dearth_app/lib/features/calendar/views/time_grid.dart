@@ -706,11 +706,12 @@ class _DayColumn extends ConsumerWidget {
             for (final p in placed)
               Builder(builder: (context) {
                 final height = math.max((p.endMin - p.startMin) / 60 * hourH - 2, 22 * t.scale);
+                final width = p.widthFraction * w - 4 * t.scale;
                 return Positioned(
                   top: p.startMin / 60 * hourH + 1,
                   height: height,
                   left: p.leftFraction * w + 2 * t.scale,
-                  width: p.widthFraction * w - 4 * t.scale,
+                  width: width,
                   child: RawGestureDetector(
                     gestures: {
                       LongPressGestureRecognizer: GestureRecognizerFactoryWithHandlers<LongPressGestureRecognizer>(
@@ -729,7 +730,7 @@ class _DayColumn extends ConsumerWidget {
                           ..onLongPressCancel = onCancel,
                       ),
                     },
-                    child: _EventBlock(occurrence: p.value, ctx: ctx, height: height, ghost: lifted == p.value.key),
+                    child: _EventBlock(occurrence: p.value, ctx: ctx, height: height, width: width, ghost: lifted == p.value.key),
                   ),
                 );
               }),
@@ -742,10 +743,14 @@ class _DayColumn extends ConsumerWidget {
 }
 
 class _EventBlock extends ConsumerWidget {
-  const _EventBlock({required this.occurrence, required this.ctx, required this.height, this.ghost = false, this.lifted = false, this.timeLabel});
+  const _EventBlock({required this.occurrence, required this.ctx, required this.height, this.width, this.ghost = false, this.lifted = false, this.timeLabel});
   final Occurrence occurrence;
   final EventContext ctx;
   final double height;
+
+  /// The slot's width, when known: whether the forecast fits beside the time
+  /// (a LayoutBuilder per block would defer every block's build to layout).
+  final double? width;
 
   /// The spot a lifted event left (faded).
   final bool ghost;
@@ -801,17 +806,17 @@ class _EventBlock extends ConsumerWidget {
                               crossAxisAlignment: lines > 1 ? CrossAxisAlignment.start : CrossAxisAlignment.center,
                               children: [DEmoji(emoji, size: 22 * t.scale), SizedBox(width: 4 * t.scale), Expanded(child: title)],
                             ),
-                            if (timeLabel != null)
+                            // The forecast joins the time where the lane has room
+                            // (the width inside the border, stripe and padding).
+                            if (timeLabel != null || width == null || width! - 2 * border - 17 * t.scale < 150 * t.scale)
                               times
                             else
-                              // The forecast joins the time where the lane has room.
-                              LayoutBuilder(
-                                builder: (context, box) => Row(
-                                  children: [
-                                    Flexible(child: times),
-                                    if (box.maxWidth >= 150 * t.scale) ...[SizedBox(width: 4 * t.scale), EventWeather(occurrence: o, size: 14 * t.scale, color: p.ink)],
-                                  ],
-                                ),
+                              Row(
+                                children: [
+                                  Flexible(child: times),
+                                  SizedBox(width: 4 * t.scale),
+                                  EventWeather(occurrence: o, size: 14 * t.scale, color: p.ink),
+                                ],
                               ),
                           ],
                         )
@@ -960,8 +965,7 @@ class _GridPainter extends CustomPainter {
       if (h > 0) canvas.drawRect(Rect.fromLTWH(gutter, y, size.width - gutter, 1), full);
       canvas.drawRect(Rect.fromLTWH(gutter, y + hourH / 2, size.width - gutter, 1), half);
       if (h == 0) continue;
-      final text = h24 ? '${h.toString().padLeft(2, '0')}:00' : '${h % 12 == 0 ? 12 : h % 12} ${h < 12 ? 'AM' : 'PM'}';
-      final tp = TextPainter(text: TextSpan(text: text, style: label), textDirection: TextDirection.ltr)..layout();
+      final tp = _hourLabels(label, h24)[h];
       tp.paint(canvas, Offset(gutter - tp.width - 8, y - tp.height / 2));
     }
     final colW = (size.width - gutter) / columns;
@@ -969,6 +973,27 @@ class _GridPainter extends CustomPainter {
       final strong = groupEvery > 0 && i > 0 && i % groupEvery == 0;
       canvas.drawRect(Rect.fromLTWH(gutter + i * colW - (strong ? 1 : 0), 0, strong ? 2 : 1, size.height), strong ? group : full);
     }
+  }
+
+  /// Laid-out hour labels for the last style seen: every paged week and day
+  /// paints the same 23 labels.
+  static (TextStyle, bool, List<TextPainter>)? _labelCache;
+
+  static List<TextPainter> _hourLabels(TextStyle style, bool h24) {
+    final cached = _labelCache;
+    if (cached != null && cached.$1 == style && cached.$2 == h24) return cached.$3;
+    for (final tp in cached?.$3 ?? const <TextPainter>[]) {
+      tp.dispose();
+    }
+    final labels = [
+      for (var h = 0; h < 24; h++)
+        TextPainter(
+          text: TextSpan(text: h24 ? '${h.toString().padLeft(2, '0')}:00' : '${h % 12 == 0 ? 12 : h % 12} ${h < 12 ? 'AM' : 'PM'}', style: style),
+          textDirection: TextDirection.ltr,
+        )..layout(),
+    ];
+    _labelCache = (style, h24, labels);
+    return labels;
   }
 
   @override

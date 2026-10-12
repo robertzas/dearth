@@ -23,6 +23,10 @@ class AgendaView extends ConsumerStatefulWidget {
 class _AgendaViewState extends ConsumerState<AgendaView> {
   int _days = 60;
 
+  /// What the last window showed: a grown window is a new query, and the
+  /// list mustn't empty (and lose its scroll position) while it runs.
+  List<Occurrence> _shown = const [];
+
   @override
   void didUpdateWidget(AgendaView old) {
     super.didUpdateWidget(old);
@@ -35,11 +39,10 @@ class _AgendaViewState extends ConsumerState<AgendaView> {
     final range = DayRange(widget.start, _days);
     final time = ref.watch(householdTimeProvider);
     final today = ref.watch(todayProvider);
-    final now = ref.watch(nowMinuteMsProvider);
     final filter = ref.watch(calendarFilterProvider).value ?? const <String>{};
     final async = ref.watch(occurrencesProvider(range));
     final ctx = EventContext.watch(ref);
-    final occ = async.value ?? const <Occurrence>[];
+    final occ = _shown = async.value ?? _shown;
     final byDay = groupByDay([for (final o in occ) if (passesFilter(o, filter)) o], range, time);
     final days = [for (final d in range.dates) if (byDay[d]!.isNotEmpty || d == today) d];
 
@@ -56,19 +59,20 @@ class _AgendaViewState extends ConsumerState<AgendaView> {
                 SliverPersistentHeader(pinned: true, delegate: _DayHeader(day: d, today: today, theme: t)),
                 SliverPadding(
                   padding: EdgeInsets.only(bottom: t.space.sm),
-                  sliver: SliverList.list(
-                    children: byDay[d]!.isEmpty
-                        ? [
-                            Padding(
-                              padding: EdgeInsets.all(t.space.md),
-                              child: Text('Nothing planned today', style: t.text.body.copyWith(color: t.colors.inkTertiary)),
-                            ),
-                          ]
-                        : [
-                            for (final o in byDay[d]!)
-                              AgendaRow(occurrence: o, ctx: ctx, past: d == today && !o.allDay && o.endMs <= now, dense: t.isPhone),
-                          ],
-                  ),
+                  sliver: byDay[d]!.isEmpty
+                      ? SliverToBoxAdapter(
+                          child: Padding(
+                            padding: EdgeInsets.all(t.space.md),
+                            child: Text('Nothing planned today', style: t.text.body.copyWith(color: t.colors.inkTertiary)),
+                          ),
+                        )
+                      : SliverList.builder(
+                          itemCount: byDay[d]!.length,
+                          itemBuilder: (_, i) {
+                            final o = byDay[d]![i];
+                            return d == today && !o.allDay ? _TodayRow(o, ctx) : AgendaRow(occurrence: o, ctx: ctx, dense: t.isPhone);
+                          },
+                        ),
                 ),
               ],
             ),
@@ -81,6 +85,20 @@ class _AgendaViewState extends ConsumerState<AgendaView> {
         ],
       ),
     );
+  }
+}
+
+/// A timed event today, greyed once it's over. Only these rows follow the
+/// minute ticker, and each rebuilds only when it turns past.
+class _TodayRow extends ConsumerWidget {
+  const _TodayRow(this.occurrence, this.ctx);
+  final Occurrence occurrence;
+  final EventContext ctx;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final past = ref.watch(nowMinuteMsProvider.select((now) => occurrence.endMs <= now));
+    return AgendaRow(occurrence: occurrence, ctx: ctx, past: past, dense: DTheme.of(context).isPhone);
   }
 }
 

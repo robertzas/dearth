@@ -31,6 +31,16 @@ final storeProvider = Provider<SyncStore>((ref) => SyncStore(ref.watch(dbProvide
 final hlcProvider = Provider<HlcClock>((ref) => HlcClock(ref.watch(nodeIdProvider)));
 final sessionStoreProvider = Provider<SessionStore>((ref) => SessionStore(ref.watch(dbProvider)));
 
+/// Keeps an autoDispose provider for [d] after its last listener leaves, so
+/// coming straight back (paging back, reopening a sheet) reuses it.
+void keepFor(Ref ref, Duration d) {
+  final link = ref.keepAlive();
+  Timer? timer;
+  ref.onCancel(() => timer = Timer(d, link.close));
+  ref.onResume(() => timer?.cancel());
+  ref.onDispose(() => timer?.cancel());
+}
+
 /// App-wide toasts (sync rejections, undo offers…).
 final toastProvider = Provider<DToastController>((ref) {
   final c = DToastController();

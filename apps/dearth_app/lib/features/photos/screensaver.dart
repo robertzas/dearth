@@ -49,6 +49,7 @@ class _PhotoFrame extends ConsumerStatefulWidget {
 class _PhotoFrameState extends ConsumerState<_PhotoFrame> with SingleTickerProviderStateMixin {
   final _deck = SlideDeck();
   late final AnimationController _fade = AnimationController(vsync: this, duration: DMotion.ambient, value: 1);
+  late final CurvedAnimation _fadeIn = CurvedAnimation(parent: _fade, curve: Curves.easeInOut);
   Slide? _current;
   Slide? _previous;
   Slide? _upcoming;
@@ -138,6 +139,7 @@ class _PhotoFrameState extends ConsumerState<_PhotoFrame> with SingleTickerProvi
     _timer?.cancel();
     _precache?.cancel();
     _loading?.cancel();
+    _fadeIn.dispose();
     _fade.dispose();
     super.dispose();
   }
@@ -215,11 +217,7 @@ class _PhotoFrameState extends ConsumerState<_PhotoFrame> with SingleTickerProvi
           fit: StackFit.expand,
           children: [
             if (_previous != null) _SlideView(slide: _previous!, kenBurns: false, key: ValueKey('p-${_previous!.key}')),
-            if (_current != null)
-              FadeTransition(
-                opacity: CurvedAnimation(parent: _fade, curve: Curves.easeInOut),
-                child: _SlideView(slide: _current!, kenBurns: kenBurns, seconds: _seconds, key: ValueKey('c-${_current!.key}')),
-              ),
+            if (_current != null) _SlideView(slide: _current!, kenBurns: kenBurns, seconds: _seconds, opacity: _fadeIn, key: ValueKey('c-${_current!.key}')),
             _Overlays(slide: _current, settings: ss),
           ],
         ),
@@ -255,10 +253,16 @@ String? _caption(WidgetRef ref, PhotoItem p) {
 }
 
 class _SlideView extends ConsumerStatefulWidget {
-  const _SlideView({super.key, required this.slide, required this.kenBurns, this.seconds = 30});
+  const _SlideView({super.key, required this.slide, required this.kenBurns, this.seconds = 30, this.opacity});
   final Slide slide;
   final bool kenBurns;
   final int seconds;
+
+  /// Fades the slide in. Photos take it in their own paint (an image drawn
+  /// with alpha); an opacity layer over a full-screen slide would be an
+  /// offscreen pass the size of the screen every frame of the crossfade,
+  /// and over the blurred backdrop it can't be folded into the draw.
+  final Animation<double>? opacity;
 
   @override
   ConsumerState<_SlideView> createState() => _SlideViewState();
@@ -279,12 +283,15 @@ class _SlideViewState extends ConsumerState<_SlideView> with SingleTickerProvide
     super.dispose();
   }
 
+  /// Art is many overlapping shapes, so it fades as a layer.
+  Widget _art(int index) => widget.opacity == null ? ArtScene(index) : FadeTransition(opacity: widget.opacity!, child: ArtScene(index));
+
   @override
   Widget build(BuildContext context) {
     final s = widget.slide;
-    if (s.art != null) return ArtScene(s.art!);
+    if (s.art != null) return _art(s.art!);
     final api = ref.watch(hubApiProvider);
-    if (api == null) return ArtScene(s.photos.first.id.hashCode.abs() % kArtCount);
+    if (api == null) return _art(s.photos.first.id.hashCode.abs() % kArtCount);
     final size = MediaQuery.sizeOf(context);
     final dpr = MediaQuery.devicePixelRatioOf(context);
     final landscape = size.width >= size.height;
@@ -297,7 +304,8 @@ class _SlideViewState extends ConsumerState<_SlideView> with SingleTickerProvide
         width: double.infinity,
         height: double.infinity,
         gaplessPlayback: true,
-        errorBuilder: (_, _, _) => ArtScene(p.id.hashCode.abs() % kArtCount),
+        opacity: widget.opacity,
+        errorBuilder: (_, _, _) => _art(p.id.hashCode.abs() % kArtCount),
       );
     }
 
@@ -321,7 +329,7 @@ class _SlideViewState extends ConsumerState<_SlideView> with SingleTickerProvide
         content = Stack(
           fit: StackFit.expand,
           children: [
-            Image.network(api.blobUrl(sha, width: 640, blur: true).toString(), fit: BoxFit.cover, gaplessPlayback: true, errorBuilder: (_, _, _) => const ColoredBox(color: Colors.black)),
+            Image.network(api.blobUrl(sha, width: 640, blur: true).toString(), fit: BoxFit.cover, gaplessPlayback: true, opacity: widget.opacity, errorBuilder: (_, _, _) => const ColoredBox(color: Colors.black)),
             image(p, fit: BoxFit.contain, count: 1),
           ],
         );

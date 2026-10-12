@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:dearth_core/dearth_core.dart';
 import 'package:dearth_ui/dearth_ui.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -212,14 +213,17 @@ class FishingGameState extends State<FishingGame> with SingleTickerProviderState
                     ),
                   ),
                 ),
-                AnimatedBuilder(
-                  animation: _time,
-                  builder: (context, _) => Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      for (var i = 0; i < r.fish.length; i++)
-                        if (!_caught.contains(r.fish[i]) || _leaping.contains(r.fish[i])) _fish(i, l),
-                    ],
+                // The fish swim in paint (_Swim): no rebuild or relayout per
+                // ambient frame, a rebuild only when one turns around.
+                Positioned.fill(
+                  child: RepaintBoundary(
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        for (var i = 0; i < r.fish.length; i++)
+                          if (!_caught.contains(r.fish[i]) || _leaping.contains(r.fish[i])) _fish(i, l),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -231,15 +235,19 @@ class FishingGameState extends State<FishingGame> with SingleTickerProviderState
     );
   }
 
+  double _angle(int i) => 2 * math.pi * _time.value / _period + _phases[i];
+
+  /// How far along its lane fish [i] is now.
+  double _swimX(int i, _Layout l) => l.swimRange * (0.5 + 0.5 * math.sin(_angle(i)));
+
+  bool _facingLeft(int i) => math.cos(_angle(i)) < 0;
+
   Widget _fish(int i, _Layout l) {
     final r = _round!;
     final n = r.fish[i];
-    final a = 2 * math.pi * _time.value / _period + _phases[i];
-    final x = l.swimLeft + l.swimRange * (0.5 + 0.5 * math.sin(a));
-    final left = math.cos(a) < 0;
-    final at = Offset(x, l.lane(i));
+    final at = Offset(l.swimLeft + _swimX(i, l), l.lane(i));
     final glow = _glow && !_done && (r.ask == FishAsk.makeFive && _caught.isNotEmpty ? n == 5 - _caught.first : r.catches.contains(n));
-    final body = _FishView(number: n, color: _kFishPaints[i % _kFishPaints.length], facingLeft: left, glow: glow, size: l.fish);
+    Widget body(bool left) => _FishView(number: n, color: _kFishPaints[i % _kFishPaints.length], facingLeft: left, glow: glow, size: l.fish);
     if (_leaping.contains(n)) {
       // Out of the water in an arc, into the bucket.
       return TweenAnimationBuilder<double>(
@@ -253,26 +261,164 @@ class FishingGameState extends State<FishingGame> with SingleTickerProviderState
           final s = 1 - 0.5 * k;
           return Positioned(left: p.dx, top: p.dy, width: l.fish.width * s, height: l.fish.height * s, child: child!);
         },
-        child: IgnorePointer(child: body),
+        child: IgnorePointer(child: body(_facingLeft(i))),
       );
     }
+    // The whole lane, with the fish moved along it in paint.
     return Positioned(
       key: ValueKey('fish$n'),
-      left: at.dx,
+      left: l.swimLeft,
       top: at.dy,
-      width: l.fish.width,
+      width: l.swimRange + l.fish.width,
       height: l.fish.height,
-      child: DPressable(
-        id: 'fishing.fish.$n',
-        semanticLabel: '$n',
-        excludeSemantics: true,
-        onTap: () => _tapFish(n),
-        borderRadius: BorderRadius.circular(l.fish.height / 2),
-        pressedScale: 0.94,
-        child: Wiggle(count: _wiggles[n] ?? 0, child: body),
+      child: _Swim(
+        clock: _time,
+        x: () => _swimX(i, l),
+        fish: l.fish,
+        child: _Turning(
+          clock: _time,
+          facingLeft: () => _facingLeft(i),
+          builder: (left) => DPressable(
+            id: 'fishing.fish.$n',
+            semanticLabel: '$n',
+            excludeSemantics: true,
+            onTap: () => _tapFish(n),
+            borderRadius: BorderRadius.circular(l.fish.height / 2),
+            pressedScale: 0.94,
+            child: Wiggle(count: _wiggles[n] ?? 0, child: body(left)),
+          ),
+        ),
       ),
     );
   }
+}
+
+/// Moves a fish along its lane with [clock], in paint only: each ambient
+/// frame repaints the pond's fish layer instead of rebuilding and laying out
+/// every fish (the house pattern for ambient motion, SPEC §12). Hit tests
+/// and semantics follow the painted place, so taps (and tests) find it.
+class _Swim extends SingleChildRenderObjectWidget {
+  const _Swim({required this.clock, required this.x, required this.fish, required super.child});
+  final Listenable clock;
+  final double Function() x;
+  final Size fish;
+
+  @override
+  _RenderSwim createRenderObject(BuildContext context) => _RenderSwim(clock, x, fish);
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderSwim render) => render
+    ..clock = clock
+    ..x = x
+    ..fish = fish;
+}
+
+class _RenderSwim extends RenderProxyBox {
+  _RenderSwim(this._clock, this.x, this._fish);
+
+  Listenable _clock;
+  set clock(Listenable value) {
+    if (identical(value, _clock)) return;
+    if (attached) {
+      _clock.removeListener(_moved);
+      value.addListener(_moved);
+    }
+    _clock = value;
+  }
+
+  double Function() x;
+
+  Size _fish;
+  set fish(Size value) {
+    if (value == _fish) return;
+    _fish = value;
+    markNeedsLayout();
+  }
+
+  Offset get _shift => Offset(x(), 0);
+
+  void _moved() {
+    markNeedsPaint();
+    markNeedsSemanticsUpdate();
+  }
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    _clock.addListener(_moved);
+  }
+
+  @override
+  void detach() {
+    _clock.removeListener(_moved);
+    super.detach();
+  }
+
+  @override
+  void performLayout() {
+    size = constraints.biggest;
+    child?.layout(BoxConstraints.tight(_fish));
+  }
+
+  @override
+  Size computeDryLayout(BoxConstraints constraints) => constraints.biggest;
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    if (child != null) context.paintChild(child!, offset + _shift);
+  }
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) =>
+      child != null && result.addWithPaintOffset(offset: _shift, position: position, hitTest: (result, p) => child!.hitTest(result, position: p));
+
+  @override
+  void applyPaintTransform(RenderBox child, Matrix4 transform) => transform.translateByDouble(_shift.dx, _shift.dy, 0, 1);
+}
+
+/// Rebuilds a fish only when it turns around at the end of its lane.
+class _Turning extends StatefulWidget {
+  const _Turning({required this.clock, required this.facingLeft, required this.builder});
+  final Listenable clock;
+  final bool Function() facingLeft;
+  final Widget Function(bool facingLeft) builder;
+
+  @override
+  State<_Turning> createState() => _TurningState();
+}
+
+class _TurningState extends State<_Turning> {
+  late bool _left = widget.facingLeft();
+
+  @override
+  void initState() {
+    super.initState();
+    widget.clock.addListener(_check);
+  }
+
+  @override
+  void didUpdateWidget(_Turning old) {
+    super.didUpdateWidget(old);
+    if (!identical(old.clock, widget.clock)) {
+      old.clock.removeListener(_check);
+      widget.clock.addListener(_check);
+    }
+    _left = widget.facingLeft();
+  }
+
+  @override
+  void dispose() {
+    widget.clock.removeListener(_check);
+    super.dispose();
+  }
+
+  void _check() {
+    final left = widget.facingLeft();
+    if (left != _left) setState(() => _left = left);
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(_left);
 }
 
 /// The bank and the bucket at the top, the lanes of the pond under it.

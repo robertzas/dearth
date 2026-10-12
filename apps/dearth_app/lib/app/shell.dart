@@ -83,8 +83,8 @@ class _BranchStack extends StatefulWidget {
 
 class _BranchStackState extends State<_BranchStack> with SingleTickerProviderStateMixin {
   late final AnimationController _fade = AnimationController(vsync: this, duration: DMotion.standard, value: 1);
+  late final CurvedAnimation _reveal = CurvedAnimation(parent: _fade, curve: DMotion.standardCurve);
   int? _previous;
-  static const _still = AlwaysStoppedAnimation<double>(1);
 
   @override
   void didUpdateWidget(_BranchStack old) {
@@ -97,6 +97,7 @@ class _BranchStackState extends State<_BranchStack> with SingleTickerProviderSta
 
   @override
   void dispose() {
+    _reveal.dispose();
     _fade.dispose();
     super.dispose();
   }
@@ -104,7 +105,6 @@ class _BranchStackState extends State<_BranchStack> with SingleTickerProviderSta
   @override
   Widget build(BuildContext context) {
     final keep = {0, widget.current, if (widget.keepRecent && _previous != null) _previous!};
-    final curved = CurvedAnimation(parent: _fade, curve: DMotion.standardCurve);
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -113,14 +113,40 @@ class _BranchStackState extends State<_BranchStack> with SingleTickerProviderSta
             Offstage(
               key: ValueKey('branch-$i'),
               offstage: i != widget.current,
-              child: TickerMode(
-                enabled: i == widget.current,
-                child: FadeTransition(opacity: i == widget.current ? curved : _still, child: widget.children[i]),
-              ),
+              child: TickerMode(enabled: i == widget.current, child: widget.children[i]),
             ),
+        // The incoming destination fades in from the background as a flat
+        // scrim of that background fades out over it: the same picture, but
+        // one rect instead of an opacity layer over the whole destination (a
+        // screen-sized offscreen pass every frame of the fade, AGENTS rule 8).
+        IgnorePointer(
+          child: ExcludeSemantics(
+            child: RepaintBoundary(
+              child: CustomPaint(painter: _Scrim(_reveal, DTheme.of(context).colors.surface), size: Size.infinite),
+            ),
+          ),
+        ),
       ],
     );
   }
+}
+
+class _Scrim extends CustomPainter {
+  _Scrim(this.reveal, this.color) : super(repaint: reveal);
+
+  /// 0 → 1 as the destination appears.
+  final Animation<double> reveal;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final a = 1 - reveal.value;
+    if (a <= 0) return;
+    canvas.drawRect(Offset.zero & size, Paint()..color = color.withValues(alpha: color.a * a));
+  }
+
+  @override
+  bool shouldRepaint(_Scrim old) => old.color != color || old.reveal != reveal;
 }
 
 // ──────────────────────────────── Rail ──────────────────────────────────────

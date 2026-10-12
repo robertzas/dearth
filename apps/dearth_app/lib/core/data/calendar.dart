@@ -143,7 +143,7 @@ LocalDate birthdayIn(LocalDate born, int year) {
 /// Birthdays and holidays touching [range]. Kids' birthdays read "Ava
 /// turns 3" and count down, like the holidays kids wait for; grown-ups'
 /// ages stay private.
-final virtualOccurrencesProvider = Provider.family<List<Occurrence>, DayRange>((ref, range) {
+final virtualOccurrencesProvider = Provider.autoDispose.family<List<Occurrence>, DayRange>((ref, range) {
   final s = ref.watch(virtualCalendarSettingsProvider);
   final time = ref.watch(householdTimeProvider);
   final years = {for (final d in [range.start, range.end]) d.year};
@@ -202,7 +202,8 @@ final defaultCalendarProvider = Provider<CalendarSource?>((ref) {
 
 /// Raw rows relevant to an epoch-ms window: recurring masters, exceptions
 /// near the window, and single events overlapping it.
-final _eventsInWindowProvider = StreamProvider.family<List<Event>, (int, int)>((ref, window) {
+final _eventsInWindowProvider = StreamProvider.autoDispose.family<List<Event>, (int, int)>((ref, window) {
+  keepFor(ref, _windowCache);
   final db = ref.watch(dbProvider);
   final (from, to) = window;
   const day = 86400000;
@@ -219,8 +220,14 @@ final _eventsInWindowProvider = StreamProvider.family<List<Event>, (int, int)>((
       .watch();
 });
 
+/// How long a window nothing shows stays cached: paging back a week or
+/// reopening a day sheet is instant, but every week, day and agenda window
+/// ever opened isn't held forever (each holds its rows and occurrences).
+const _windowCache = Duration(minutes: 2);
+
 /// Expanded occurrences touching [range], from enabled calendars, sorted.
-final occurrencesProvider = Provider.family<AsyncValue<List<Occurrence>>, DayRange>((ref, range) {
+final occurrencesProvider = Provider.autoDispose.family<AsyncValue<List<Occurrence>>, DayRange>((ref, range) {
+  keepFor(ref, _windowCache);
   final time = ref.watch(householdTimeProvider);
   final from = time.startOfDayMs(range.start);
   final to = time.startOfDayMs(range.end);

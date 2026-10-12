@@ -421,10 +421,15 @@ class ShareGameState extends State<ShareGame> with TickerProviderStateMixin {
       }
       unawaited(widget.c.finishRound(shareResult(_slips), emoji: '🧁'));
     });
+    // The next round waits for the voice: "one left over" after "N each",
+    // or the new order would start over it.
+    var talk = afterVoice(each);
     if (r.left == 1) {
-      _after(afterVoice(each), () => widget.c.say(VoiceLine.shareLeft));
+      _after(talk, () => widget.c.say(VoiceLine.shareLeft));
+      talk += afterVoice(VoiceLine.shareLeft);
     }
-    _after(afterVoice(each, atLeast: done + const Duration(milliseconds: 2200)), _newRound);
+    final settle = done + const Duration(milliseconds: 2200);
+    _after(talk > settle ? talk : settle, _newRound);
   }
 
   String _askLabel() {

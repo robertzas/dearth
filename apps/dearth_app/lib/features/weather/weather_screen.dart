@@ -210,7 +210,8 @@ class _HoursCard extends ConsumerWidget {
     final imperial = ref.watch(imperialProvider);
     final time = ref.watch(householdTimeProvider);
     final h24 = ref.watch(clock24Provider);
-    final nowMs = ref.watch(nowMinuteMsProvider);
+    // The hours move on the hour: watch the local hour, not the minute.
+    final nowMs = ref.watch(nowMinuteMsProvider.select((ms) => ms - time.minuteOfDay(ms) % 60 * 60000));
     final hours = report.hoursFrom(nowMs, t.isPhone ? 24 : 36);
     if (hours.isEmpty) return const SizedBox.shrink();
     final chart = HourlyChart(
@@ -437,7 +438,8 @@ class _WearCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = DTheme.of(context);
     final today = ref.watch(todayProvider);
-    final nowMs = ref.watch(nowMinuteMsProvider);
+    final time = ref.watch(householdTimeProvider);
+    final nowMs = ref.watch(nowMinuteMsProvider.select((ms) => ms - time.minuteOfDay(ms) % 60 * 60000));
     final w = wearInputs(report, todayIso: today.iso, nowMs: nowMs);
     final items = whatToWear(feelsLikeC: w.feelsLikeC, precipProb: w.precipProb, precipMm: w.precipMm, snow: w.snow, windKph: w.windKph, uvMax: w.uvMax, sunny: w.sunny);
     return HomeCard(

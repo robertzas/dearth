@@ -134,13 +134,27 @@ final choresForDayProvider = Provider.family<List<ChoreToday>, LocalDate>((ref, 
 
 final choresTodayProvider = Provider<List<ChoreToday>>((ref) => ref.watch(choresForDayProvider(ref.watch(todayProvider))));
 
-final ledgerProvider = StreamProvider<List<LedgerEntry>>((ref) {
+/// Ledger totals by profile (null = family pool), then currency. Summed in
+/// SQL: the ledger is append-only and only grows, and holding every grant
+/// ever made in memory to re-add it in Dart on each new row doesn't scale.
+final _ledgerTotalsProvider = StreamProvider<Map<String?, Map<String, int>>>((ref) {
   final db = ref.watch(dbProvider);
-  return (db.select(db.ledgerEntries)..where((l) => l.deleted.equals(false))).watch();
+  return db
+      .customSelect(
+        'SELECT profile_id, currency, SUM(delta) AS total FROM ledger_entries WHERE deleted = 0 GROUP BY profile_id, currency',
+        readsFrom: {db.ledgerEntries},
+      )
+      .watch()
+      .map((rows) {
+        final out = <String?, Map<String, int>>{};
+        for (final r in rows) {
+          (out[r.readNullable<String>('profile_id')] ??= {})[r.read<String>('currency')] = r.read<int>('total');
+        }
+        return out;
+      });
 });
 
 /// Balances per currency for a profile (null = family pool).
 final balancesProvider = Provider.family<Map<String, int>, String?>((ref, profileId) {
-  final entries = ref.watch(ledgerProvider).value ?? const <LedgerEntry>[];
-  return balances(entries, profileId);
+  return ref.watch(_ledgerTotalsProvider.select((v) => v.value?[profileId])) ?? const <String, int>{};
 });
