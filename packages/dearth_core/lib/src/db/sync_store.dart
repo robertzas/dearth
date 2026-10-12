@@ -34,8 +34,9 @@ class UnknownTableException implements Exception {
 /// Applies replicated ops to any synced table with field-level LWW merge
 /// (SPEC §8.4). Used identically by devices and the Hub.
 ///
-/// All SQL is dialect-neutral (`INSERT … ON CONFLICT … DO UPDATE`), so the
-/// same code runs on SQLite and Postgres.
+/// The statements are portable (`INSERT … ON CONFLICT … DO UPDATE`) apart
+/// from their placeholders, which are SQLite's `?` and all come from
+/// [_placeholders]: the Postgres port (`$1, $2…`) changes that one function.
 class SyncStore {
   SyncStore(this.db) {
     for (final t in db.allTables) {
@@ -120,7 +121,7 @@ class SyncStore {
       Variable<int>(rowSeq),
     ];
     final quoted = columns.map((c) => '"$c"').join(', ');
-    final placeholders = List.filled(columns.length, '?').join(', ');
+    final placeholders = _placeholders(columns.length);
     final updates = columns.skip(1).map((c) => '"$c" = excluded."$c"').join(', ');
     await db.customInsert(
       'INSERT INTO "${op.table}" ($quoted) VALUES ($placeholders) ON CONFLICT ("id") DO UPDATE SET $updates',
@@ -162,7 +163,7 @@ class SyncStore {
           if (cols.isEmpty) continue;
           b.customStatement(
             'INSERT INTO "${entry.key}" (${cols.map((c) => '"$c"').join(', ')}) '
-            'VALUES (${List.filled(cols.length, '?').join(', ')})',
+            'VALUES (${_placeholders(cols.length)})',
             [for (final c in cols) _toSql(entry.value.types[c], row[c])],
           );
         }
@@ -196,7 +197,7 @@ class SyncStore {
           final chunk = ids.sublist(i, math.min(i + 500, ids.length));
           final found = await db.customSelect(
             'SELECT "id", "sync_clock", "sync_hlc", "sync_seq" FROM "${e.key}" '
-            'WHERE "id" IN (${List.filled(chunk.length, '?').join(', ')})',
+            'WHERE "id" IN (${_placeholders(chunk.length)})',
             variables: [for (final id in chunk) Variable<String>(id)],
             readsFrom: {meta.info},
           ).get();
@@ -258,7 +259,7 @@ class SyncStore {
           final columns = ['id', ...row.values.keys, 'sync_clock', 'sync_hlc', 'sync_seq'];
           b.customStatement(
             'INSERT INTO "$table" (${columns.map((c) => '"$c"').join(', ')}) '
-            'VALUES (${List.filled(columns.length, '?').join(', ')}) '
+            'VALUES (${_placeholders(columns.length)}) '
             'ON CONFLICT ("id") DO UPDATE SET ${columns.skip(1).map((c) => '"$c" = excluded."$c"').join(', ')}',
             [
               id,
@@ -323,6 +324,9 @@ class SyncStore {
       updates: {meta.info},
     );
   }
+
+  /// [n] bind placeholders, comma-separated.
+  static String _placeholders(int n) => List.filled(n, '?').join(', ');
 
   static String _maxString(String a, String b) => a.compareTo(b) >= 0 ? a : b;
 

@@ -41,12 +41,7 @@ class LetterMonsterGameState extends State<LetterMonsterGame> with TickerProvide
   final _timers = <Timer>[];
   Timer? _idle;
 
-  late final AnimationController _chew = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
-  late final AnimationController _shake = AnimationController(vsync: this, duration: const Duration(milliseconds: 650));
-  late final AnimationController _blink = AnimationController(vsync: this, duration: const Duration(milliseconds: 90));
-  late final AnimationController _open = AnimationController(vsync: this, duration: const Duration(milliseconds: 220));
-  late final AnimationController _hop = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
-  final _look = ValueNotifier<Offset>(Offset.zero);
+  late final _puppet = MonsterPuppet(this);
   Timer? _blinker;
 
   @visibleForTesting
@@ -63,7 +58,7 @@ class LetterMonsterGameState extends State<LetterMonsterGame> with TickerProvide
   void initState() {
     super.initState();
     _newRound();
-    _blinker = Timer.periodic(const Duration(milliseconds: 3900), (_) => _blink.forward(from: 0).then((_) => _blink.reverse()));
+    _blinker = Timer.periodic(const Duration(milliseconds: 3900), (_) => _puppet.blinkOnce());
   }
 
   @override
@@ -73,10 +68,7 @@ class LetterMonsterGameState extends State<LetterMonsterGame> with TickerProvide
     }
     _idle?.cancel();
     _blinker?.cancel();
-    for (final c in [_chew, _shake, _blink, _open, _hop]) {
-      c.dispose();
-    }
-    _look.dispose();
+    _puppet.dispose();
     super.dispose();
   }
 
@@ -95,7 +87,7 @@ class LetterMonsterGameState extends State<LetterMonsterGame> with TickerProvide
     _deal++;
     _flying = _dragging = null;
     _eaten = _glow = false;
-    _look.value = Offset.zero;
+    _puppet.look.value = Offset.zero;
     _after(const Duration(milliseconds: 600), _sayAsk);
     _waitIdle();
     if (mounted) setState(() {});
@@ -119,7 +111,7 @@ class LetterMonsterGameState extends State<LetterMonsterGame> with TickerProvide
     final l = _layout;
     if (l == null) return;
     final d = p - l.eyes;
-    _look.value = d.distance < 1 ? Offset.zero : d / math.max(d.distance, l.monster.width * 0.6);
+    _puppet.look.value = d.distance < 1 ? Offset.zero : d / math.max(d.distance, l.monster.width * 0.6);
   }
 
   void _feed(int i) {
@@ -127,7 +119,7 @@ class LetterMonsterGameState extends State<LetterMonsterGame> with TickerProvide
     final l = _layout;
     if (l != null) _lookAt(l.plates[i]);
     setState(() => _flying = i);
-    unawaited(_open.forward());
+    unawaited(_puppet.open.forward());
     _after(const Duration(milliseconds: 420), () => _taste(i));
   }
 
@@ -135,13 +127,13 @@ class LetterMonsterGameState extends State<LetterMonsterGame> with TickerProvide
   void _taste(int i) {
     final c = widget.c;
     final r = _round!;
-    unawaited(_open.reverse());
-    _look.value = Offset.zero;
+    unawaited(_puppet.open.reverse());
+    _puppet.look.value = Offset.zero;
     _waitIdle();
     if (_wants(i)) {
       _idle?.cancel();
       c.sound(Sfx.munch, volume: 0.6);
-      unawaited(_chew.forward(from: 0));
+      unawaited(_puppet.chew.forward(from: 0));
       setState(() {
         _eaten = true;
         _flying = null;
@@ -149,7 +141,7 @@ class LetterMonsterGameState extends State<LetterMonsterGame> with TickerProvide
       final yes = letterClip(r.letter);
       _after(const Duration(milliseconds: 500), () {
         c.say(yes);
-        unawaited(_hop.forward(from: 0));
+        unawaited(_puppet.hop.forward(from: 0));
         unawaited(c.finishRound(letterMonsterResult(_slips), emoji: '😋'));
       });
       _after(const Duration(milliseconds: 500) + afterVoice(yes, atLeast: const Duration(milliseconds: 2600)), _newRound);
@@ -158,7 +150,7 @@ class LetterMonsterGameState extends State<LetterMonsterGame> with TickerProvide
     _slips++;
     c.cue();
     c.say(letterNameClip(r.choices[i]));
-    unawaited(_shake.forward(from: 0));
+    unawaited(_puppet.shake.forward(from: 0));
     setState(() {
       _flying = null;
       _wiggles[i] = (_wiggles[i] ?? 0) + 1;
@@ -186,8 +178,8 @@ class LetterMonsterGameState extends State<LetterMonsterGame> with TickerProvide
     _lookAt(_dragAt);
     // It opens wide as the biscuit comes near.
     final near = (_dragAt - l.mouth).distance < l.food * 1.8;
-    if (near != (_open.status == AnimationStatus.forward || _open.status == AnimationStatus.completed)) {
-      unawaited(near ? _open.forward() : _open.reverse());
+    if (near != (_puppet.open.status == AnimationStatus.forward || _puppet.open.status == AnimationStatus.completed)) {
+      unawaited(near ? _puppet.open.forward() : _puppet.open.reverse());
     }
   }
 
@@ -198,8 +190,8 @@ class LetterMonsterGameState extends State<LetterMonsterGame> with TickerProvide
     if ((_dragAt - l.mouth).distance < l.food * 1.2) {
       _taste(i);
     } else {
-      unawaited(_open.reverse());
-      _look.value = Offset.zero;
+      unawaited(_puppet.open.reverse());
+      _puppet.look.value = Offset.zero;
       setState(() {});
     }
   }
@@ -237,7 +229,7 @@ class LetterMonsterGameState extends State<LetterMonsterGame> with TickerProvide
                     Positioned.fromRect(
                       rect: l.monster,
                       child: RepaintBoundary(
-                        child: CustomPaint(painter: MonsterPainter(chew: _chew, shake: _shake, blink: _blink, open: _open, hop: _hop, look: _look, skin: MonsterSkin.orange)),
+                        child: CustomPaint(painter: MonsterPainter(chew: _puppet.chew, shake: _puppet.shake, blink: _puppet.blink, open: _puppet.open, hop: _puppet.hop, look: _puppet.look, skin: MonsterSkin.orange)),
                       ),
                     ),
                     Positioned.fromRect(

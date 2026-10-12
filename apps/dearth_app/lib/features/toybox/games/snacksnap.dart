@@ -45,12 +45,7 @@ class SnackSnapGameState extends State<SnackSnapGame> with TickerProviderStateMi
   Timer? _idle;
   _Layout? _layout;
 
-  late final AnimationController _chew = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
-  late final AnimationController _shake = AnimationController(vsync: this, duration: const Duration(milliseconds: 650));
-  late final AnimationController _blink = AnimationController(vsync: this, duration: const Duration(milliseconds: 90));
-  late final AnimationController _open = AnimationController(vsync: this, duration: const Duration(milliseconds: 220));
-  late final AnimationController _hop = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
-  final _look = ValueNotifier<Offset>(Offset.zero);
+  late final _puppet = MonsterPuppet(this);
   Timer? _blinker;
 
   @visibleForTesting
@@ -70,7 +65,7 @@ class SnackSnapGameState extends State<SnackSnapGame> with TickerProviderStateMi
   void initState() {
     super.initState();
     _newRound();
-    _blinker = Timer.periodic(const Duration(milliseconds: 4100), (_) => _blink.forward(from: 0).then((_) => _blink.reverse()));
+    _blinker = Timer.periodic(const Duration(milliseconds: 4100), (_) => _puppet.blinkOnce());
   }
 
   @override
@@ -80,10 +75,7 @@ class SnackSnapGameState extends State<SnackSnapGame> with TickerProviderStateMi
     }
     _idle?.cancel();
     _blinker?.cancel();
-    for (final c in [_chew, _shake, _blink, _open, _hop]) {
-      c.dispose();
-    }
-    _look.dispose();
+    _puppet.dispose();
     super.dispose();
   }
 
@@ -104,7 +96,7 @@ class SnackSnapGameState extends State<SnackSnapGame> with TickerProviderStateMi
     _slips = 0;
     _hint = _solved = _covered = _peeked = false;
     _deal++;
-    _look.value = Offset.zero;
+    _puppet.look.value = Offset.zero;
     // A beat for the round to land, then the order; the flash level tells
     // her to look first, then covers the plates after the ask.
     _after(const Duration(milliseconds: 600), () {
@@ -150,7 +142,7 @@ class SnackSnapGameState extends State<SnackSnapGame> with TickerProviderStateMi
     final l = _layout;
     if (l == null) return;
     final d = p - l.eyes;
-    _look.value = d.distance < 1 ? Offset.zero : d / math.max(d.distance, l.monster.width * 0.6);
+    _puppet.look.value = d.distance < 1 ? Offset.zero : d / math.max(d.distance, l.monster.width * 0.6);
   }
 
   void _pick(int i) {
@@ -185,7 +177,7 @@ class SnackSnapGameState extends State<SnackSnapGame> with TickerProviderStateMi
     });
     final yum = snackYumClip(r.want);
     widget.c.say(yum);
-    unawaited(_open.forward());
+    unawaited(_puppet.open.forward());
     final n = r.plates[i].n;
     for (var k = 0; k < n; k++) {
       _after(Duration(milliseconds: 150 * k + 150), () {
@@ -195,10 +187,10 @@ class SnackSnapGameState extends State<SnackSnapGame> with TickerProviderStateMi
     }
     final done = Duration(milliseconds: 150 * n + 500);
     _after(done, () {
-      unawaited(_open.reverse());
-      unawaited(_chew.forward(from: 0));
-      unawaited(_hop.forward(from: 0));
-      _look.value = Offset.zero;
+      unawaited(_puppet.open.reverse());
+      unawaited(_puppet.chew.forward(from: 0));
+      unawaited(_puppet.hop.forward(from: 0));
+      _puppet.look.value = Offset.zero;
       unawaited(widget.c.finishRound(snackResult(_slips, peeked: _peeked), emoji: '🥨'));
     });
     _after(afterVoice(yum, atLeast: done + const Duration(milliseconds: 2200)), _newRound);
@@ -239,7 +231,7 @@ class SnackSnapGameState extends State<SnackSnapGame> with TickerProviderStateMi
                         child: GestureDetector(
                           excludeFromSemantics: true,
                           onTap: _sayAgain,
-                          child: RepaintBoundary(child: CustomPaint(painter: MonsterPainter(chew: _chew, shake: _shake, blink: _blink, open: _open, hop: _hop, look: _look, skin: MonsterSkin.orange))),
+                          child: RepaintBoundary(child: CustomPaint(painter: MonsterPainter(chew: _puppet.chew, shake: _puppet.shake, blink: _puppet.blink, open: _puppet.open, hop: _puppet.hop, look: _puppet.look, skin: MonsterSkin.orange))),
                         ),
                       ),
                     ),

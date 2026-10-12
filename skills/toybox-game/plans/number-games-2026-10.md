@@ -174,7 +174,8 @@ App (`apps/dearth_app/lib/features/toybox/`):
 - Feed the Monster's painter (`games/monster.dart`):
   `MonsterPainter(chew:, shake:, blink:, open:, hop:, look:, skin:)` where
   the first five are `Animation<double>` (use `AnimationController`s) and
-  `look` is a `ValueListenable<Offset>`. Skins: `MonsterSkin.green`,
+  `look` is a `ValueListenable<Offset>`; `MonsterPuppet(this)` bundles all
+  six (with `blinkOnce()`, `dispose()`). Skins: `MonsterSkin.green`,
   `.purple`, `.orange`. `MonsterPainter.mouthAt` / `.eyesAt` give the mouth
   and eyes as fractions of its box. `games/cookies.dart` shows how to drive
   it (blink timer, chew on eat, shake on a slip, look toward taps). Its

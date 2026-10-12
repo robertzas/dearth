@@ -568,16 +568,23 @@ Future<void> _finishSpotify(HubContext ctx, String? code, String? state) async {
   await ctx.vault.putJson(SecretIds.spotifyAccount, {'tokens': tokens.toJson()});
 }
 
+/// The newest picker session's number per photo source.
+final Map<String, int> _pickerPolls = {};
+
 Future<Map<String, Object?>> _newPickerSession(HubContext ctx, String sourceId) async {
   final account = (await ctx.integrations.googleAccounts()).firstOrNull;
   if (account == null) throw HttpError(424, 'google_required');
   final picker = GooglePhotosPicker(ctx.fetcher, () => ctx.integrations.googleAccessToken(account));
   final session = await picker.createSession();
   await ctx.jobs.write('gpicker:$sourceId', data: {'sessionId': session.id});
-  // Poll for the picked items while the family picks on a phone.
+  // Poll for the picked items while the family picks on a phone. A newer
+  // session for the source replaces this one, so its poll stops (picking
+  // again used to leave every earlier poll running for its full count).
+  final generation = _pickerPolls[sourceId] = (_pickerPolls[sourceId] ?? 0) + 1;
   unawaited(() async {
     for (var i = 0; i < 120; i++) {
       await Future<void>.delayed(session.pollInterval);
+      if (_pickerPolls[sourceId] != generation) return;
       final s = await picker.getSession(session.id).catchError((Object _) => session);
       if (s.itemsSet) {
         await ctx.scheduler.runAndWait('photos');

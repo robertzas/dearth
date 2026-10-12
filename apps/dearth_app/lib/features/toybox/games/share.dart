@@ -78,7 +78,7 @@ class ShareGameState extends State<ShareGame> with TickerProviderStateMixin {
   int? _hover;
   final _timers = <Timer>[];
   Timer? _idle, _blinker;
-  late final List<_Puppet> _puppets;
+  late final List<MonsterPuppet> _puppets;
   _Layout? _layout;
 
   @visibleForTesting
@@ -99,13 +99,13 @@ class ShareGameState extends State<ShareGame> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    _puppets = [for (var i = 0; i < 3; i++) _Puppet(this)];
+    _puppets = [for (var i = 0; i < 3; i++) MonsterPuppet(this)];
     _plates = [0, 0, 0];
     _newRound();
     // One blinker for the crowd: they blink in rotation, never together.
     _blinker = Timer.periodic(const Duration(milliseconds: 4100), (t) {
       final p = _puppets[t.tick % _puppets.length];
-      p.blink.forward(from: 0).then((_) => p.blink.reverse());
+      p.blinkOnce();
     });
   }
 
@@ -618,38 +618,6 @@ class ShareGameState extends State<ShareGame> with TickerProviderStateMixin {
         builder: (context, at, child) => Positioned(left: at.dx - size / 2, top: at.dy - size / 2, width: size, height: size, child: at != ends.$2 ? child! : const SizedBox.shrink()),
         child: IgnorePointer(child: Center(child: DEmoji('🧁', size: size))),
       );
-}
-
-/// One monster's animation bundle.
-class _Puppet {
-  _Puppet(TickerProviderStateMixin vsync)
-      : chew = AnimationController(vsync: vsync, duration: const Duration(milliseconds: 900)),
-        shake = AnimationController(vsync: vsync, duration: const Duration(milliseconds: 650)),
-        blink = AnimationController(vsync: vsync, duration: const Duration(milliseconds: 90)),
-        open = AnimationController(vsync: vsync, duration: const Duration(milliseconds: 220)),
-        hop = AnimationController(vsync: vsync, duration: const Duration(milliseconds: 900));
-
-  final AnimationController chew, shake, blink, open, hop;
-  final look = ValueNotifier<Offset>(Offset.zero);
-
-  void stop() {
-    for (final c in [chew, shake, blink, open, hop]) {
-      c.stop();
-    }
-  }
-
-  void zero() {
-    for (final c in [chew, shake, blink, open, hop]) {
-      c.value = 0;
-    }
-  }
-
-  void dispose() {
-    for (final c in [chew, shake, blink, open, hop]) {
-      c.dispose();
-    }
-    look.dispose();
-  }
 }
 
 /// Where the monsters, plates, tray and bell stand in the play area, in

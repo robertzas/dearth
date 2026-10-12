@@ -63,12 +63,7 @@ class MonsterGameState extends State<MonsterGame> with TickerProviderStateMixin 
   bool _full = false;
   _Layout? _layout;
 
-  late final AnimationController _chew = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
-  late final AnimationController _shake = AnimationController(vsync: this, duration: const Duration(milliseconds: 650));
-  late final AnimationController _blink = AnimationController(vsync: this, duration: const Duration(milliseconds: 90));
-  late final AnimationController _open = AnimationController(vsync: this, duration: const Duration(milliseconds: 220));
-  late final AnimationController _hop = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
-  final _look = ValueNotifier<Offset>(Offset.zero);
+  late final _puppet = MonsterPuppet(this);
   Timer? _blinker, _arrive, _next;
 
   @visibleForTesting
@@ -78,7 +73,7 @@ class MonsterGameState extends State<MonsterGame> with TickerProviderStateMixin 
   void initState() {
     super.initState();
     _newRound();
-    _blinker = Timer.periodic(const Duration(milliseconds: 3700), (_) => _blink.forward(from: 0).then((_) => _blink.reverse()));
+    _blinker = Timer.periodic(const Duration(milliseconds: 3700), (_) => _puppet.blinkOnce());
   }
 
   @override
@@ -86,10 +81,7 @@ class MonsterGameState extends State<MonsterGame> with TickerProviderStateMixin 
     _blinker?.cancel();
     _arrive?.cancel();
     _next?.cancel();
-    for (final c in [_chew, _shake, _blink, _open, _hop]) {
-      c.dispose();
-    }
-    _look.dispose();
+    _puppet.dispose();
     super.dispose();
   }
 
@@ -100,7 +92,7 @@ class MonsterGameState extends State<MonsterGame> with TickerProviderStateMixin 
     _deal++;
     _flying = _dragging = null;
     _full = false;
-    _look.value = Offset.zero;
+    _puppet.look.value = Offset.zero;
     if (mounted) setState(() {});
   }
 
@@ -111,7 +103,7 @@ class MonsterGameState extends State<MonsterGame> with TickerProviderStateMixin 
     final l = _layout;
     if (l == null) return;
     final d = p - l.eyes;
-    _look.value = d.distance < 1 ? Offset.zero : d / math.max(d.distance, l.monster.width * 0.6);
+    _puppet.look.value = d.distance < 1 ? Offset.zero : d / math.max(d.distance, l.monster.width * 0.6);
   }
 
   void _feed(int i) {
@@ -119,7 +111,7 @@ class MonsterGameState extends State<MonsterGame> with TickerProviderStateMixin 
     final l = _layout;
     if (l != null) _lookAt(l.plates[i]);
     setState(() => _flying = i);
-    unawaited(_open.forward());
+    unawaited(_puppet.open.forward());
     _arrive = Timer(const Duration(milliseconds: 420), () => _taste(i));
   }
 
@@ -127,30 +119,30 @@ class MonsterGameState extends State<MonsterGame> with TickerProviderStateMixin 
   void _taste(int i) {
     if (!mounted) return;
     final c = widget.c;
-    unawaited(_open.reverse());
+    unawaited(_puppet.open.reverse());
     if (_wants(i)) {
       c.sound(Sfx.munch);
-      unawaited(_chew.forward(from: 0));
+      unawaited(_puppet.chew.forward(from: 0));
       setState(() {
         _eaten.add(i);
         _flying = null;
       });
       if (_eaten.length == _round.toEat) {
         _full = true;
-        unawaited(_hop.forward(from: 0));
+        unawaited(_puppet.hop.forward(from: 0));
         unawaited(c.finishRound(monsterResult(_slips), emoji: '😋'));
         _next = Timer(const Duration(milliseconds: 2600), _newRound);
       }
     } else {
       _slips++;
       c.cue();
-      unawaited(_shake.forward(from: 0));
+      unawaited(_puppet.shake.forward(from: 0));
       setState(() {
         _flying = null;
         _wiggles[i] = (_wiggles[i] ?? 0) + 1;
       });
     }
-    _look.value = Offset.zero;
+    _puppet.look.value = Offset.zero;
   }
 
   Offset _local(Offset global) => (_area.currentContext!.findRenderObject()! as RenderBox).globalToLocal(global);
@@ -173,8 +165,8 @@ class MonsterGameState extends State<MonsterGame> with TickerProviderStateMixin 
     _lookAt(_dragAt);
     // It opens wide as the food comes near.
     final near = (_dragAt - l.mouth).distance < l.food * 1.8;
-    if (near != (_open.status == AnimationStatus.forward || _open.status == AnimationStatus.completed)) {
-      unawaited(near ? _open.forward() : _open.reverse());
+    if (near != (_puppet.open.status == AnimationStatus.forward || _puppet.open.status == AnimationStatus.completed)) {
+      unawaited(near ? _puppet.open.forward() : _puppet.open.reverse());
     }
   }
 
@@ -185,8 +177,8 @@ class MonsterGameState extends State<MonsterGame> with TickerProviderStateMixin 
     if ((_dragAt - l.mouth).distance < l.food * 1.2) {
       _taste(i);
     } else {
-      unawaited(_open.reverse());
-      _look.value = Offset.zero;
+      unawaited(_puppet.open.reverse());
+      _puppet.look.value = Offset.zero;
       setState(() {});
     }
   }
@@ -213,7 +205,7 @@ class MonsterGameState extends State<MonsterGame> with TickerProviderStateMixin 
                       Positioned.fromRect(
                         rect: l.monster,
                         child: RepaintBoundary(
-                          child: CustomPaint(painter: MonsterPainter(chew: _chew, shake: _shake, blink: _blink, open: _open, hop: _hop, look: _look)),
+                          child: CustomPaint(painter: MonsterPainter(chew: _puppet.chew, shake: _puppet.shake, blink: _puppet.blink, open: _puppet.open, hop: _puppet.hop, look: _puppet.look)),
                         ),
                       ),
                       Positioned.fromRect(
@@ -389,6 +381,47 @@ class _Wobble extends StatelessWidget {
         builder: (context, k, child) => Transform.rotate(angle: math.sin(k * math.pi * 5) * 0.3 * k, child: child),
         child: child,
       );
+}
+
+/// One monster's animation bundle, what [MonsterPainter] draws from: a
+/// chew, a no-thanks shake, a blink, the open mouth, a happy hop, and where
+/// it looks. Feed the Monster, Cookie Count, Letter Monster, Snack Snap and
+/// Fair Share each drive one (or three).
+class MonsterPuppet {
+  MonsterPuppet(TickerProvider vsync)
+      : chew = AnimationController(vsync: vsync, duration: const Duration(milliseconds: 900)),
+        shake = AnimationController(vsync: vsync, duration: const Duration(milliseconds: 650)),
+        blink = AnimationController(vsync: vsync, duration: const Duration(milliseconds: 90)),
+        open = AnimationController(vsync: vsync, duration: const Duration(milliseconds: 220)),
+        hop = AnimationController(vsync: vsync, duration: const Duration(milliseconds: 900));
+
+  final AnimationController chew, shake, blink, open, hop;
+  final look = ValueNotifier<Offset>(Offset.zero);
+
+  List<AnimationController> get _all => [chew, shake, blink, open, hop];
+
+  /// Eyes shut and open again (a game's blink timer calls it every few
+  /// seconds).
+  Future<void> blinkOnce() => blink.forward(from: 0).then((_) => blink.reverse());
+
+  void stop() {
+    for (final c in _all) {
+      c.stop();
+    }
+  }
+
+  void zero() {
+    for (final c in _all) {
+      c.value = 0;
+    }
+  }
+
+  void dispose() {
+    for (final c in _all) {
+      c.dispose();
+    }
+    look.dispose();
+  }
 }
 
 /// The monster: a round body (green by default; Cookie Count's and Letter

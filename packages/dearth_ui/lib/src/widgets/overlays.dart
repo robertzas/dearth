@@ -23,24 +23,30 @@ Future<T?> showDSheet<T>(
   List<Widget> actions = const [],
 }) {
   final t = DTheme.of(context);
-  final size = MediaQuery.sizeOf(context);
-  final side = (t.displayClass == DisplayClass.wallL || t.displayClass == DisplayClass.tablet) && size.width > size.height;
   return Navigator.of(context).push<T>(_DSheetRoute<T>(
-    side: side,
-    width: width ?? (t.isWall ? 640 * t.scale : 520 * t.scale),
+    width: width,
     barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
     scrim: t.colors.scrim.withValues(alpha: 0.42),
     duration: t.motion(DMotion.standard),
-    builder: (context) => _DSheetFrame(title: title, id: id, side: side, scrollable: scrollable, actions: actions, child: builder(context)),
+    builder: (context, side) => _DSheetFrame(title: title, id: id, side: side, scrollable: scrollable, actions: actions, child: builder(context)),
   ));
 }
 
 class _DSheetRoute<T> extends PopupRoute<T> {
-  _DSheetRoute({required this.side, required this.width, required this.builder, required this.barrierLabel, required this.scrim, required this.duration});
+  _DSheetRoute({required this.width, required this.builder, required this.barrierLabel, required this.scrim, required this.duration});
 
-  final bool side;
-  final double width;
-  final WidgetBuilder builder;
+  /// Null: the display class's width.
+  final double? width;
+  final Widget Function(BuildContext context, bool side) builder;
+
+  /// A side panel on wide walls and landscape tablets, a bottom sheet
+  /// otherwise. Read while building, so a tablet turned with a sheet open
+  /// (or a theme change) gets the right shape.
+  static bool _side(BuildContext context) {
+    final t = DTheme.of(context);
+    final size = MediaQuery.sizeOf(context);
+    return (t.displayClass == DisplayClass.wallL || t.displayClass == DisplayClass.tablet) && size.width > size.height;
+  }
   final Color scrim;
   final Duration duration;
 
@@ -60,6 +66,8 @@ class _DSheetRoute<T> extends PopupRoute<T> {
   Widget buildPage(BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation) {
     final mq = MediaQuery.of(context);
     final t = DTheme.of(context);
+    final side = _side(context);
+    final width = this.width ?? (t.isWall ? 640 * t.scale : 520 * t.scale);
     final sheet = Material(
       type: MaterialType.transparency,
       child: Container(
@@ -72,7 +80,7 @@ class _DSheetRoute<T> extends PopupRoute<T> {
               : BorderRadius.vertical(top: Radius.circular(t.radius.l)),
           boxShadow: t.elevation.e2,
         ),
-        child: builder(context),
+        child: builder(context, side),
       ),
     );
     return Align(
@@ -88,7 +96,7 @@ class _DSheetRoute<T> extends PopupRoute<T> {
   Widget buildTransitions(BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation, Widget child) {
     final curved = CurvedAnimation(parent: animation, curve: DMotion.emphasizedCurve, reverseCurve: DMotion.exitCurve);
     return SlideTransition(
-      position: Tween<Offset>(begin: side ? const Offset(0.12, 0) : const Offset(0, 0.12), end: Offset.zero).animate(curved),
+      position: Tween<Offset>(begin: _side(context) ? const Offset(0.12, 0) : const Offset(0, 0.12), end: Offset.zero).animate(curved),
       child: FadeTransition(opacity: curved, child: child),
     );
   }
