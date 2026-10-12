@@ -142,6 +142,24 @@ void main() {
     return titles;
   }
 
+  testWidgets('§12: a calendar window nothing shows is kept briefly for coming back, then let go', (tester) async {
+    final h = await AppHarness.demo(tester);
+    const week = DayRange(LocalDate(2026, 11, 2), 7);
+    final sub = h.container.listen(occurrencesProvider(week), (_, _) {});
+    await h.settle(5);
+    expect(sub.read().value, isNotNull);
+    sub.close();
+    await tester.pump(const Duration(minutes: 1));
+    expect(h.container.exists(occurrencesProvider(week)), isTrue, reason: 'paging straight back reuses it');
+    final again = h.container.listen(occurrencesProvider(week), (_, _) {});
+    expect(again.read().value, isNotNull, reason: 'no reload when it comes back');
+    again.close();
+    await tester.pump(const Duration(minutes: 3));
+    await tester.pump();
+    expect(h.container.exists(occurrencesProvider(week)), isFalse, reason: 'every week ever paged to is not held forever');
+    await h.shutdown();
+  });
+
   testWidgets('FR-CAL-18: holidays and birthdays join the calendar, read-only and without duplicates', (tester) async {
     final h = await AppHarness.demo(tester);
     // A Denver household gets US holidays and family days.

@@ -1,18 +1,12 @@
 name: Dearth Hub bundle
-description: Compiles the Hub (pure Dart, no Flutter SDK) for this runner's platform with the workspace subset in hub/pubspec.workspace.yaml, exactly like the Dockerfile, and uploads the bundle as hub-<target>.
+description: Compiles the Hub (pure Dart, no Flutter SDK) for this runner's platform with the workspace subset in hub/pubspec.workspace.yaml, exactly like the Dockerfile, and uploads the bundle as hub-<target>. The job sets up Dart first (dart-lang/setup-dart can't run inside a composite action; its problem matcher resolves against this folder).
 inputs:
   target:
     description: The artifact suffix, e.g. linux-x64.
     required: true
-  dart-version:
-    description: The Dart SDK version.
-    required: true
 runs:
   using: composite
   steps:
-    - uses: dart-lang/setup-dart@v1
-      with:
-        sdk: ${{ inputs.dart-version }}
     - name: Hub-only workspace
       shell: bash
       run: |

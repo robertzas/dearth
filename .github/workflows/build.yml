@@ -362,10 +362,12 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: ${{ env.DART_VERSION }}
       - uses: ./.github/actions/hub-build
         with:
           target: linux-x64
-          dart-version: ${{ env.DART_VERSION }}
 
   hub:
     name: Hub (${{ matrix.target }})
@@ -380,10 +382,12 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: ${{ env.DART_VERSION }}
       - uses: ./.github/actions/hub-build
         with:
           target: ${{ matrix.target }}
-          dart-version: ${{ env.DART_VERSION }}
 
   docker:
     name: Hub image (${{ matrix.arch }})

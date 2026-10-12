@@ -501,7 +501,9 @@ longer than that re-bootstraps automatically.
 
 #### 8.4.7 Blobs
 Rows reference blobs as `{sha256, mime, w, h, bytes}`. Devices fetch
-`GET /api/blobs/{sha}?v=<variant>` on demand and cache them LRU. Kiosk
+`GET /api/blobs/{sha}?w=&h=` on demand and cache them LRU; a read needs the
+device's token (a bearer header, or `?t=` on image URLs), and variant sizes
+snap up to a fixed list of edges so callers can't mint unbounded files. Kiosk
 displays **prefetch** what the next hours will need: upcoming screensaver
 photos, today's recipe images, kid-chart photos and voice clips. Uploads
 (phone photo, voice recording, drawing) go to `POST /api/blobs`, then the
