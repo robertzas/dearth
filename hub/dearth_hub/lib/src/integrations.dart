@@ -158,11 +158,16 @@ class Integrations {
           budget.restore(saved[id] is Map<String, Object?> ? saved[id]! as Map<String, Object?> : null);
           budget.onChange = _saveQuotas;
         }
+        _spoonBudget
+          ..restore(saved['spoonacular'] is Map<String, Object?> ? saved['spoonacular']! as Map<String, Object?> : null)
+          ..onChange = _saveQuotas;
       }();
 
   void _saveQuotas() {
     final store = jobs;
-    if (store != null) unawaited(store.write(_quotaState, data: {for (final e in recipeQuotas.entries) e.key: e.value.toJson()}));
+    if (store != null) {
+      unawaited(store.write(_quotaState, data: {for (final e in recipeQuotas.entries) e.key: e.value.toJson(), 'spoonacular': _spoonBudget.toJson()}));
+    }
   }
 
   final PointBudget _spoonBudget = PointBudget();
@@ -181,9 +186,21 @@ class Integrations {
   Future<List<String>> googleAccounts() async =>
       [for (final id in await vault.ids(prefix: SecretIds.googleAccountPrefix)) id.substring(SecretIds.googleAccountPrefix.length)];
 
+  /// Token lookups in flight, by secret id. The calendar and tasks jobs run
+  /// together; two refreshes of one account at once can leave the older of
+  /// two rotated refresh tokens stored (Spotify rotates them), and the
+  /// household signed out. Concurrent callers share one lookup instead.
+  final Map<String, Future<String?>> _tokenLookups = {};
+
+  Future<String?> _once(String key, Future<String?> Function() lookup) =>
+      _tokenLookups[key] ??= lookup().whenComplete(() => _tokenLookups.remove(key));
+
   /// A fresh access token for a Google account, refreshing and persisting as
   /// needed. Throws [ProviderException] with `isAuth` when reconnect is needed.
-  Future<String> googleAccessToken(String accountId) async {
+  Future<String> googleAccessToken(String accountId) async =>
+      (await _once('${SecretIds.googleAccountPrefix}$accountId', () => _googleAccessToken(accountId)))!;
+
+  Future<String> _googleAccessToken(String accountId) async {
     final secretId = '${SecretIds.googleAccountPrefix}$accountId';
     final stored = await vault.getJson(secretId);
     if (stored == null) throw ProviderException('google', 'Account $accountId not connected', status: 401);
@@ -201,7 +218,9 @@ class Integrations {
 
   Future<String?> spotifyClientId() => secretField(SecretIds.spotifyClient, 'clientId');
 
-  Future<String?> spotifyAccessToken() async {
+  Future<String?> spotifyAccessToken() => _once(SecretIds.spotifyAccount, _spotifyAccessToken);
+
+  Future<String?> _spotifyAccessToken() async {
     final stored = await vault.getJson(SecretIds.spotifyAccount);
     if (stored == null) return null;
     var tokens = OAuthTokens.fromJson(stored.obj('tokens'));

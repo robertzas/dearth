@@ -161,7 +161,7 @@ void mountAdminRoutes(Router r, HubContext ctx) {
   // merge field by field; then the integrations look again.
   r.post('/api/admin/import', (Request req) async {
     await requireAdmin(req, ctx.auth);
-    final body = await readJson(req, maxBytes: 256 << 20);
+    final body = await readJson(req, maxBytes: 128 << 20);
     final ops = await ctx.kernel.importSnapshot(body);
     for (final job in const ['weather', 'ics', 'photos', 'google-calendar', 'google-tasks']) {
       ctx.scheduler.runNow(job, delay: const Duration(seconds: 3));
@@ -183,11 +183,7 @@ void mountAdminRoutes(Router r, HubContext ctx) {
   // so a photo source doesn't fetch it again).
   r.put('/api/admin/blobs/<sha|[a-f0-9]{64}>', (Request req, String sha) async {
     await requireAdmin(req, ctx.auth);
-    final bytes = <int>[];
-    await for (final chunk in req.read()) {
-      bytes.addAll(chunk);
-      if (bytes.length > BlobStore.maxUploadBytes * 4) throw HttpError(413, 'too_large');
-    }
+    final bytes = await readBody(req, maxBytes: BlobStore.maxUploadBytes * 4);
     final mime = req.headers['content-type']?.split(';').first.trim() ?? 'application/octet-stream';
     final entry = await ctx.blobs.put(bytes, mime: mime, origin: req.url.queryParameters['origin']);
     if (entry.sha != sha) throw HttpError(400, 'sha_mismatch', 'The bytes don’t match $sha');

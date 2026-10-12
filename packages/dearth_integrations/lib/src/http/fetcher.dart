@@ -105,9 +105,11 @@ class Fetcher {
 
   /// POSTs [body]: a `Map<String, String>` goes as a form (OAuth token
   /// endpoints), any other map as JSON, so type JSON literals whose values
-  /// are all strings as `<String, Object?>{…}`.
-  Future<Object?> postJson(String provider, Uri uri, {Map<String, String>? headers, Object? body}) async =>
-      _decode(provider, await send(provider, 'POST', uri, headers: headers, body: body));
+  /// are all strings as `<String, Object?>{…}`. Pass `retry: false` for a
+  /// POST that creates something: a timeout after the server applied it
+  /// would otherwise create it twice.
+  Future<Object?> postJson(String provider, Uri uri, {Map<String, String>? headers, Object? body, bool retry = true}) async =>
+      _decode(provider, await send(provider, 'POST', uri, headers: headers, body: body, retry: retry));
 
   Future<String> getText(String provider, Uri uri, {Map<String, String>? headers}) async =>
       (await send(provider, 'GET', uri, headers: {'Accept': '*/*', ...?headers})).body;

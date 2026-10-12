@@ -185,6 +185,8 @@ class HubApi {
         if (height != null) 'h': '$height',
         if (cover) 'fit': 'cover',
         if (blur) 'blur': '1',
+        // Image widgets can't send headers; the Hub reads `t` instead.
+        't': ?token,
       });
 
   /// Cached, resized copy of a remote image (recipe photos, album art).
@@ -267,7 +269,7 @@ class HubApi {
   Future<Uint8List> blobBytes(String sha) async {
     final http.Response res;
     try {
-      res = await _client.get(_u('/api/blobs/$sha')).timeout(const Duration(minutes: 2));
+      res = await _client.get(_u('/api/blobs/$sha'), headers: _headers(json: false)).timeout(const Duration(minutes: 2));
     } on Object {
       throw HubApiException(0, 'network');
     }

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:cryptography/cryptography.dart';
 import 'package:dearth_core/dearth_core.dart';
@@ -47,24 +48,51 @@ Future<File?> backupDatabase(DearthDb db, String backupDir, {int keep = 14, Stri
 
 /// AES-256-GCM vault for integration secrets (SPEC §9.5). Values are stored
 /// in the `secrets` table and never synced to devices.
+///
+/// The key: the generated `secret.key` (256 random bits) is used as its
+/// SHA-256. A key someone chose (`DEARTH_SECRET_KEY`) may be guessable, and
+/// backups are plain copies of the database, so it's stretched with a salted
+/// PBKDF2 (the admin password's 120k iterations) and those seals carry a
+/// `v2:` prefix. Older seals still open and are re-sealed when read.
 class SecretVault {
-  SecretVault(this.db, String masterKey) : _keyFuture = Sha256().hash(utf8.encode(masterKey)).then((h) => SecretKey(h.bytes));
+  SecretVault(this.db, String masterKey)
+      : _master = masterKey,
+        _chosen = !_generated.hasMatch(masterKey.trim()),
+        _plainKey = Sha256().hash(utf8.encode(masterKey)).then((h) => SecretKey(h.bytes));
 
   final DearthDb db;
-  final Future<SecretKey> _keyFuture;
+  final String _master;
+  final bool _chosen;
+  final Future<SecretKey> _plainKey;
+  Future<SecretKey>? _stretched;
   final _algo = AesGcm.with256bits();
 
+  static final _generated = RegExp(r'^[0-9a-fA-F]{64,}$');
+  static const _v2 = 'v2:';
+
+  Future<SecretKey> _stretchedKey() => _stretched ??= () async {
+        var salt = await db.kvGet('vault.salt');
+        if (salt == null) {
+          final r = Random.secure();
+          salt = base64.encode([for (var i = 0; i < 16; i++) r.nextInt(256)]);
+          await db.kvSet('vault.salt', salt);
+        }
+        return Pbkdf2(macAlgorithm: Hmac.sha256(), iterations: 120000, bits: 256).deriveKeyFromPassword(password: _master, nonce: base64.decode(salt));
+      }();
+
   Future<String> _encrypt(String plain) async {
-    final box = await _algo.encrypt(utf8.encode(plain), secretKey: await _keyFuture);
-    return base64.encode([...box.nonce, ...box.cipherText, ...box.mac.bytes]);
+    final box = await _algo.encrypt(utf8.encode(plain), secretKey: _chosen ? await _stretchedKey() : await _plainKey);
+    final sealed = base64.encode([...box.nonce, ...box.cipherText, ...box.mac.bytes]);
+    return _chosen ? '$_v2$sealed' : sealed;
   }
 
   Future<String> _decrypt(String sealed) async {
-    final bytes = base64.decode(sealed);
+    final v2 = sealed.startsWith(_v2);
+    final bytes = base64.decode(v2 ? sealed.substring(_v2.length) : sealed);
     final nonce = bytes.sublist(0, 12);
     final mac = bytes.sublist(bytes.length - 16);
     final cipher = bytes.sublist(12, bytes.length - 16);
-    final clear = await _algo.decrypt(SecretBox(cipher, nonce: nonce, mac: Mac(mac)), secretKey: await _keyFuture);
+    final clear = await _algo.decrypt(SecretBox(cipher, nonce: nonce, mac: Mac(mac)), secretKey: v2 ? await _stretchedKey() : await _plainKey);
     return utf8.decode(clear);
   }
 
@@ -78,7 +106,10 @@ class SecretVault {
     final row = await (db.select(db.secrets)..where((t) => t.id.equals(id))).getSingleOrNull();
     if (row == null) return null;
     try {
-      return await _decrypt(row.value);
+      final value = await _decrypt(row.value);
+      // Sealed before chosen keys were stretched: seal it again.
+      if (_chosen && !row.value.startsWith(_v2)) await put(id, value);
+      return value;
     } on SecretBoxAuthenticationError {
       _log.severe('Secret "$id" could not be decrypted (wrong DEARTH_SECRET_KEY?)');
       return null;

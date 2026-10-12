@@ -128,7 +128,7 @@ class GoogleCalendarApi {
   }
 
   Future<EventDraft> insert(String calendarId, Map<String, Object?> body) async {
-    final j = await fetcher.postJson(provider, _u('/calendars/${_cal(calendarId)}/events'), headers: await _auth(), body: body);
+    final j = await fetcher.postJson(provider, _u('/calendars/${_cal(calendarId)}/events'), headers: await _auth(), body: body, retry: false);
     return eventFromGoogle(asObject(j, provider), defaultTz: defaultTz);
   }
 
@@ -173,7 +173,7 @@ class GoogleCalendarApi {
         'type': 'web_hook',
         'address': address,
         'token': channelToken,
-      }),
+      }, retry: false), // a retry with the same channel id would be refused
       provider,
     );
     return WatchChannel(
@@ -187,7 +187,7 @@ class GoogleCalendarApi {
   /// Google adds it to the account's calendar list.
   Future<String> createCalendar(String summary, {required String timeZone, String? description}) async {
     final j = asObject(
-      await fetcher.postJson(provider, _u('/calendars'), headers: await _auth(), body: <String, Object?>{'summary': summary, 'timeZone': timeZone, 'description': ?description}),
+      await fetcher.postJson(provider, _u('/calendars'), headers: await _auth(), body: <String, Object?>{'summary': summary, 'timeZone': timeZone, 'description': ?description}, retry: false),
       provider,
     );
     final id = j.str('id');
@@ -200,7 +200,7 @@ class GoogleCalendarApi {
     await fetcher.postJson(provider, _u('/calendars/${_cal(calendarId)}/acl', {'sendNotifications': 'true'}), headers: await _auth(), body: <String, Object?>{
       'role': role,
       'scope': {'type': 'user', 'value': email},
-    });
+    }, retry: false); // each attempt emails them
   }
 
   Future<void> stopChannel(String channelId, String resourceId) async {

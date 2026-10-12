@@ -114,8 +114,14 @@ class GoogleTasksJob implements HubJob {
     ];
     var lastKey = rows.where((r) => !r.deleted).map((r) => r.sortKey).fold<String?>(null, (a, b) => a == null || b.compareTo(a) > 0 ? b : a);
     final touched = <String>{};
+    final writes = <Op>[];
     for (final action in planTaskSync(items: items, remote: remote, links: links)) {
-      lastKey = await _apply(action, api, taskList, list, links, touched, lastKey);
+      lastKey = await _apply(action, api, taskList, list, links, touched, writes, lastKey);
+    }
+    // One write per 500 changes, not a transaction and a broadcast per task
+    // (a first sync of a long list is hundreds of them; AGENTS rule 11).
+    for (var i = 0; i < writes.length; i += 500) {
+      await kernel.write(writes.sublist(i, math.min(i + 500, writes.length)));
     }
     if (touched.isNotEmpty) {
       // The sync's own writes aren't news next round: each link remembers the
@@ -133,8 +139,9 @@ class GoogleTasksJob implements HubJob {
     });
   }
 
-  /// Applies one planned write; returns the list's last sort key.
-  Future<String?> _apply(TaskSyncAction a, GoogleTasksApi api, String taskList, DList list, Map<String, TaskLink> links, Set<String> touched, String? lastKey) async {
+  /// Applies one planned write (remote now, local ones into [writes]);
+  /// returns the list's last sort key.
+  Future<String?> _apply(TaskSyncAction a, GoogleTasksApi api, String taskList, DList list, Map<String, TaskLink> links, Set<String> touched, List<Op> writes, String? lastKey) async {
     final now = DateTime.now().millisecondsSinceEpoch;
     Map<String, Object?> fieldsOf(GoogleTask t) => {
           'text': t.title,
@@ -156,25 +163,25 @@ class GoogleTasksJob implements HubJob {
       case InsertItem(:final task):
         final itemId = stableId('gtask', [list.id, task.id]);
         lastKey = sortKeyAfter(lastKey);
-        await kernel.upsert('list_items', itemId, {
+        writes.add(kernel.mutator.makeOp('list_items', itemId, {
           'list_id': list.id,
           ...fieldsOf(task),
           // Shopping lists group by aisle, as if typed on a display.
           'category': list.kind == 'shopping' ? parseIngredientLine(task.title).aisle.name : null,
           'sort_key': lastKey,
-        });
+        }));
         links[itemId] = TaskLink(task.id, math.max(now, task.updatedMs));
         touched.add(itemId);
       case UpdateItem(:final itemId, :final task):
-        await kernel.upsert('list_items', itemId, fieldsOf(task));
+        writes.add(kernel.mutator.makeOp('list_items', itemId, fieldsOf(task)));
         links[itemId] = TaskLink(task.id, math.max(now, task.updatedMs));
         touched.add(itemId);
       case DeleteItem(:final itemId):
-        await kernel.delete('list_items', itemId);
+        writes.add(kernel.mutator.makeOp('list_items', itemId, const {}, kind: OpKind.delete));
         links.remove(itemId);
       case LinkPair(:final itemId, :final task, :final then):
         links[itemId] = TaskLink(task.id, math.max(now, task.updatedMs));
-        if (then != null) lastKey = await _apply(then, api, taskList, list, links, touched, lastKey);
+        if (then != null) lastKey = await _apply(then, api, taskList, list, links, touched, writes, lastKey);
       case Forget(:final itemId):
         links.remove(itemId);
     }

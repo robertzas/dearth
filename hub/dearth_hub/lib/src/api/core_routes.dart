@@ -8,6 +8,7 @@ import 'package:shelf_router/shelf_router.dart';
 
 import '../blobs.dart';
 import '../connections.dart';
+import '../rate_limit.dart';
 import 'context.dart';
 import 'http_utils.dart';
 
@@ -24,6 +25,9 @@ void mountCoreRoutes(Router r, HubContext ctx) {
 
   // ── Pairing (SPEC §9.2) ──────────────────────────────────────────────────
   r.post('/api/pair/start', (Request req) async {
+    final who = callerKey(req);
+    if (ctx.auth.pairStarts.blocked(who)) throw HttpError(429, 'too_many_attempts', 'Too many pairing requests; try again in a few minutes');
+    ctx.auth.pairStarts.hit(who);
     final b = await readJson(req);
     final (id, code, secret) = await ctx.auth.startPairing(
       name: (b['name'] as String? ?? 'Display').trim(),
@@ -42,6 +46,8 @@ void mountCoreRoutes(Router r, HubContext ctx) {
   });
 
   r.post('/api/pair/claim', (Request req) async {
+    final who = callerKey(req);
+    if (ctx.auth.claimFailures.blocked(who)) throw HttpError(429, 'too_many_attempts', 'Too many wrong codes; try again in a few minutes');
     final b = await readJson(req);
     final status = await ctx.auth.claim(
       (b['code'] as String? ?? '').trim(),
@@ -49,7 +55,10 @@ void mountCoreRoutes(Router r, HubContext ctx) {
       model: b['model'] as String?,
       name: b['name'] as String?,
     );
-    if (status.status != 'approved') throw HttpError(404, 'invalid_code', 'That code is unknown, used or expired');
+    if (status.status != 'approved') {
+      ctx.auth.claimFailures.hit(who);
+      throw HttpError(404, 'invalid_code', 'That code is unknown, used or expired');
+    }
     return jsonOk(status.toJson());
   });
 
@@ -92,11 +101,7 @@ void mountCoreRoutes(Router r, HubContext ctx) {
   // ── Blobs (SPEC §8.4.7) ──────────────────────────────────────────────────
   r.post('/api/blobs', (Request req) async {
     await requireDevice(req, ctx.auth);
-    final bytes = <int>[];
-    await for (final chunk in req.read()) {
-      bytes.addAll(chunk);
-      if (bytes.length > BlobStore.maxUploadBytes) throw HttpError(413, 'too_large');
-    }
+    final bytes = await readBody(req, maxBytes: BlobStore.maxUploadBytes);
     if (bytes.isEmpty) throw HttpError(400, 'empty');
     final mime = req.headers['content-type']?.split(';').first.trim() ?? 'application/octet-stream';
     final normalize = req.url.queryParameters['normalize'] == '1' && mime.startsWith('image/');
@@ -104,7 +109,11 @@ void mountCoreRoutes(Router r, HubContext ctx) {
     return jsonOk({'sha': entry.sha, 'mime': entry.mime, 'bytes': entry.bytes, 'width': entry.width, 'height': entry.height});
   });
 
+  // Paired devices only (a bearer header or `?t=` for image URLs): a sha
+  // that leaks into a log or a screenshot mustn't open a family photo
+  // forever, nor let anyone on the network make variants.
   r.get('/api/blobs/<sha|[a-f0-9]{64}>', (Request req, String sha) async {
+    await requireReader(req, ctx.auth);
     final q = req.url.queryParameters;
     final entry = await ctx.blobs.entry(sha);
     if (entry == null) return jsonError(404, 'not_found');
@@ -119,7 +128,7 @@ void mountCoreRoutes(Router r, HubContext ctx) {
     final isVariant = file.path != ctx.blobs.fileFor(sha).path;
     return Response.ok(file.openRead(), headers: {
       'content-type': isVariant ? 'image/jpeg' : entry.mime,
-      'cache-control': 'public, max-age=31536000, immutable',
+      'cache-control': 'private, max-age=31536000, immutable',
       'content-length': '${file.lengthSync()}',
     });
   });
@@ -130,7 +139,7 @@ void mountCoreRoutes(Router r, HubContext ctx) {
     final q = req.url.queryParameters;
     final url = Uri.tryParse(q['u'] ?? '');
     if (url == null || !(url.isScheme('https') || url.isScheme('http'))) throw HttpError(400, 'bad_url');
-    final entry = await ctx.blobs.fetchRemoteImage(ctx.fetcher, url);
+    final entry = await ctx.blobs.fetchRemoteImage(ctx.publicFetcher, url);
     if (entry == null) return jsonError(404, 'not_found');
     final file = await ctx.blobs.variant(entry.sha, width: int.tryParse(q['w'] ?? ''), height: int.tryParse(q['h'] ?? ''), cover: q['fit'] == 'cover');
     return Response.ok(file!.openRead(), headers: {

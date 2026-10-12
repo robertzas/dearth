@@ -18,6 +18,9 @@ final _log = Logger('connections');
 /// development build, which never updates by itself.
 final String hubVersion = Platform.environment['DEARTH_VERSION'] ?? '0.1.0-dev';
 
+/// The most ops one push may carry (twice what a device sends).
+const int maxPushOps = 1000;
+
 /// All live device WebSockets (SPEC §8.4.3, §8.6).
 class ConnectionHub {
   ConnectionHub(this.kernel, this.auth) {
@@ -163,6 +166,11 @@ class DeviceSession {
       return;
     }
     switch (msg) {
+      // Devices send at most SyncClient.maxBatch (500) a frame; a bigger one
+      // is a broken or hostile client, refused before it holds the write
+      // transaction.
+      case PushMsg(:final ops) when ops.length > maxPushOps:
+        send(AckMsg(batch: msg.batch, accepted: const [], rejected: [for (final o in ops) Rejection(o.id, 'too_large')]));
       case PushMsg():
         final (accepted, rejected) = await kernel.accept(identity!, msg.ops);
         send(AckMsg(batch: msg.batch, accepted: accepted, rejected: rejected));

@@ -87,7 +87,7 @@ void main() {
     asked.clear();
     dir = await Directory.systemTemp.createTemp('dearth-recipes-test');
     hub = await DearthHub.start(
-      HubConfig(dataDir: dir.path, secretKey: 'k' * 32, port: 0, host: '127.0.0.1', adminPassword: 'test-admin', jobsEnabled: false),
+      HubConfig(dataDir: dir.path, secretKey: 'a' * 64, port: 0, host: '127.0.0.1', adminPassword: 'test-admin', jobsEnabled: false),
       inMemory: true,
       fetcher: Fetcher(client: MockClient(network), maxRetries: 1, sleep: (_) async {}),
     );

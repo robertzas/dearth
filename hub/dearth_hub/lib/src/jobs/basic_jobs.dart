@@ -155,8 +155,16 @@ class MaintenanceJob implements HubJob {
     await backupDatabase(kernel.db, config.backupDir);
     final dropped = await kernel.compact();
     final removed = await blobs.garbageCollect(await referencedBlobs(kernel.db));
-    _log.info('Maintenance: backup done, compacted $dropped ops, removed $removed blobs');
+    final pairings = await expirePairings(kernel.db);
+    _log.info('Maintenance: backup done, compacted $dropped ops, removed $removed blobs and $pairings old pairing codes');
   }
+}
+
+/// Deletes pairing codes a day past their expiry (Hub-local auth rows, not
+/// synced): every unauthenticated pairing request adds one.
+Future<int> expirePairings(DearthDb db, {int? nowMs}) {
+  final cutoff = (nowMs ?? DateTime.now().millisecondsSinceEpoch) - const Duration(days: 1).inMilliseconds;
+  return (db.delete(db.pairings)..where((t) => t.expiresMs.isSmallerThanValue(cutoff))).go();
 }
 
 /// The sha a row's blob column points at: a bare sha, or a JSON reference

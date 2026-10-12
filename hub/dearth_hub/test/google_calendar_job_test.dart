@@ -93,7 +93,7 @@ void main() {
     dir = await Directory.systemTemp.createTemp('dearth-gcal-test');
     google = FakeGoogleCalendar();
     hub = await DearthHub.start(
-      HubConfig(dataDir: dir.path, secretKey: 'k' * 32, port: 0, host: '127.0.0.1', fakeProviders: true, adminPassword: 'test-admin', jobsEnabled: false),
+      HubConfig(dataDir: dir.path, secretKey: 'a' * 64, port: 0, host: '127.0.0.1', fakeProviders: true, adminPassword: 'test-admin', jobsEnabled: false),
       inMemory: true,
       listen: false,
       fetcher: Fetcher(client: MockClient(google.handle), maxRetries: 1, sleep: (_) async {}),

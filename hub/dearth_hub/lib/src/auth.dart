@@ -9,6 +9,7 @@ import 'package:logging/logging.dart';
 
 import 'config.dart';
 import 'kernel.dart';
+import 'rate_limit.dart';
 import 'storage.dart';
 
 final _log = Logger('auth');
@@ -45,6 +46,12 @@ class HubAuth {
   final HubConfig config;
   final SecretVault vault;
   DearthDb get db => kernel.db;
+
+  /// Wrong admin passwords, unknown pairing codes and pairing requests per
+  /// caller (SUGGESTIONS Hub §3).
+  final adminFailures = RateLimiter(10, const Duration(minutes: 10));
+  final claimFailures = RateLimiter(20, const Duration(minutes: 10));
+  final pairStarts = RateLimiter(20, const Duration(minutes: 10));
 
   static const _adminSecret = 'admin:password';
   static const pairingTtl = Duration(minutes: 15);

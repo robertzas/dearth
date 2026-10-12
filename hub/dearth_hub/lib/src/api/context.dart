@@ -27,6 +27,7 @@ class HubContext {
     required this.google,
     required this.updates,
     required this.fetcher,
+    required this.publicFetcher,
     required this.vault,
   }) : startedMs = DateTime.now().millisecondsSinceEpoch;
 
@@ -42,6 +43,10 @@ class HubContext {
   final GoogleCalendarJob google;
   final HubUpdateJob updates;
   final Fetcher fetcher;
+
+  /// For URLs a device names (image proxy, recipe import): public internet
+  /// only, capped bodies (see PublicOnlyClient).
+  final Fetcher publicFetcher;
   final SecretVault vault;
   final int startedMs;
 

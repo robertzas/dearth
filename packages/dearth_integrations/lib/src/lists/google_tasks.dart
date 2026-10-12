@@ -71,7 +71,7 @@ class GoogleTasksApi {
   }
 
   Future<GoogleTaskList> insertTaskList(String title) async {
-    final j = asObject(await fetcher.postJson(provider, _u('/users/@me/lists'), headers: await _auth(), body: <String, Object?>{'title': title}), provider);
+    final j = asObject(await fetcher.postJson(provider, _u('/users/@me/lists'), headers: await _auth(), body: <String, Object?>{'title': title}, retry: false), provider);
     return GoogleTaskList(id: j.str('id') ?? '', title: j.str('title') ?? title);
   }
 
@@ -108,7 +108,7 @@ class GoogleTasksApi {
       };
 
   Future<GoogleTask> insertTask(String listId, {required String title, String? notes, bool completed = false}) async => GoogleTask.fromJson(asObject(
-        await fetcher.postJson(provider, _u('/lists/${_e(listId)}/tasks'), headers: await _auth(), body: _body(title: title, notes: notes, completed: completed)),
+        await fetcher.postJson(provider, _u('/lists/${_e(listId)}/tasks'), headers: await _auth(), body: _body(title: title, notes: notes, completed: completed), retry: false),
         provider,
       ));
 

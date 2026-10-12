@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:dearth_integrations/dearth_integrations.dart';
 import 'package:logging/logging.dart';
@@ -6,6 +7,7 @@ import 'package:shelf/shelf.dart';
 
 import '../auth.dart';
 import '../kernel.dart';
+import '../rate_limit.dart';
 
 final _log = Logger('http');
 
@@ -26,12 +28,21 @@ Response jsonOk(Object? body, {int status = 200}) => Response(status, body: json
 Response jsonError(int status, String code, [String? message]) =>
     Response(status, body: jsonEncode({'error': code, 'message': ?message}), headers: _jsonHeaders);
 
-Future<Map<String, Object?>> readJson(Request r, {int maxBytes = 1 << 20}) async {
-  final bytes = <int>[];
+/// The request body, refused past [maxBytes]. Collected as bytes: a growable
+/// `List<int>` holds each byte in a machine word, eight times the body.
+Future<Uint8List> readBody(Request r, {required int maxBytes}) async {
+  final declared = r.contentLength;
+  if (declared != null && declared > maxBytes) throw HttpError(413, 'too_large');
+  final bytes = BytesBuilder(copy: false);
   await for (final chunk in r.read()) {
-    bytes.addAll(chunk);
+    bytes.add(chunk);
     if (bytes.length > maxBytes) throw HttpError(413, 'too_large');
   }
+  return bytes.takeBytes();
+}
+
+Future<Map<String, Object?>> readJson(Request r, {int maxBytes = 1 << 20}) async {
+  final bytes = await readBody(r, maxBytes: maxBytes);
   if (bytes.isEmpty) return const {};
   try {
     final v = jsonDecode(utf8.decode(bytes));
@@ -55,13 +66,27 @@ Future<DeviceIdentity> requireDevice(Request r, HubAuth auth) async {
   return id;
 }
 
+/// Checks the admin password header, if any: true when it's right, an
+/// error when it's wrong (counted per caller), false when there is none.
+Future<bool> _adminPassword(Request r, HubAuth auth) async {
+  final pw = r.headers['x-dearth-admin'];
+  if (pw == null || pw.isEmpty) return false;
+  final who = callerKey(r);
+  if (auth.adminFailures.blocked(who)) throw HttpError(429, 'too_many_attempts', 'Too many wrong passwords; try again in a few minutes');
+  if (await auth.checkAdminPassword(pw)) return true;
+  auth.adminFailures.hit(who);
+  throw HttpError(403, 'forbidden', 'Wrong admin password');
+}
+
+/// A paired device, or the admin password (scripts, household moves).
+Future<void> requireReader(Request r, HubAuth auth) async {
+  if (await _adminPassword(r, auth)) return;
+  await requireDevice(r, auth);
+}
+
 /// Admin = an admin device token, or the admin password (scripts, first run).
 Future<DeviceIdentity> requireAdmin(Request r, HubAuth auth) async {
-  final pw = r.headers['x-dearth-admin'];
-  if (pw != null && pw.isNotEmpty) {
-    if (await auth.checkAdminPassword(pw)) return DeviceIdentity.hub;
-    throw HttpError(403, 'forbidden', 'Wrong admin password');
-  }
+  if (await _adminPassword(r, auth)) return DeviceIdentity.hub;
   final id = await requireDevice(r, auth);
   if (!id.admin) throw HttpError(403, 'forbidden', 'This device is not an admin device');
   return id;

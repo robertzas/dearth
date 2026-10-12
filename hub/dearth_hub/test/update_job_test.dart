@@ -18,7 +18,7 @@ void main() {
 
   HubConfig config({bool updater = true}) => HubConfig(
         dataDir: dir.path,
-        secretKey: 'k' * 32,
+        secretKey: 'a' * 64,
         port: 0,
         host: '127.0.0.1',
         adminPassword: 'test-admin',

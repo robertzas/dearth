@@ -80,7 +80,7 @@ void main() {
   setUp(() async {
     dir = await Directory.systemTemp.createTemp('dearth-hub-test');
     hub = await DearthHub.start(
-      HubConfig(dataDir: dir.path, secretKey: 'k' * 32, port: 0, host: '127.0.0.1', fakeProviders: true, adminPassword: 'test-admin', jobsEnabled: false),
+      HubConfig(dataDir: dir.path, secretKey: 'a' * 64, port: 0, host: '127.0.0.1', fakeProviders: true, adminPassword: 'test-admin', jobsEnabled: false),
       inMemory: true,
     );
   });
@@ -228,16 +228,17 @@ void main() {
     expect(r.statusCode, 200, reason: r.body);
     final meta = jsonDecode(r.body) as Map<String, Object?>;
     final sha = meta['sha']! as String;
-    final back = await http.get(u('/api/blobs/$sha'));
+    expect((await http.get(u('/api/blobs/$sha'))).statusCode, 401, reason: 'a sha alone opens nothing');
+    final back = await http.get(u('/api/blobs/$sha'), headers: {'authorization': 'Bearer $token'});
     expect(back.bodyBytes, bytes);
     if (made.exitCode == 0) {
       expect(meta['width'], 320);
-      final small = await http.get(u('/api/blobs/$sha?w=64&h=64'));
+      final small = await http.get(u('/api/blobs/$sha?w=64&h=64&t=$token'));
       expect(small.statusCode, 200);
       expect(small.headers['content-type'], 'image/jpeg');
       expect(small.bodyBytes.length, lessThan(bytes.length));
     }
-    expect((await http.get(u('/api/blobs/${'0' * 64}'))).statusCode, 404);
+    expect((await http.get(u('/api/blobs/${'0' * 64}?t=$token'))).statusCode, 404);
   });
 
   test('recipes (fake providers): search, discover, recommend', () async {
@@ -284,7 +285,7 @@ void main() {
     final dir2 = await Directory.systemTemp.createTemp('dearth-hub-recipes');
     addTearDown(() => dir2.delete(recursive: true));
     Future<DearthHub> start() => DearthHub.start(
-          HubConfig(dataDir: dir2.path, secretKey: 'k' * 32, port: 0, host: '127.0.0.1', adminPassword: 'test-admin', jobsEnabled: false),
+          HubConfig(dataDir: dir2.path, secretKey: 'a' * 64, port: 0, host: '127.0.0.1', adminPassword: 'test-admin', jobsEnabled: false),
           fetcher: Fetcher(client: client, sleep: (_) async {}),
         );
     var hub2 = await start();
@@ -411,7 +412,7 @@ void main() {
     });
     final dir2 = await Directory.systemTemp.createTemp('dearth-hub-amazon');
     final hub2 = await DearthHub.start(
-      HubConfig(dataDir: dir2.path, secretKey: 'k' * 32, port: 0, host: '127.0.0.1', adminPassword: 'test-admin', jobsEnabled: false),
+      HubConfig(dataDir: dir2.path, secretKey: 'a' * 64, port: 0, host: '127.0.0.1', adminPassword: 'test-admin', jobsEnabled: false),
       inMemory: true,
       fetcher: Fetcher(client: amazon, sleep: (_) async {}),
     );
@@ -509,7 +510,7 @@ void main() {
     expect((await other.context.kernel.store.readRow('list_items', 'gone'))?['deleted'], 1, reason: 'tombstones come along');
     expect(await other.context.kernel.store.readRow('ledger_entries', 'l1'), isNotNull);
     expect(await other.db.select(other.db.devices).get(), isEmpty, reason: 'each Hub registers its own devices');
-    expect((await http.get(o('/api/blobs/$sha'))).bodyBytes, avatar);
+    expect((await http.get(o('/api/blobs/$sha'), headers: _admin)).bodyBytes, avatar);
   });
 
   test('demo seed endpoint builds a full household', () async {

@@ -11,6 +11,10 @@ class PointBudget {
   String _day = '';
   double _used = 0;
 
+  /// Called after each change, so the Hub can keep the count across
+  /// restarts ([toJson], [restore]), like [QuotaBudget].
+  void Function()? onChange;
+
   double get used {
     _roll();
     return _used;
@@ -24,12 +28,27 @@ class PointBudget {
   void spend(double points) {
     _roll();
     _used += points;
+    onChange?.call();
   }
 
   /// Syncs with the provider's own counter (`X-API-Quota-Used` header).
   void observeQuotaUsed(double used) {
     _roll();
-    if (used > _used) _used = used;
+    if (used > _used) {
+      _used = used;
+      onChange?.call();
+    }
+  }
+
+  Map<String, Object?> toJson() {
+    _roll();
+    return {'period': _day, 'used': _used};
+  }
+
+  /// Picks up a saved count, if it's for today.
+  void restore(Map<String, Object?>? saved) {
+    _roll();
+    if (saved != null && saved['period'] == _day) _used = (saved['used'] as num?)?.toDouble() ?? 0;
   }
 
   void _roll() {

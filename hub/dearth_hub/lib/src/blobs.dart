@@ -100,15 +100,29 @@ class BlobStore {
     }
   }
 
+  /// Variant edges a request is rounded up to. Each variant is a permanent
+  /// file and a vips run, so arbitrary sizes would let any caller mint them
+  /// without end; these cover thumbnails through 4K, with the common screen
+  /// edges (800, 1080, 1200…) so a full-screen photo isn't decoded larger
+  /// than the screen.
+  static const List<int> variantEdges = [
+    64, 96, 128, 160, 192, 256, 320, 384, 480, 512, 640, 720, 768, 800, 960, 1024, //
+    1080, 1200, 1280, 1440, 1600, 1920, 2048, 2160, 2560, 3200, 3840, 4096,
+  ];
+
+  static int snapEdge(int px) => variantEdges.firstWhere((e) => e >= px, orElse: () => variantEdges.last);
+
   /// A cached derivative: fit inside (w,h) or cover-crop, optionally blurred
   /// (pre-blurred screensaver backgrounds, SPEC FR-SSV-04).
   Future<File?> variant(String sha, {int? width, int? height, bool cover = false, bool blur = false}) async {
     final original = fileFor(sha);
     if (!original.existsSync()) return null;
     if ((width == null && height == null && !blur) || !await vipsAvailable) return original;
-    final w = (width ?? height ?? 640).clamp(16, 4096);
-    final h = (height ?? width ?? 640).clamp(16, 4096);
-    final key = '${sha}_${w}x${h}_${cover ? 'c' : 'i'}${blur ? '_b' : ''}.jpg';
+    final w = snapEdge(width ?? height ?? 640);
+    final h = snapEdge(height ?? width ?? 640);
+    // The blur is made from a 96 px thumbnail whatever the size asked for:
+    // one file per photo.
+    final key = blur ? '${sha}_blur.jpg' : '${sha}_${w}x${h}_${cover ? 'c' : 'i'}.jpg';
     final out = File(p.join(dir, 'v', key));
     if (out.existsSync()) return out;
     return _inflight.putIfAbsent(key, () async {

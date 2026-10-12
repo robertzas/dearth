@@ -27,6 +27,7 @@ import 'jobs/photos_job.dart';
 import 'jobs/scheduler.dart';
 import 'jobs/update_job.dart';
 import 'kernel.dart';
+import 'public_client.dart';
 import 'recipes_service.dart';
 import 'storage.dart';
 
@@ -51,6 +52,8 @@ class DearthHub {
     final kernel = HubKernel(db);
     final auth = HubAuth(kernel, config, vault);
     final f = fetcher ?? Fetcher(userAgent: 'Dearth Hub/$hubVersion (${config.contact})');
+    // Tests inject one fetcher for everything (a MockClient, no DNS).
+    final public = fetcher ?? Fetcher(client: PublicOnlyClient(), userAgent: f.userAgent);
 
     await _bootstrap(kernel, seedDemo: seedDemo, timezone: timezone);
     final generated = await auth.ensureAdminPassword();
@@ -96,12 +99,13 @@ class DearthHub {
       connections: connections,
       blobs: blobs,
       integrations: integrations,
-      recipes: RecipeService(integrations, f),
+      recipes: RecipeService(integrations, public),
       scheduler: scheduler,
       jobs: jobs,
       google: google,
       updates: updates,
       fetcher: f,
+      publicFetcher: public,
       vault: vault,
     );
 

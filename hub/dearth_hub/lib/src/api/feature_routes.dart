@@ -44,7 +44,9 @@ void mountFeatureRoutes(Router r, HubContext ctx) {
   });
 
   r.post('/api/recipes/import', (Request req) async {
-    await requireDevice(req, ctx.auth);
+    // Fetches a page the caller names and returns what it parsed: not a
+    // kid-room display's job.
+    if ((await requireDevice(req, ctx.auth)).role == DeviceRole.kidRoom) throw HttpError(403, 'forbidden', 'Import recipes from a grown-up display');
     final b = await readJson(req);
     final url = (b['url'] as String? ?? '').trim();
     if (url.isEmpty) throw HttpError(400, 'url_required');
