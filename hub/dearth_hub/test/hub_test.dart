@@ -110,6 +110,34 @@ void main() {
     expect(noAuth.statusCode, 401);
   });
 
+  // Read from the route files, so a route added later is swept too: one that
+  // forgot its requireDevice/requireAdmin would ship open.
+  test('every route but the public few needs a paired device, and every admin route an admin', () async {
+    const public = {
+      '/api/health', '/api/pair/start', '/api/pair/status', '/api/pair/claim', //
+      '/api/oauth/google/callback', '/api/oauth/spotify/callback', '/api/webhooks/google/calendar',
+    };
+    final routes = [
+      for (final f in ['core_routes', 'feature_routes', 'admin_routes'])
+        for (final m in RegExp(r"r\.(get|post|put|delete)\('(/api/[^']*)'").allMatches(File('lib/src/api/$f.dart').readAsStringSync())) (m[1]!.toUpperCase(), m[2]!),
+    ];
+    expect(routes.length, greaterThan(40), reason: 'the route table was read');
+    final display = await pairDevice('Playroom', role: DeviceRole.kidRoom);
+    Future<int> call(String method, String route, Map<String, String> headers) async {
+      // <id> → x; <sha|[a-f0-9]{64}> → a well-formed sha.
+      final path = route.replaceAllMapped(RegExp(r'<(\w+)(\|[^>]*)?>'), (m) => m[2] == null ? 'x' : '0' * 64);
+      final res = await (http.Request(method, u(path))..headers.addAll(headers)).send();
+      await res.stream.drain<void>();
+      return res.statusCode;
+    }
+
+    for (final (method, route) in routes) {
+      if (public.contains(route)) continue;
+      expect(await call(method, route, const {}), 401, reason: '$method $route without a token');
+      if (route.startsWith('/api/admin/')) expect(await call(method, route, {'authorization': 'Bearer $display'}), 403, reason: '$method $route from a display that isn\'t an admin');
+    }
+  });
+
   test('FR-ADM-01: an admin removes a device, a display removes itself; both leave the list and their tokens stop working', () async {
     final keep = await pairDevice('Kitchen');
     final old = await pairDevice('Old tablet');

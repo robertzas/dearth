@@ -192,8 +192,11 @@ class Integrations {
   /// household signed out. Concurrent callers share one lookup instead.
   final Map<String, Future<String?>> _tokenLookups = {};
 
-  Future<String?> _once(String key, Future<String?> Function() lookup) =>
-      _tokenLookups[key] ??= lookup().whenComplete(() => _tokenLookups.remove(key));
+  Future<String?> _once(String key, Future<String?> Function() lookup) => _tokenLookups[key] ??= lookup().whenComplete(() {
+        // A block, not an arrow: remove() returns this very future, and
+        // whenComplete would wait on it, forever.
+        _tokenLookups.remove(key);
+      });
 
   /// A fresh access token for a Google account, refreshing and persisting as
   /// needed. Throws [ProviderException] with `isAuth` when reconnect is needed.
