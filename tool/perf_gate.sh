@@ -77,8 +77,12 @@ done
 [ -z "$ONLY" ] || [ $UPDATE = 0 ] || { echo "--only is a probe: it can't make a baseline" >&2; exit 2; }
 
 case "$DEVICE" in *:*) SERIAL="$DEVICE" ;; *) SERIAL="$DEVICE:5555" ;; esac
-adb_() { adb -s "$SERIAL" "$@"; }
-sh_() { adb -s "$SERIAL" shell "$@" 2>/dev/null | tr -d '\r' || true; }
+# The same adb as tool/deploy_frame.sh: PATH, else the Android SDK.
+# shellcheck source=tool/find_adb.sh
+. "$ROOT/tool/find_adb.sh"
+[ -n "$ADB" ] || { echo "adb not found: install Android platform-tools" >&2; exit 2; }
+adb_() { "$ADB" -s "$SERIAL" "$@"; }
+sh_() { "$ADB" -s "$SERIAL" shell "$@" 2>/dev/null | tr -d '\r' || true; }
 say() { printf '%s\n' "$*"; }
 # A field of a JSON object, or nothing (also for no or bad JSON).
 json() { python3 -I -c '
@@ -89,8 +93,8 @@ except Exception:
     v = None
 print("" if v is None else v)' "$1" "$2"; }
 
-adb connect "$SERIAL" >/dev/null 2>&1 || true
-[ "$(adb -s "$SERIAL" get-state 2>/dev/null || true)" = device ] || { echo "can't reach $SERIAL (adb connect $SERIAL)" >&2; exit 1; }
+"$ADB" connect "$SERIAL" >/dev/null 2>&1 || true
+[ "$("$ADB" -s "$SERIAL" get-state 2>/dev/null || true)" = device ] || { echo "can't reach $SERIAL (adb connect $SERIAL)" >&2; exit 1; }
 MODEL=$(sh_ getprop ro.product.model | tr -c 'A-Za-z0-9_-' '_' | sed 's/_*$//')
 ABI=$(sh_ getprop ro.product.cpu.abi)
 case "$ABI" in
@@ -216,7 +220,9 @@ RESTORE=""
 path=$(sh_ pm path "$APP" | sed -n 's/^package://p' | head -n 1)
 if [ -n "$path" ]; then
   RESTORE="$CACHE/restore-$MODEL.apk"
-  adb_ pull "$path" "$RESTORE" >/dev/null 2>&1
+  rm -f "$RESTORE"
+  # Nothing below may touch the app until its way back is saved.
+  adb_ pull "$path" "$RESTORE" >/dev/null 2>&1 && [ -s "$RESTORE" ] || fail "couldn't save the installed Dearth from the display ($path), so nothing was changed"
   step "Saved the installed Dearth ($INSTALLED) to put back afterwards."
 fi
 
@@ -331,7 +337,7 @@ if [ $REBOOT = 1 ]; then
   sleep 20
   booted=0
   for _ in $(seq 1 60); do
-    adb connect "$SERIAL" >/dev/null 2>&1 || true
+    "$ADB" connect "$SERIAL" >/dev/null 2>&1 || true
     [ "$(sh_ getprop sys.boot_completed)" = 1 ] && { booted=1; break; }
     sleep 5
   done
@@ -348,7 +354,7 @@ fi
 # flutter tag.
 adb_ logcat -c
 # adb itself, not the adb_ function: $! must be the process to stop.
-adb -s "$SERIAL" logcat -v raw -s flutter >"$RUN.log" 2>/dev/null &
+"$ADB" -s "$SERIAL" logcat -v raw -s flutter >"$RUN.log" 2>/dev/null &
 LOGCAT_PID=$!
 SWAPPED=1
 adb_ install -r "$APK" >/dev/null 2>&1 || fail "installing the profile build failed"
@@ -380,7 +386,7 @@ if [ "$RAN" = ok ] && [ $UPDATE = 0 ] && [ -f "$BASELINE" ]; then
     say "  measuring again: $slower…"
     sh_ setprop debug.dearth.perf_only "$slower"
     adb_ logcat -c
-    adb -s "$SERIAL" logcat -v raw -s flutter >"$RUN.again.log" 2>/dev/null &
+    "$ADB" -s "$SERIAL" logcat -v raw -s flutter >"$RUN.again.log" 2>/dev/null &
     LOGCAT_PID=$!
     adb_ shell am force-stop "$APP" >/dev/null 2>&1 || true
     adb_ shell am start -n "$APP/.MainActivity" >/dev/null 2>&1 || true

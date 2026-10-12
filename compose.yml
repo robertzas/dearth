@@ -38,8 +38,10 @@ services:
   # tag, or whatever DEARTH_IMAGE names) and recreates the container above
   # with the same settings and data. It never polls by itself, and its API
   # isn't published outside this compose network.
+  # Pinned by digest, not just tag: it holds the Docker socket, so a tag
+  # moved to another image would run with the host's keys.
   updater:
-    image: nickfedor/watchtower:1.23.0
+    image: nickfedor/watchtower:1.23.0@sha256:45b54f6dc15227cfb38dbb826f2881aa0f56aaf0c255cdbb38bd80e598bdca9a
     container_name: dearth-updater
     restart: unless-stopped
     environment:

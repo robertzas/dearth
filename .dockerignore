@@ -15,3 +15,8 @@ tool/.work
 **/key.properties
 **/local.properties
 .env
+# Only the web build goes into the image: tool/build_all.sh also leaves
+# APKs and archives in dist/.
+dist/*
+!dist/web
+!dist/.keep

@@ -14,19 +14,21 @@
 #   tool/check.sh --only=app --shard=2/4   # the app's tests split four ways
 #                            # (by test, not file: one file holds a fifth of
 #                            # the suite's time); this runs the second
+#   tool/check.sh --no-pub   # skip `flutter pub get` (CI's setup did it)
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-FAST=0; E2E=0; SERIAL=0; ONLY=""; SHARD=""
+FAST=0; E2E=0; SERIAL=0; ONLY=""; SHARD=""; PUB=1
 for arg in "$@"; do
   case "$arg" in
     --fast) FAST=1 ;;
+    --no-pub) PUB=0 ;;
     --e2e) E2E=1 ;;
     --serial) SERIAL=1 ;;
     --only=*) ONLY=",${arg#--only=}," ;;
     --shard=*) SHARD="${arg#--shard=}" ;;
-    -h|--help) sed -n '2,15p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,16p' "$0"; exit 0 ;;
     *) echo "unknown option: $arg" >&2; exit 2 ;;
   esac
 done
@@ -35,9 +37,11 @@ step() { printf '\n\033[1;34m▶ %s\033[0m\n' "$*"; }
 ok() { printf '\033[1;32m✔ %s\033[0m\n' "$*"; }
 bad() { printf '\033[1;31m✘ %s\033[0m\n' "$*"; }
 
-step "Resolving workspace dependencies"
-flutter pub get >/dev/null
-ok "dependencies"
+if [[ $PUB -eq 1 ]]; then
+  step "Resolving workspace dependencies"
+  flutter pub get >/dev/null
+  ok "dependencies"
+fi
 
 # With --only, a step runs when it's named; otherwise everything runs.
 wanted() { [[ -z "$ONLY" || "$ONLY" == *",$1,"* ]]; }

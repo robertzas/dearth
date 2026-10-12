@@ -81,11 +81,16 @@ jobs:
         with:
           lfs: ${{ matrix.lfs }}
           hooks-key: -${{ startsWith(matrix.name, 'app') && 'app' || matrix.name }}
+      # --no-pub: the setup action resolved the workspace already.
       - name: tool/check.sh --only=${{ matrix.only }} ${{ matrix.shard && format('--shard={0}', matrix.shard) || '' }}
-        run: tool/check.sh --only=${{ matrix.only }} ${{ matrix.shard && format('--shard={0}', matrix.shard) || '' }}
+        run: tool/check.sh --no-pub --only=${{ matrix.only }} ${{ matrix.shard && format('--shard={0}', matrix.shard) || '' }}
+      # Untracked counts too: a generated file nobody committed is as stale
+      # as a changed one, and `git diff` doesn't see it.
       - name: Generated code is committed and current
         if: matrix.only == 'codegen'
-        run: git diff --exit-code -- '*.g.dart'
+        run: |
+          stale="$(git status --porcelain -- '*.g.dart')"
+          if [ -n "$stale" ]; then echo "$stale"; git diff -- '*.g.dart' | head -200; exit 1; fi
 
   # The head of the critical path: E2E, the Hub packages and the image all
   # need the web build.
@@ -117,7 +122,7 @@ jobs:
     # shard spends ~20 s on setup. The test Hub is the linux-x64 binary from
     # the Hub job, so no Dart SDK, pub get or JIT start-up here.
     name: Web E2E (Playwright ${{ matrix.shard }}/16)
-    needs: [web, hub]
+    needs: [web, hub-e2e]
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     strategy:
@@ -159,14 +164,17 @@ jobs:
           # Artifacts don't keep the executable bit.
           chmod +x "$RUNNER_TEMP/hub/bin/dearth_hub"
           DEARTH_HUB_BIN="$RUNNER_TEMP/hub/bin/dearth_hub" SKIP_BUILD=1 tool/e2e.sh --shard=${{ matrix.shard }}/16
+      # Always, not just on failure: a journey that failed and passed on its
+      # retry leaves its trace in the report, and flakes are worth seeing.
       - uses: actions/upload-artifact@v7
-        if: failure()
+        if: ${{ !cancelled() }}
         with:
           name: playwright-report-${{ matrix.shard }}
           path: |
             e2e/playwright-report
             e2e/test-results
-          retention-days: 14
+          if-no-files-found: ignore
+          retention-days: 7
 
   android:
     name: Android APKs
@@ -218,6 +226,8 @@ jobs:
         with:
           name: android
           path: out/*
+          # Inputs to this run's release, which keeps the files.
+          retention-days: 3
 
   linux:
     name: Linux desktop
@@ -252,6 +262,8 @@ jobs:
         with:
           name: linux
           path: out/*
+          # Inputs to this run's release, which keeps the files.
+          retention-days: 3
 
   windows:
     name: Windows desktop
@@ -280,6 +292,8 @@ jobs:
         with:
           name: windows
           path: out/*
+          # Inputs to this run's release, which keeps the files.
+          retention-days: 3
 
   macos:
     name: macOS desktop
@@ -304,6 +318,8 @@ jobs:
         with:
           name: macos
           path: out/*
+          # Inputs to this run's release, which keeps the files.
+          retention-days: 3
 
   ios:
     name: iOS (unsigned)
@@ -329,47 +345,45 @@ jobs:
         with:
           name: ios
           path: out/*
+          # Inputs to this run's release, which keeps the files.
+          retention-days: 3
 
-  # Compiled from the start, not after web: E2E runs the linux-x64 binary,
-  # and the release job packages each bundle with the web app.
+  # Compiled from the start, not after web; the release job packages each
+  # bundle with the web app. The Hub is pure Dart: no Flutter SDK (which has
+  # no linux-arm64 host build), just Dart and the workspace subset the Hub
+  # needs (.github/actions/hub-build), exactly like the Dockerfile.
+  #
+  # E2E runs the linux-x64 binary, so that one is its own job: as a leg of
+  # the matrix, `needs` would hold all sixteen shards until the macOS and
+  # Windows legs finished too.
+  hub-e2e:
+    name: Hub (linux-x64)
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/hub-build
+        with:
+          target: linux-x64
+          dart-version: ${{ env.DART_VERSION }}
+
   hub:
     name: Hub (${{ matrix.target }})
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { target: linux-x64, os: ubuntu-26.04 }
           - { target: linux-arm64, os: ubuntu-26.04-arm }
           - { target: macos-arm64, os: macos-latest }
           - { target: windows-x64, os: windows-latest }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
-    defaults:
-      run:
-        shell: bash
     steps:
       - uses: actions/checkout@v7
-      # The Hub is pure Dart: no Flutter SDK (which has no linux-arm64 host
-      # build), just Dart and the workspace subset the Hub needs, exactly
-      # like the Dockerfile.
-      - uses: dart-lang/setup-dart@v1
+      - uses: ./.github/actions/hub-build
         with:
-          sdk: ${{ env.DART_VERSION }}
-      - name: Hub-only workspace
-        run: |
-          printf 'name: dearth_hub_build\npublish_to: none\nenvironment:\n  sdk: ^3.13.0\nworkspace:\n  - packages/dearth_core\n  - packages/dearth_integrations\n  - hub/dearth_hub\n' > pubspec.yaml
-          dart pub get
-      - name: Compile (dart build cli bundles the SQLite native asset)
-        working-directory: hub/dearth_hub
-        run: |
-          dart build cli -o "$RUNNER_TEMP/hub"
-          cp ../../LICENSE ../../compose.yml ../../.env.example "$RUNNER_TEMP/hub/bundle/"
-      - uses: actions/upload-artifact@v7
-        with:
-          name: hub-${{ matrix.target }}
-          path: ${{ runner.temp }}/hub/bundle
-          include-hidden-files: true
-          retention-days: 7
+          target: ${{ matrix.target }}
+          dart-version: ${{ env.DART_VERSION }}
 
   docker:
     name: Hub image (${{ matrix.arch }})
@@ -467,7 +481,7 @@ jobs:
   release:
     name: GitHub release
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [check, e2e, web, android, linux, windows, macos, ios, hub, docker-manifest]
+    needs: [check, e2e, web, android, linux, windows, macos, ios, hub-e2e, hub, docker-manifest]
     runs-on: ubuntu-26.04
     permissions:
       contents: write

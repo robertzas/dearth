@@ -18,6 +18,8 @@ export default defineConfig({
   // journeys start timing out (8 on a 16-core machine did).
   workers: process.env.CI ? 2 : 3,
   retries: process.env.CI ? 1 : 0,
+  // A stray test.only would quietly skip the rest of the suite.
+  forbidOnly: !!process.env.CI,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }], ['github']] : [['list'], ['html', { open: 'never' }]],
   globalSetup: require.resolve('./global-setup'),
   use: {

@@ -1,0 +1,11 @@
+# The pub workspace for building the Hub alone: the packages it needs, no
+# Flutter. Copied over the root pubspec.yaml by the Dockerfile and by CI's
+# Hub jobs (.github/actions/hub-build), so the Flutter SDK isn't needed.
+name: dearth_hub_build
+publish_to: none
+environment:
+  sdk: ^3.13.0
+workspace:
+  - packages/dearth_core
+  - packages/dearth_integrations
+  - hub/dearth_hub

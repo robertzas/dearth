@@ -15,8 +15,9 @@ COPY analysis_options.yaml ./
 COPY packages/dearth_core packages/dearth_core
 COPY packages/dearth_integrations packages/dearth_integrations
 COPY hub/dearth_hub hub/dearth_hub
-RUN printf 'name: dearth_hub_build\npublish_to: none\nenvironment:\n  sdk: ^3.13.0\nworkspace:\n  - packages/dearth_core\n  - packages/dearth_integrations\n  - hub/dearth_hub\n' > pubspec.yaml \
- && dart pub get \
+# The workspace subset the Hub needs (CI's Hub jobs use the same file).
+COPY hub/pubspec.workspace.yaml pubspec.yaml
+RUN dart pub get \
  && cd hub/dearth_hub && dart build cli -o /out
 
 # ── 2. Runtime ────────────────────────────────────────────────────────────────
@@ -31,11 +32,12 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates tzdata libvips-tools \
  && rm -rf /var/lib/apt/lists/* \
  && useradd --system --uid 10001 --home-dir /data --shell /usr/sbin/nologin dearth \
- && mkdir -p /data /app/web && chown dearth:dearth /data
+ && mkdir -p /data && chown dearth:dearth /data
 COPY --from=hub-build /out/bundle /app
-# dist/ always exists (dist/.keep); dist/web is the Flutter web build when present.
-COPY dist/ /tmp/dist/
-RUN if [ -f /tmp/dist/web/index.html ]; then cp -r /tmp/dist/web/. /app/web/; fi && rm -rf /tmp/dist
+# dist/ always exists (dist/.keep); dist/web, the Flutter web build, lands in
+# /app/web when present (.dockerignore keeps the rest of dist/ out). Without
+# it the Hub serves the API only.
+COPY dist/ /app/
 # The release version (CI passes a semantic version): the Hub reports it
 # and compares it with GitHub's latest release (SPEC §15.3).
 ENV DEARTH_VERSION=${VERSION} \

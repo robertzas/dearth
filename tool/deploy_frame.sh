@@ -129,12 +129,8 @@ fi
 
 # ──────────────────────────────── tools ────────────────────────────────────
 
-ADB="$(command -v adb || true)"
-if [ -z "$ADB" ]; then
-  for sdk in "${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}" /opt/android-sdk "$HOME/Android/Sdk" "$HOME/Library/Android/sdk"; do
-    if [ -n "$sdk" ] && [ -x "$sdk/platform-tools/adb" ]; then ADB="$sdk/platform-tools/adb"; break; fi
-  done
-fi
+# shellcheck source=tool/find_adb.sh
+. "$ROOT/tool/find_adb.sh"
 [ -n "$ADB" ] || die "adb not found: install Android platform-tools"
 command -v curl >/dev/null || die "curl is needed"
 command -v python3 >/dev/null || die "python3 is needed"
@@ -810,9 +806,16 @@ else
   dir="$CACHE/webview-124"
   mkdir -p "$dir"
   if [ ! -f "$dir/webview-signed.apk" ]; then
-    curl -fsSL "https://android.googlesource.com/platform/external/chromium-webview/+/refs/heads/android15-release/prebuilt/arm/webview.apk?format=TEXT" | base64 -d >"$dir/webview.apk"
-    curl -fsSL "https://android.googlesource.com/platform/build/+/refs/heads/main/target/product/security/testkey.pk8?format=TEXT" | base64 -d >"$dir/testkey.pk8"
-    curl -fsSL "https://android.googlesource.com/platform/build/+/refs/heads/main/target/product/security/testkey.x509.pem?format=TEXT" | base64 -d >"$dir/testkey.x509.pem"
+    # Branch heads, so pinned by hash (as FreeKiosk is): a changed file stops
+    # here instead of being installed as the system WebView.
+    fetch_pinned() {
+      curl -fsSL "https://android.googlesource.com/$1?format=TEXT" | base64 -d >"$dir/$2"
+      got=$(sha256sum "$dir/$2" | cut -d' ' -f1)
+      [ "$got" = "$3" ] || { rm -f "$dir/$2"; die "$2 from android.googlesource.com changed (SHA-256 $got, expected $3)"; }
+    }
+    fetch_pinned platform/external/chromium-webview/+/refs/heads/android15-release/prebuilt/arm/webview.apk webview.apk f015a77d4edb8241f57749798982b2fb2219678d6b21a71a7fdb36e31bb4accc
+    fetch_pinned platform/build/+/refs/heads/main/target/product/security/testkey.pk8 testkey.pk8 495675d32e89a149d5abe191f4e9c0e218b9068714e9b53a7c91e164a0741a23
+    fetch_pinned platform/build/+/refs/heads/main/target/product/security/testkey.x509.pem testkey.x509.pem a4384ba815b9499a5ce349b4e33c1755278873fe2eac150a068823f526e6dbde
     "$APKSIGNER" sign --key "$dir/testkey.pk8" --cert "$dir/testkey.x509.pem" --out "$dir/webview-signed.apk" "$dir/webview.apk"
   fi
   out=$(adb_ install -r "$dir/webview-signed.apk" 2>&1 || true)

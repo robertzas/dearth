@@ -1,0 +1,32 @@
+name: Dearth Hub bundle
+description: Compiles the Hub (pure Dart, no Flutter SDK) for this runner's platform with the workspace subset in hub/pubspec.workspace.yaml, exactly like the Dockerfile, and uploads the bundle as hub-<target>.
+inputs:
+  target:
+    description: The artifact suffix, e.g. linux-x64.
+    required: true
+  dart-version:
+    description: The Dart SDK version.
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: dart-lang/setup-dart@v1
+      with:
+        sdk: ${{ inputs.dart-version }}
+    - name: Hub-only workspace
+      shell: bash
+      run: |
+        cp hub/pubspec.workspace.yaml pubspec.yaml
+        dart pub get
+    - name: Compile (dart build cli bundles the SQLite native asset)
+      shell: bash
+      working-directory: hub/dearth_hub
+      run: |
+        dart build cli -o "$RUNNER_TEMP/hub"
+        cp ../../LICENSE ../../compose.yml ../../.env.example "$RUNNER_TEMP/hub/bundle/"
+    - uses: actions/upload-artifact@v7
+      with:
+        name: hub-${{ inputs.target }}
+        path: ${{ runner.temp }}/hub/bundle
+        include-hidden-files: true
+        retention-days: 7

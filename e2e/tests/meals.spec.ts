@@ -75,8 +75,11 @@ test.describe('Meals', () => {
     await tap(await scrollTo(page, 'recipe.editor.save'));
     await expectText(tid(page, 'toast'), "Added Grandma Rose's tostadas to the recipe box");
     // It opens like any recipe: the servings stepper rescales it…
+    // One step at a time: a second tap while the first relayout is still
+    // landing aimed at where the button was (the old flake on this step).
     await expectText(tid(page, 'recipe.ingredient.0'), '8 corn tortillas');
     await tap(tid(page, 'recipe.servings.plus'));
+    await expectText(tid(page, 'recipe.ingredient.0'), '10 corn tortillas');
     await tap(tid(page, 'recipe.servings.plus'));
     await expectText(tid(page, 'recipe.ingredient.0'), '12 corn tortillas');
     // …and cook mode steps through it with the timer it found.
