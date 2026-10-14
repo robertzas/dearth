@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../core/sound.dart';
 import '../game_host.dart';
+import 'voice_widgets.dart';
 
 const List<String> _flowers = ['🌷', '🌻', '🌼', '🌸', '🌺'];
 
@@ -42,7 +43,7 @@ class CountingGame extends StatefulWidget {
 }
 
 @visibleForTesting
-class CountingGameState extends State<CountingGame> {
+class CountingGameState extends State<CountingGame> with RoundVoice {
   late CountingRound _round;
   late String _flower;
   final _bloomed = <int>[];
@@ -59,6 +60,16 @@ class CountingGameState extends State<CountingGame> {
 
   @visibleForTesting
   bool get debugShowing => _showing;
+
+  @override
+  GameController get voiceOf => widget.c;
+
+  @override
+  String? get promptClip => switch (_phase) {
+        _Phase.counting => VoiceLine.countingStart,
+        _Phase.asking => VoiceLine.countingAsk,
+        _ => null,
+      };
 
   @override
   void initState() {
@@ -83,10 +94,12 @@ class CountingGameState extends State<CountingGame> {
     _deal++;
     if (_round.flash) {
       _phase = _Phase.flash;
+      widget.c.say(VoiceLine.snackLook);
       _flashThen();
     } else {
       _phase = _Phase.counting;
       _showing = false;
+      askSoon();
     }
     if (mounted) setState(() {});
   }
@@ -101,24 +114,37 @@ class CountingGameState extends State<CountingGame> {
         _showing = false;
         _phase = _Phase.asking;
       });
+      askSoon(after: Duration.zero);
     });
   }
 
   void _note(int n) => widget.c.sound(Sfx.blip, rate: math.pow(2, _scale[(n - 1).clamp(0, _scale.length - 1)] / 12).toDouble());
 
   void _tapBud(int i) {
-    if (_phase != _Phase.counting || _bloomed.contains(i)) return;
+    if (_phase == _Phase.flash || _phase == _Phase.done) return;
+    stillHere();
+    // A counted flower says its number again: counting over is counting.
+    if (_bloomed.contains(i)) {
+      widget.c.say(numberClip(_bloomed.indexOf(i) + 1));
+      return;
+    }
+    if (_phase != _Phase.counting) return;
     setState(() => _bloomed.add(i));
     _note(_bloomed.length);
+    widget.c.say(numberClip(_bloomed.length));
     if (_bloomed.length == _round.count) {
-      _timer = Timer(const Duration(milliseconds: 700), () {
-        if (mounted) setState(() => _phase = _Phase.asking);
+      // After the last number has been said.
+      _timer = Timer(afterVoice(numberClip(_round.count), atLeast: const Duration(milliseconds: 700)), () {
+        if (!mounted) return;
+        setState(() => _phase = _Phase.asking);
+        askSoon(after: Duration.zero);
       });
     }
   }
 
   void _answer(int n) {
     if (_phase != _Phase.asking || _tried.contains(n)) return;
+    stillHere();
     if (n != _round.count) {
       _slips++;
       widget.c.cue();
@@ -130,6 +156,8 @@ class CountingGameState extends State<CountingGame> {
       }
       return;
     }
+    quiet();
+    widget.c.say(countingYesClip(n));
     setState(() {
       _phase = _Phase.done;
       _showing = true;
@@ -145,7 +173,7 @@ class CountingGameState extends State<CountingGame> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        const RepaintBoundary(child: CustomPaint(painter: _GardenPainter())),
+        const RepaintBoundary(child: CustomPaint(isComplex: true, painter: _GardenPainter())),
         SafeArea(
           child: Padding(
             padding: EdgeInsets.fromLTRB(t.space.lg, 96 * t.scale, t.space.lg, t.space.lg),
@@ -165,25 +193,31 @@ class CountingGameState extends State<CountingGame> {
               final choices = _Choices(
                 choices: _round.choices,
                 tried: _tried,
-                hint: _slips >= 2 ? _round.count : null,
+                hint: _slips >= 2 || (idleHint && asking) ? _round.count : null,
                 onTap: _answer,
                 vertical: wide,
               );
+              // The answers' place is kept from the start, so the flowers
+              // don't jump aside when the question comes.
+              final answers = Visibility(visible: asking || _phase == _Phase.done, maintainSize: true, maintainAnimation: true, maintainState: true, child: choices);
               return wide
-                  ? Row(children: [Expanded(child: bed), if (asking) ...[SizedBox(width: t.space.xl), choices]])
-                  : Column(children: [Expanded(child: bed), if (asking) ...[SizedBox(height: t.space.xl), choices]]);
+                  ? Row(children: [Expanded(child: bed), SizedBox(width: t.space.xl), answers])
+                  : Column(children: [Expanded(child: bed), SizedBox(height: t.space.xl), answers]);
             }),
           ),
         ),
-        if (asking)
-          Positioned(
-            top: t.space.md,
-            left: 0,
-            right: 0,
-            child: SafeArea(
-              child: Center(
-                child: tid('counting.ask', Semantics(label: 'How many?', excludeSemantics: true, child: GamePill(children: [DEmoji(_flower, size: 44 * t.scale), SizedBox(width: t.space.xs), DEmoji('❓', size: 44 * t.scale)]))),
-              ),
+        if (_phase != _Phase.flash)
+          TopPrompt(
+            child: PromptPill(
+              // While she counts, the pill is the counting prompt; then the question.
+              id: _phase == _Phase.counting ? 'counting.count' : 'counting.ask',
+              label: switch (_phase) { _Phase.counting => 'Count the flowers', _Phase.done => '${_round.count} flowers!', _ => 'How many?' },
+              onSayAgain: sayPrompt,
+              children: [
+                DEmoji(_phase == _Phase.counting ? '👆' : _flower, size: 44 * t.scale),
+                SizedBox(width: t.space.xs),
+                if (_phase == _Phase.done) Text('${_round.count}', style: t.text.kidTitle) else DEmoji(_phase == _Phase.counting ? '🌱' : '❓', size: 44 * t.scale),
+              ],
             ),
           ),
       ],

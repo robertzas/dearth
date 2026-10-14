@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -91,8 +92,26 @@ class PaintGameState extends State<PaintGame> {
   @visibleForTesting
   Paper get debugPaper => _paper;
 
+  Timer? _hello;
+
+  @override
+  void initState() {
+    super.initState();
+    _hello = Timer(const Duration(milliseconds: 700), () {
+      if (mounted) widget.c.say(VoiceLine.paintStart);
+    });
+  }
+
+  /// A paint picked: its color, by name.
+  void _pickColor(int i) {
+    _hello?.cancel();
+    widget.c.say(colorClip(kPaints[i].$1));
+    setState(() => _color = i);
+  }
+
   @override
   void dispose() {
+    _hello?.cancel();
     _live.dispose();
     final old = _baked;
     _baked = null;
@@ -249,7 +268,7 @@ class PaintGameState extends State<PaintGame> {
             ];
             final swatches = _tool == PaintTool.stamp
                 ? [for (final (i, s) in kStamps.indexed) _RoundButton(id: 'paint.stamp.$i', label: 'Stamp ${i + 1}', emoji: s, size: b * 0.86, selected: _stamp == i, onTap: () => setState(() => _stamp = i))]
-                : [for (final (i, (name, color)) in kPaints.indexed) _ColorDot(id: 'paint.color.$name', label: name, color: color, size: b * 0.82, selected: _color == i, onTap: () => setState(() => _color = i))];
+                : [for (final (i, (name, color)) in kPaints.indexed) _ColorDot(id: 'paint.color.$name', label: name, color: color, size: b * 0.82, selected: _color == i, onTap: () => _pickColor(i))];
             final gap = t.space.sm;
             // Strips shrink to fit a phone rather than overflow.
             Widget strip(List<Widget> items, Axis axis, {int lines = 1}) {

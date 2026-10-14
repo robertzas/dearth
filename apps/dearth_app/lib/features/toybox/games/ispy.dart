@@ -138,7 +138,7 @@ class SpyGameState extends State<SpyGame> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        const RepaintBoundary(child: CustomPaint(painter: _MeadowPainter())),
+        const RepaintBoundary(child: CustomPaint(isComplex: true, painter: _MeadowPainter())),
         PlayArea(
           top: 150,
           child: LayoutBuilder(builder: (context, box) {

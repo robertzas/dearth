@@ -142,7 +142,7 @@ class SightGameState extends State<SightGame> {
                     right: -t.space.lg,
                     top: l.road,
                     height: l.roadHeight,
-                    child: RepaintBoundary(child: CustomPaint(painter: _RoadPainter())),
+                    child: RepaintBoundary(child: CustomPaint(isComplex: true, painter: _RoadPainter())),
                   ),
                   // Posts behind every board, standing on the kerb.
                   for (final c in l.signs)

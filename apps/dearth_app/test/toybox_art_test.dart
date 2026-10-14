@@ -12,6 +12,11 @@ import 'support/toybox_harness.dart';
 /// The Toybox's art games (SPEC FR-TOY-02): Magic Coloring and Paint
 /// Studio, played through the Toybox on the demo household.
 void main() {
+  for (final size in const [Size(390, 844), Size(844, 390), Size(1080, 1920), Size(1920, 1080)]) {
+    testWidgets('every art toy lays out on a ${size.width.toInt()}×${size.height.toInt()} screen at its busiest level', (tester) async {
+      await expectGamesLayOut(tester, const [('coloring', 1), ('coloring', 5), ('paint', 1), ('paint', 3)], size: size);
+    });
+  }
   group('Magic Coloring', () {
     test('every picture suits one level, each level has pictures, and a tap inside each part finds it', () {
       final pictures = [for (final make in kColoringPictures) make()];

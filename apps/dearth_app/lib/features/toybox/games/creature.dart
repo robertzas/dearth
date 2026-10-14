@@ -3,7 +3,6 @@ import 'dart:math' as math;
 
 import 'package:dearth_core/dearth_core.dart';
 import 'package:dearth_ui/dearth_ui.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/sound.dart';
@@ -46,13 +45,13 @@ class CreatureGameState extends State<CreatureGame> with SingleTickerProviderSta
   static const _danceSeconds = 3.4;
 
   late Creature _creature = randomCreature(widget.c.level, widget.c.random);
-  late final Ticker _ticker = createTicker(_tick);
+  late final AmbientTicker _ticker = AmbientTicker(this, _tick, fps: () => DTheme.of(context).policy.ambientFps);
 
   /// Seconds into the dance; null when standing still.
   final _dance = ValueNotifier<double?>(null);
   final _tune = <Timer>[];
   Timer? _hello;
-  int _frames = 0, _changes = 0;
+  int _changes = 0;
 
   @visibleForTesting
   Creature get debugCreature => _creature;
@@ -96,7 +95,6 @@ class CreatureGameState extends State<CreatureGame> with SingleTickerProviderSta
   void _startDance() {
     if (_dance.value != null) return;
     widget.c.say(creatureClip(_creature));
-    _frames = 0;
     _dance.value = 0;
     unawaited(_ticker.start());
     // A little tune: a pentatonic run up and back, with a drum on the beat.
@@ -119,8 +117,6 @@ class CreatureGameState extends State<CreatureGame> with SingleTickerProviderSta
       if (mounted) setState(() {});
       return;
     }
-    // Ambient motion: 30 fps is plenty on the slowest displays.
-    if (DTheme.of(context).policy.ambientFps < 60 && (_frames++).isOdd) return;
     _dance.value = t;
   }
 

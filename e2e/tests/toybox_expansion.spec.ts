@@ -5,13 +5,12 @@ import { drag, expectCheered, expectRoundFinished, expectText, idsUnder, openToy
 // from what the screen shows (labels), not from the game's state. Every
 // game is on by default, so Ava (2½ in the demo) has them all.
 
-const openGame = openToyboxGame;
 const ids = idsUnder;
 const label = async (page: Page, id: string): Promise<string> => (await textOf(tid(page, id))).trim();
 
 test.describe('Toybox expansion', () => {
   test('FR-TOY-03: Patterns — she reads the row and picks what comes next', async ({ page }) => {
-    await openGame(page, 'patterns');
+    await openToyboxGame(page, 'patterns');
     const items = await ids(page, 'patterns.item.');
     const shown = await Promise.all(items.map((id) => label(page, id)));
     // AB at the first level: the next one is the one two back.
@@ -26,7 +25,7 @@ test.describe('Toybox expansion', () => {
   });
 
   test('FR-TOY-03: Odd One Out — tapping around until the different one is found', async ({ page }) => {
-    await openGame(page, 'oddone');
+    await openToyboxGame(page, 'oddone');
     // Guessing counts as slips, and a round with many isn't cheered. "You
     // found it!" lasts 2.4 s, which a slow runner can miss: the host's
     // lasting round count says it ended.
@@ -39,7 +38,7 @@ test.describe('Toybox expansion', () => {
   });
 
   test('FR-TOY-03: Shadow Match — each picture onto its own shadow', async ({ page }) => {
-    await openGame(page, 'shadows');
+    await openToyboxGame(page, 'shadows');
     const pictures = await ids(page, 'shadows.picture.');
     expect(pictures.length).toBe(2);
     for (const p of pictures) {
@@ -62,7 +61,7 @@ test.describe('Toybox expansion', () => {
   });
 
   test('FR-TOY-03: Small to Big — smallest first, into the line', async ({ page }) => {
-    await openGame(page, 'sizes');
+    await openToyboxGame(page, 'sizes');
     const items = await ids(page, 'sizes.item.');
     const sizes = await Promise.all(items.map(async (id) => ({ id, size: parseInt(await label(page, id), 10) })));
     for (const { id } of sizes.sort((a, b) => a.size - b.size)) {
@@ -73,7 +72,7 @@ test.describe('Toybox expansion', () => {
   });
 
   test('FR-TOY-03: Picture Sudoku — each empty place gets the fruit its row is missing', async ({ page }) => {
-    await openGame(page, 'sudoku');
+    await openToyboxGame(page, 'sudoku');
     const fruitIds = await ids(page, 'sudoku.fruit.');
     const fruits = await Promise.all(fruitIds.map((id) => label(page, id)));
     const tried = new Map<number, Set<string>>();
@@ -97,7 +96,7 @@ test.describe('Toybox expansion', () => {
   });
 
   test('FR-TOY-03: What Happens Next — the story goes into the line card by card', async ({ page }) => {
-    await openGame(page, 'stories');
+    await openToyboxGame(page, 'stories');
     const cards = await ids(page, 'stories.card.');
     for (let place = 1; place <= cards.length; place++) {
       for (const c of cards) {
@@ -112,7 +111,7 @@ test.describe('Toybox expansion', () => {
   });
 
   test('FR-TOY-03: Spot the Difference — every difference found', async ({ page }) => {
-    await openGame(page, 'differences');
+    await openToyboxGame(page, 'differences');
     const spots = await ids(page, 'differences.spot.');
     for (const s of spots) await tap(tid(page, s));
     await expectText(tid(page, 'differences.count'), `Found ${spots.length} of ${spots.length}`);
@@ -120,7 +119,7 @@ test.describe('Toybox expansion', () => {
   });
 
   test('FR-TOY-03: Finger Mazes — the buddy finds the way home', async ({ page }) => {
-    await openGame(page, 'mazes');
+    await openToyboxGame(page, 'mazes');
     const cells = await ids(page, 'mazes.cell.');
     const labels = await Promise.all(cells.map((id) => label(page, id)));
     // The maze's width: a square's "right" neighbour is the next one, "down" is a row on.

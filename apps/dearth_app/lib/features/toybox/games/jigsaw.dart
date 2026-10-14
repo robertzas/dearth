@@ -87,7 +87,7 @@ class JigsawGameState extends ConsumerState<JigsawGame> {
   List<int> _order = const [];
   int? _dragging;
   Offset _dragAt = Offset.zero, _grip = Offset.zero;
-  Timer? _next;
+  Timer? _next, _ask;
   _Layout? _layout;
 
   /// The size the picture was made for (a new round makes a new one).
@@ -110,6 +110,7 @@ class JigsawGameState extends ConsumerState<JigsawGame> {
   @override
   void dispose() {
     _next?.cancel();
+    _ask?.cancel();
     final old = _image;
     _image = null;
     old?.dispose();
@@ -118,6 +119,10 @@ class JigsawGameState extends ConsumerState<JigsawGame> {
 
   /// Deals a new puzzle for a board shaped [wide] or tall.
   void _dealPuzzle(bool wide) {
+    _ask?.cancel();
+    _ask = Timer(const Duration(milliseconds: 700), () {
+      if (mounted) widget.c.say(VoiceLine.jigsawAsk);
+    });
     final rng = widget.c.random;
     final grid = jigsawGrid(widget.c.level, landscape: wide);
     _wide = wide;
@@ -277,6 +282,8 @@ class JigsawGameState extends ConsumerState<JigsawGame> {
     });
     if (_placed.length == _rows * _cols) {
       _done = true;
+      _ask?.cancel();
+      widget.c.say(VoiceLine.jigsawDone);
       unawaited(widget.c.finishRound(jigsawResult(_rows * _cols, _slips), emoji: '🧩'));
       _next = Timer(const Duration(milliseconds: 3400), _newRound);
     }

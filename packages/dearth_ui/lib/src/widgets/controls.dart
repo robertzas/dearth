@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import '../theme/dearth_theme.dart';
 import '../tokens/colors.dart';
 import '../tokens/metrics.dart';
+import 'emoji.dart';
 import 'pressable.dart';
 
 /// Button tones.
@@ -240,32 +241,6 @@ class DChip extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-/// Renders an emoji glyph at a stable box size. Content icons (events,
-/// chores, meals, weather for kids) all go through this widget so a
-/// pre-rasterized emoji set can replace the font later without touching
-/// call sites (SPEC §11.3).
-class DEmoji extends StatelessWidget {
-  const DEmoji(this.emoji, {super.key, required this.size, this.semanticLabel});
-  final String emoji;
-  final double size;
-  final String? semanticLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    final glyph = Text(
-      emoji,
-      textAlign: TextAlign.center,
-      maxLines: 1,
-      softWrap: false,
-      overflow: TextOverflow.visible,
-      textScaler: TextScaler.noScaling,
-      style: TextStyle(fontSize: size * 0.86, height: 1.12, inherit: false, fontFamilyFallback: const ['Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji']),
-    );
-    final box = SizedBox.square(dimension: size, child: Center(child: glyph));
-    return semanticLabel == null ? ExcludeSemantics(child: box) : Semantics(label: semanticLabel, child: ExcludeSemantics(child: box));
   }
 }
 

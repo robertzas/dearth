@@ -539,8 +539,9 @@ void main() {
       expect(r.missing, [last]);
       final right = game(tester).debugTile();
       final tile = byId('spell.tile.$right');
-      // Nowhere near a slot: back to the tray.
-      await tester.drag(tile, const Offset(0, 40));
+      // Nowhere near a slot: back to the tray. (A short slide is a tap she
+      // meant, and would put it in: this one goes a tile's width away.)
+      await tester.drag(tile, Offset(0, tester.getSize(byId('spell.slot.$last')).height * 0.8));
       await tester.pump(const Duration(milliseconds: 500));
       expect(labelOf(tester, 'spell.tile.$right'), 'Letter ${r.letters[last]}');
       expect(sound.said, contains(soundClip(r.letters[last])), reason: 'picking it up says its sound');

@@ -2974,20 +2974,20 @@ points, not limits.
 |---|---|---|---|---|---|
 | Paint Studio | 2+ | Creativity, fine motor | Brushes, crayon, spray, rainbow, stamps, backgrounds, undo; saves to art gallery | Tools unlock: stamps → layers → symmetry mode | M3 |
 | Magic Coloring | 2+ | Colors, fine motor | Tap-to-fill line art | 4 big regions → 30 small regions | M3 |
-| Bubble Pop & Fireworks | 2+ | Cause and effect | Pop bubbles, finger-trail fireworks | Bubbles slow → faster; color-call "pop the blue ones!" | M3 |
-| Animal Sounds Farm | 2+ | Vocabulary, listening | Tap animal → name + sound | "Where's the cow?" find-it mode | M3 |
+| Bubble Pop | 2+ | Cause and effect, counting | Pop bubbles (on the finger going down, several fingers at once), finger-trail fireworks; every pop counted aloud | Bubbles slow → faster; color-call "pop the blue ones!" | M3 |
+| Animal Farm | 2+ | Vocabulary, listening | Tap animal → its real sound, then its name said; "Who says this?" then the sound; "Yes! The cow says moo!" | "Where's the cow?" find-it mode | M3 |
 | Shape Sorter | 2+ | Shapes, spatial | Drag shapes into holes | 2 shapes → 8, rotated holes | M3 |
-| Jigsaw (family photos) | 2+ | Spatial reasoning | Drag pieces, snaps when close | 2 → 4 → 6 → 9 → 12 → 16 → 24 pieces | M3 |
+| Jigsaw | 2+ | Spatial reasoning | Drag pieces (family photos or the art pack), snaps when close | 2 → 4 → 6 → 9 → 12 → 16 → 24 pieces | M3 |
 | Memory Match | 2.5+ | Working memory | Flip pairs (emoji or family faces) | 2 → 12 pairs | M3 |
-| Feed the Monster | 2.5+ | Classification | Monster eats only one color/shape/category | 1 attribute → 2 attributes ("red AND round") | M3 |
-| Counting Garden | 3+ | Number sense | Tap to count flowers; "how many?" | 1–3 → 1–10 → subitizing flashes | M3 |
+| Feed the Monster | 2.5+ | Classification | Monster eats only one color/shape/category, and says so ("I only eat red food!"); names what it eats | 1 attribute → 2 attributes ("red AND round") | M3 |
+| Counting Garden | 3+ | Number sense | Tap to count flowers (each says its number); "how many flowers?"; "Three flowers!" | 1–3 → 1–10 → subitizing flashes | M3 |
 | Xylophone & Drums | 2+ | Music, rhythm | Low-latency pentatonic bars, drums | Free play → echo my rhythm | M3 |
 | Patterns | 3+ | Logic | What comes next? | AB → AAB → ABC → growing patterns | M4 |
 | Odd One Out | 3+ | Categorization | Tap the one that doesn't belong | Color → shape → category → function | M4 |
 | Shadow Match | 2.5+ | Visual discrimination | Drag object to its silhouette | 2 → 6 options, similar shapes | M4 |
-| Size Order | 2.5+ | Seriation | Line up small → big | 3 → 6 items | M4 |
+| Small to Big | 2.5+ | Seriation | Line up small → big | 3 → 6 items | M4 |
 | Finger Mazes | 3+ | Planning, motor | Guide buddy home with a finger | Wide paths → branches → dead ends | M4 |
-| Sequencing Stories | 3.5+ | Narrative, cause/effect | Put 3–4 pictures in order (seed → sprout → flower) | 3 → 5 cards | M4 |
+| What Happens Next | 3.5+ | Narrative, cause/effect | Put 3–5 pictures in order (seed → sprout → flower); each place counted aloud, the finished story told | 3 → 5 cards | M4 |
 | Letter & Name Tracing | 3.5+ | Pre-writing | Trace with arrows; **trace her own name** | Lines → curves → letters → name | M4 |
 | Number Tracing | 3.5+ | Numerals | Trace 0–9 with voice | 1–3 → 0–9 | M4 |
 | Letter Sounds | 3+ | Phonics | Tap letter → sound + picture word | Hear → find the letter → first-sound game | M4 |

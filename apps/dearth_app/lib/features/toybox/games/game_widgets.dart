@@ -126,3 +126,19 @@ class PlayArea extends StatelessWidget {
     return SafeArea(child: Padding(padding: EdgeInsets.fromLTRB(t.space.lg, top * t.scale, t.space.lg, t.space.lg), child: child));
   }
 }
+
+/// Draws [child] once into an image and shows the image (SPEC §12.2). For
+/// pieces that grow, turn or flip: under a changing transform the frame's
+/// GPU builds concave paths and text again on every frame (Shape Sorter's
+/// pieces and Memory Match's cards cost it 40–100 ms a frame), while an
+/// image only has to be sampled. It's taken again when [child] repaints.
+class Snapshot extends StatelessWidget {
+  const Snapshot({super.key, required this.child});
+  final Widget child;
+
+  static final SnapshotController _on = SnapshotController(allowSnapshotting: true);
+
+  @override
+  Widget build(BuildContext context) => SnapshotWidget(controller: _on, mode: SnapshotMode.permissive, child: child);
+}
+

@@ -6,6 +6,7 @@ import '../display/display.dart';
 import '../theme/dearth_theme.dart';
 import '../tokens/metrics.dart';
 import 'controls.dart';
+import 'emoji.dart';
 import 'pressable.dart';
 
 // ─────────────────────────────── Sheets ────────────────────────────────────

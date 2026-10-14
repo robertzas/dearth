@@ -3,7 +3,6 @@ import 'dart:math' as math;
 
 import 'package:dearth_core/dearth_core.dart';
 import 'package:dearth_ui/dearth_ui.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/sound.dart';
@@ -53,7 +52,7 @@ class DotsGameState extends State<DotsGame> with SingleTickerProviderStateMixin 
   late DotsRound _round;
   late DotGeometry _geo;
   final _recent = <String>[];
-  int _joined = 0, _slips = 0, _misses = 0, _deal = 0, _frames = 0;
+  int _joined = 0, _slips = 0, _misses = 0, _deal = 0;
   bool _hint = false, _revealed = false;
   final _hops = <int, int>{};
   final _wiggles = <int, int>{};
@@ -61,7 +60,7 @@ class DotsGameState extends State<DotsGame> with SingleTickerProviderStateMixin 
   final _tune = <Timer>[];
 
   // The drawing's clock (s): it only runs while something moves.
-  late final Ticker _ticker = createTicker(_tick);
+  late final AmbientTicker _ticker = AmbientTicker(this, _tick, fps: () => DTheme.of(context).policy.ambientFps);
   double _now = 0, _base = 0, _joinedAt = -10, _doneAt = -1;
   final _clock = ValueNotifier<double>(0);
 
@@ -230,7 +229,6 @@ class DotsGameState extends State<DotsGame> with SingleTickerProviderStateMixin 
   void _animate() {
     if (_ticker.isActive) return;
     _base = _now;
-    _frames = 0;
     unawaited(_ticker.start());
   }
 
@@ -242,8 +240,6 @@ class DotsGameState extends State<DotsGame> with SingleTickerProviderStateMixin 
       _clock.value = _now;
       return;
     }
-    // Ambient motion: 30 fps is plenty on the slowest displays.
-    if (DTheme.of(context).policy.ambientFps < 60 && (_frames++).isOdd) return;
     _clock.value = _now;
   }
 

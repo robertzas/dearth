@@ -198,6 +198,20 @@ String _otherColor(String color, int seed) {
 int _partial(MonsterRule r, Food f) =>
     (r.color != null && f.color == r.color ? 1 : 0) + (r.round != null && f.round == r.round ? 1 : 0) + (r.kind != null && f.kind == r.kind ? 1 : 0);
 
+/// Every rule [monsterRound] can pick, in a fixed order: the monster says
+/// each one aloud, so each needs a voice line.
+final List<MonsterRule> kMonsterRules = () {
+  final rules = <String, MonsterRule>{};
+  for (final f in kFoods) {
+    for (final r in [MonsterRule(color: f.color), MonsterRule(kind: f.kind), const MonsterRule(round: true), MonsterRule(color: f.color, round: true), MonsterRule(color: f.color, kind: f.kind)]) {
+      // As in monsterRound: one-attribute rules need two foods, two-attribute rules one.
+      final both = r.color != null && (r.round != null || r.kind != null);
+      if (kFoods.where(r.accepts).length >= (both ? 1 : 2)) rules[r.words] = r;
+    }
+  }
+  return rules.values.toList();
+}();
+
 /// A fed monster: one food it wouldn't eat is still a win.
 String monsterResult(int slips) => resultFor(slips, allowed: 1);
 

@@ -207,6 +207,13 @@ const List<PictureWord> kWords = [
 /// [kWords] by word.
 final Map<String, PictureWord> kWordsByName = {for (final w in kWords) w.word: w};
 
+/// The picture word drawn as [emoji] (variation selectors ignored), if the
+/// voice has one: games built on emoji say what was picked.
+PictureWord? wordForEmoji(String emoji) => _wordsByEmoji[_bare(emoji)];
+
+final Map<String, PictureWord> _wordsByEmoji = {for (final w in kWords) _bare(w.emoji): w};
+String _bare(String emoji) => emoji.replaceAll('\uFE0F', '');
+
 PictureWord wordNamed(String word) => kWordsByName[word] ?? (throw ArgumentError.value(word, 'word', 'not in kWords'));
 
 // ───────────────────────────── Letter Sounds ────────────────────────────────

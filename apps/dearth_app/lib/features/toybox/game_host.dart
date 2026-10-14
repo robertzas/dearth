@@ -130,6 +130,15 @@ class GameScreenState extends ConsumerState<GameScreen> {
   bool _sleeping = false;
   Timer? _byeBye;
 
+  /// The playfield, built once: the host's own state (cheers, the level,
+  /// minutes left) changes as rounds end, and rebuilding the whole board
+  /// then would cost a frame on a wall display right as the celebration
+  /// starts. A game reads its level from the controller each round.
+  late final Widget _playfield = switch (kGameBuilders[widget.game.id]) {
+    final builder? => builder(_controller),
+    null => Center(child: Text(widget.game.title, style: DTheme.of(context).text.kidTitle)),
+  };
+
   int get _now => ref.read(householdTimeProvider).nowMs();
   int? get _pinned => ref.read(toyboxSettingsProvider).pinFor(widget.kid.id, widget.game.id);
 
@@ -213,7 +222,6 @@ class GameScreenState extends ConsumerState<GameScreen> {
   @override
   Widget build(BuildContext context) {
     final t = DTheme.of(context);
-    final builder = kGameBuilders[widget.game.id];
     final left = ref.watch(toyboxTimeProvider(widget.kid.id)).minutesLeft;
     // Keeps the forecast loaded for GameController.weather (Riverpod pauses
     // what nothing watches); only its arrival rebuilds.
@@ -243,7 +251,7 @@ class GameScreenState extends ConsumerState<GameScreen> {
                 height: 1,
                 child: tid('game.rounds', Semantics(label: _rounds == 1 ? '1 round finished' : '$_rounds rounds finished', excludeSemantics: true, child: const SizedBox.expand())),
               ),
-              tid('game.${widget.game.id}', builder == null ? Center(child: Text(widget.game.title, style: t.text.kidTitle)) : builder(_controller)),
+              tid('game.${widget.game.id}', _playfield),
               Positioned(
                 left: t.space.md,
                 top: t.space.md,

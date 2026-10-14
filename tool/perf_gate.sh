@@ -40,7 +40,9 @@
 #   --soak MINUTES     Add a memory soak of this many minutes (SPEC: 60).
 #   --only SCENARIO    Measure one scenario (home_idle, navigate, agenda_fling,
 #                      week_paging, month_open, toybox_scroll, bubbles, paint,
-#                      screensaver); a probe, never a baseline.
+#                      screensaver, or games: every Toybox game as
+#                      game.<id>, ~12 min, never in the default run); a
+#                      probe, never a baseline.
 #   --no-reset         Measure over the display's data, joined or not.
 #   --reboot           Reboot the display and let it settle before measuring.
 #   --no-build         Reuse the last profile APK.
@@ -300,6 +302,7 @@ put_back() {
   [ $PUT_BACK = 0 ] || return 0
   PUT_BACK=1
   [ -z "$LOGCAT_PID" ] || kill "$LOGCAT_PID" 2>/dev/null || true
+  [ -z "${VOLUME:-}" ] || sh_ media volume --stream 3 --set "$VOLUME" >/dev/null
   [ $KEEP = 0 ] || { RESTORED="no (--keep)"; return 0; }
   if [ -n "$RESTORE" ] && [ $SWAPPED = 1 ]; then
     if adb_ install -r "$RESTORE" >/dev/null 2>&1; then
@@ -350,6 +353,11 @@ if [ $REBOOT = 1 ]; then
   step "Rebooted the display (it had been up $((${up:-0} / 3600)) h) and let it settle for 90 s."
 fi
 
+# The scenarios play every game's sounds: the display stays silent while
+# they run (owner request) and gets its media volume back in put_back.
+VOLUME=$(sh_ media volume --stream 3 --get | sed -n 's/.*volume is \([0-9][0-9]*\).*/\1/p' | tail -n 1)
+sh_ media volume --stream 3 --set 0 >/dev/null
+
 # 4. The scenarios. Results come as `PERF_RESULT {json}` lines on the
 # flutter tag.
 adb_ logcat -c
@@ -360,7 +368,10 @@ SWAPPED=1
 adb_ install -r "$APK" >/dev/null 2>&1 || fail "installing the profile build failed"
 adb_ shell am start -n "$APP/.MainActivity" >/dev/null 2>&1 || true
 say "  running the scenarios (about six minutes$([ "$SOAK" = 0 ] || printf ' plus %s of soak' "$SOAK"))…"
-deadline=$((SECONDS + 900 + SOAK * 60))
+# Every game (`--only games`) is about 12 s each on top.
+GAMES_EXTRA=0
+case ",$ONLY," in *,games,*) GAMES_EXTRA=1200 ;; esac
+deadline=$((SECONDS + 900 + SOAK * 60 + GAMES_EXTRA))
 while [ $SECONDS -lt $deadline ]; do
   grep -q "^PERF_DONE\|^PERF_FAILED" "$RUN.log" && break
   sleep 5

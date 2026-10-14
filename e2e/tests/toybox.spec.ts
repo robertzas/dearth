@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { Page } from '@playwright/test';
-import { cheered, drag, expectCheered, expectText, goTo, hold, openDemo, scrollTo, tap, textOf, tid, tids } from './helpers';
+import { cheered, drag, expectCheered, expectText, goTo, hold, openDemo, openToyboxGame, scrollTo, tap, textOf, tid, tids } from './helpers';
 
 // The Toybox (SPEC §10.8). Demo: Ava is 2½; every game is on, the ones
 // added this month first, then hers.
@@ -23,8 +23,7 @@ test.describe('Toybox', () => {
   });
 
   test('FR-TOY-02: on the farm, a tapped animal says hello with its name', async ({ page }) => {
-    await openDemo(page, '/toybox');
-    await tap(await scrollTo(page, 'toybox.game.farm'));
+    await openToyboxGame(page, 'farm');
     const animal = tids(page, 'farm.animal.').first();
     const id = (await animal.getAttribute('flt-semantics-identifier'))!.replace('farm.animal.', '');
     await tap(animal);
@@ -33,8 +32,7 @@ test.describe('Toybox', () => {
   });
 
   test('FR-TOY-02: the parrot plays a tune, then it’s her turn', async ({ page }) => {
-    await openDemo(page, '/toybox');
-    await tap(await scrollTo(page, 'toybox.game.music'));
+    await openToyboxGame(page, 'music');
     await tap(tid(page, 'music.bar.0'));
     await tap(tid(page, 'music.drum.kick'));
     await tap(tid(page, 'music.echo'));
@@ -52,14 +50,14 @@ test.describe('Toybox', () => {
   });
 
   test('FR-TOY-02: Memory Match — pairs stay up, two that differ turn back, a full board is cheered', async ({ page }) => {
-    await openGame(page, 'memory');
+    await openToyboxGame(page, 'memory');
     await expect(tid(page, 'memory.look')).toHaveCount(0, { timeout: 10_000 });
     await playMemory(page);
     await expectCheered(page);
   });
 
   test('FR-TOY-02: Shape Sorter — each shape dragged into its hole snaps in', async ({ page }) => {
-    await openGame(page, 'shapes');
+    await openToyboxGame(page, 'shapes');
     for (const s of ['circle', 'square']) {
       await drag(page, tid(page, `shapes.piece.${s}`), tid(page, `shapes.hole.${s}`));
       await page.waitForTimeout(500);
@@ -87,7 +85,7 @@ test.describe('Toybox', () => {
   });
 
   test('FR-TOY-02: Counting Garden — she counts the buds and picks how many', async ({ page }) => {
-    await openGame(page, 'counting');
+    await openToyboxGame(page, 'counting');
     const n = await tids(page, 'counting.bud.').count();
     for (let i = 0; i < n; i++) {
       await tap(tid(page, `counting.bud.${i}`));
@@ -99,7 +97,7 @@ test.describe('Toybox', () => {
   });
 
   test('FR-TOY-02: Feed the Monster — it eats what its sign shows and refuses the rest', async ({ page }) => {
-    await openGame(page, 'monster');
+    await openToyboxGame(page, 'monster');
     await expectText(tid(page, 'monster.sign'), /Only \w+ food/);
     const n = await tids(page, 'monster.food.').count();
     for (let i = 0; i < n && !(await cheered(page)); i++) {
@@ -110,7 +108,7 @@ test.describe('Toybox', () => {
   });
 
   test('FR-TOY-02: Magic Coloring — a crayon and a tap fill each part; a finished picture is cheered', async ({ page }) => {
-    await openGame(page, 'coloring');
+    await openToyboxGame(page, 'coloring');
     await tap(tid(page, 'coloring.color.blue'));
     const n = await tids(page, 'coloring.region.').count();
     for (let i = 0; i < n; i++) {
@@ -124,7 +122,7 @@ test.describe('Toybox', () => {
   });
 
   test('FR-TOY-02: Jigsaw — pieces dragged to their spots snap in and the picture is cheered', async ({ page }) => {
-    await openGame(page, 'jigsaw');
+    await openToyboxGame(page, 'jigsaw');
     await expect(tid(page, 'jigsaw.piece.0.0')).toBeVisible();
     const ids = await tids(page, 'jigsaw.piece.').evaluateAll((els) => els.map((e) => e.getAttribute('flt-semantics-identifier')!));
     expect(ids.length).toBe(2);
@@ -135,8 +133,23 @@ test.describe('Toybox', () => {
     await expectCheered(page);
   });
 
+  test('FR-TOY-02: Bubble Pop — a finger on a bubble pops it, and the pops are counted', async ({ page }) => {
+    await openToyboxGame(page, 'bubbles');
+    const field = tid(page, 'game.bubbles');
+    const box = (await field.boundingBox())!;
+    // The bubbles drift up where they like: fingers go down across the
+    // middle of the sky until one lands on a bubble.
+    test.setTimeout(90_000);
+    for (let i = 0; i < 200 && !/Popped [1-9]/.test(await textOf(tid(page, 'bubbles.popped'))); i++) {
+      const x = box.x + box.width * (0.15 + 0.7 * ((i * 7) % 20) / 20), y = box.y + box.height * (0.3 + 0.55 * ((i * 3) % 10) / 10);
+      await page.mouse.click(x, y);
+      await page.waitForTimeout(120);
+    }
+    await expectText(tid(page, 'bubbles.popped'), /Popped [1-9]/);
+  });
+
   test('FR-TOY-02: Paint Studio — a stroke goes on the paper, and undo takes it back', async ({ page }) => {
-    await openGame(page, 'paint');
+    await openToyboxGame(page, 'paint');
     const paper = tid(page, 'paint.paper');
     await expectText(paper, 'Painting: 0 marks');
     const box = (await paper.boundingBox())!;
@@ -146,13 +159,6 @@ test.describe('Toybox', () => {
     await expectText(paper, 'Painting: 0 marks');
   });
 });
-
-/** Opens [game] from Ava's Toybox. */
-async function openGame(page: Page, game: string, fresh = true): Promise<void> {
-  if (fresh) await openDemo(page, '/toybox');
-  await tap(await scrollTo(page, `toybox.game.${game}`));
-  await expect(tid(page, `game.${game}`)).toBeVisible();
-}
 
 /** Plays a Memory Match board the way she would: turn, remember, match. */
 async function playMemory(page: Page): Promise<void> {

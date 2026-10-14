@@ -10,6 +10,7 @@ import 'package:dearth_app/features/toybox/games/stories.dart';
 import 'package:dearth_app/features/toybox/games/sudoku.dart';
 import 'package:dearth_core/dearth_core.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'support/app_harness.dart';
 import 'support/toybox_harness.dart';
@@ -17,6 +18,11 @@ import 'support/toybox_harness.dart';
 /// The Toybox's expansion set (SPEC FR-TOY-03), played through the Toybox
 /// on the demo household (games for older kids are opened early for Ava).
 void main() {
+  for (final size in const [Size(390, 844), Size(844, 390), Size(1080, 1920), Size(1920, 1080)]) {
+    testWidgets('every first-batch puzzle lays out on a ${size.width.toInt()}×${size.height.toInt()} screen at its busiest level', (tester) async {
+      await expectGamesLayOut(tester, const [('patterns', 1), ('patterns', 4), ('oddone', 1), ('oddone', 4), ('shadows', 1), ('shadows', 4), ('sizes', 1), ('sizes', 4), ('sudoku', 1), ('sudoku', 6), ('stories', 1), ('stories', 3), ('differences', 1), ('differences', 5), ('mazes', 1), ('mazes', 4)], size: size);
+    });
+  }
   group('Patterns', () {
     testWidgets('what comes next: a wrong pick wiggles away; the right one finishes the row', (tester) async {
       final handle = tester.ensureSemantics();
@@ -53,17 +59,39 @@ void main() {
   });
 
   group('Odd One Out', () {
-    testWidgets('four pictures, one different: found after a slip is “helped”; shapes at level 2 are painted', (tester) async {
+    testWidgets('four pictures, one different: the voice asks; found after a slip is “helped” and the voice says why', (tester) async {
       final handle = tester.ensureSemantics();
-      final h = await openToyboxGame(tester, 'oddone');
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'oddone', sound: sound);
       final r = tester.state<OddOneGameState>(find.byType(OddOneGame)).debugRound;
       expect(r.rule, 'color');
+      expect(sound.said, [VoiceLine.oddAsk]);
       expectNoFallbackText(byId('screen.game'));
       await tester.tap(byId('oddone.item.${(r.odd + 1) % 4}'));
       await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(byId('oddone.ask.again'));
+      expect(sound.said.last, VoiceLine.oddAsk, reason: 'the 🔊 asks again');
       await tester.tap(byId('oddone.item.${r.odd}'));
       await h.settle();
+      expect(sound.said.last, oddYesClip('color'));
       expect(await toyboxRounds(h), [('oddone', 1, 'helped')]);
+      await tester.pump(const Duration(seconds: 3));
+      await h.shutdown();
+      handle.dispose();
+    });
+
+    testWidgets('a long pause asks again and lights the odd one; found then is still a win', (tester) async {
+      final handle = tester.ensureSemantics();
+      final sound = RecordingSound();
+      final h = await openToyboxGame(tester, 'oddone', sound: sound);
+      final r = tester.state<OddOneGameState>(find.byType(OddOneGame)).debugRound;
+      for (var i = 0; i < 11; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      expect(sound.said, [VoiceLine.oddAsk, VoiceLine.oddAsk]);
+      await tester.tap(byId('oddone.item.${r.odd}'));
+      await h.settle();
+      expect(await toyboxRounds(h), [('oddone', 1, 'win')], reason: 'a pause is not a slip');
       await tester.pump(const Duration(seconds: 3));
       await h.shutdown();
       handle.dispose();
@@ -185,7 +213,12 @@ void main() {
         await tester.pump(const Duration(milliseconds: 450));
         expect(labelOf(tester, 'stories.card.$i'), 'Place ${k + 1}: $picture');
       }
-      await tester.pump(const Duration(seconds: 2));
+      // Each card says its place as it goes in; the story is told as it plays back.
+      final story = kStories.indexWhere((s) => s.join() == r.story.join());
+      expect(sound.said, [VoiceLine.storiesFirst, numberClip(1), numberClip(2), storyTellingClip(story)]);
+      for (var i = 0; i < 12; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
       await h.settle();
       expect(sound.played.where((p) => p.$1 == Sfx.blip).length, 3, reason: 'the story plays back');
       expect(await toyboxRounds(h), [('stories', 1, 'helped')]);

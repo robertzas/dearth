@@ -195,7 +195,12 @@ class SizeRound {
 /// 100%, so neighbours always differ enough to see.
 SizeRound sizeRound(int level, Random rng) {
   final n = kSizeCounts[(level - 1).clamp(0, kSizeCounts.length - 1)];
-  final scales = [for (var i = 0; i < n; i++) 0.35 + 0.65 * i / (n - 1)]..shuffle(rng);
+  final sorted = [for (var i = 0; i < n; i++) 0.35 + 0.65 * i / (n - 1)];
+  var scales = [...sorted]..shuffle(rng);
+  // Already in order (or backwards) would be no puzzle at all.
+  while (scales.join() == sorted.join() || scales.join() == sorted.reversed.join()) {
+    scales = [...sorted]..shuffle(rng);
+  }
   return SizeRound(_pick(kSizePictures, rng), scales);
 }
 
@@ -384,6 +389,25 @@ const List<List<String>> kStories = [
   ['🌱', '🌿', '🌷', '🐝', '🍯'],
   ['👶', '🧒', '🧑', '👨', '👴'],
   ['🌅', '🌞', '🌇', '🌙', '🌟'],
+];
+
+/// Each of [kStories] told in one breath, said as the finished story plays
+/// back (same order).
+const List<String> kStoryTellings = [
+  'First an egg. It cracks open, and out comes a little chick!',
+  'A little seed grows, and grows, into a flower!',
+  'Clouds, then rain, and then a rainbow!',
+  'Snow falls. We make a snowman. Then the sun melts it!',
+  'The sun comes up. It shines all day. Then the moon comes out.',
+  'An egg, a chick, a bigger chick, and then a hen!',
+  'A seed, a sprout, a big tree, and an apple!',
+  'A baby grows up, and up, and up!',
+  'The moon grows, from dark, to half, to full!',
+  'Bread, then a sandwich, then yum!',
+  'A cake, the candles, and then a party!',
+  'A flower grows. A bee visits. And the bee makes honey!',
+  'A baby grows up, and up, all the way to grandpa!',
+  'Morning, noon, evening, night, and then the stars!',
 ];
 
 /// Cards per level: 3 → 5.

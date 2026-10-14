@@ -79,12 +79,14 @@ back.
   goal together. Chores, routines and rewards are set up in Settings,
   starting from an age-sorted library of chores toddlers can really do.
 - **Toybox.** Games for ages 2 to 5, with no ads, no links and no
-  network needed: Bubble Pop, Paint Studio, Magic Coloring, Animal Farm
+  network needed, every one of them spoken to a child who can't read yet
+  (a bundled voice asks, names what she picks and cheers):
+  Bubble Pop, Paint Studio, Magic Coloring, Animal Farm
   (real animal recordings), Shape Sorter, Xylophone & Drums, Jigsaw (cut
-  from the family's photos), Memory Match, Feed the Monster, Counting
-  Garden, Patterns, Odd One Out, Shadow Match, Small to Big, Finger
-  Mazes, What Happens Next, Picture Sudoku, Spot the Difference, Letter
-  Sounds, Rhyme Time, I Spy, Letter & Name Tracing (kids trace their own
+  from the family's photos), Memory Match, Feed the Monster,
+  Counting Garden, Patterns, Odd One Out, Shadow Match, Small to Big,
+  Finger Mazes, What Happens Next, Picture Sudoku, Spot the Difference,
+  Letter Sounds, Rhyme Time, I Spy, Letter & Name Tracing (kids trace their own
   name), Number Tracing, Breathing Buddy, Build-a-Creature (mix body
   parts and paints; it dances and says its silly name), Dot-to-Dot
   (join numbers or letters in order and the picture comes alive),

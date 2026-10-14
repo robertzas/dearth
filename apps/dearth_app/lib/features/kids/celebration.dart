@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:dearth_ui/dearth_ui.dart';
@@ -77,27 +78,30 @@ class _Celebration extends StatefulWidget {
 }
 
 class _CelebrationState extends State<_Celebration> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(
-    vsync: this,
-    duration: Duration(milliseconds: widget.calm ? 3200 : (widget.big ? 3000 : 2300)),
-  );
-  // The particles repaint through this, not the controller: on T1 every
-  // other tick is skipped, so the burst runs at the tier's ambient fps
-  // (SPEC §12.3) instead of stealing the whole raster budget.
+  late final Duration _length = Duration(milliseconds: widget.calm ? 3200 : (widget.big ? 3000 : 2300));
+
+  // Progress 0…1. An ambient ticker drives it, not an animation controller:
+  // a controller asks for every vsync, and on T1 the whole screen would be
+  // drawn at the panel's full rate for the length of the burst (SPEC §12.3).
   final ValueNotifier<double> _phase = ValueNotifier<double>(0);
-  int _frames = 0;
+  late final AmbientTicker _ticker = AmbientTicker(this, _tick, fps: () => DTheme.of(context).policy.ambientFps);
   List<_Particle> _particles = const [];
+  bool _done = false;
 
   @override
   void initState() {
     super.initState();
-    _c.addListener(_push);
-    _c.forward().whenComplete(widget.onDone);
+    unawaited(_ticker.start());
   }
 
-  void _push() {
-    if (DTheme.of(context).policy.ambientFps < 60 && (_frames++).isOdd) return;
-    _phase.value = _c.value;
+  void _tick(Duration elapsed) {
+    final p = (elapsed.inMicroseconds / _length.inMicroseconds).clamp(0.0, 1.0);
+    _phase.value = p;
+    if (p >= 1 && !_done) {
+      _done = true;
+      _ticker.stop();
+      widget.onDone();
+    }
   }
 
   @override
@@ -113,7 +117,7 @@ class _CelebrationState extends State<_Celebration> with SingleTickerProviderSta
 
   @override
   void dispose() {
-    _c.dispose();
+    _ticker.dispose();
     _phase.dispose();
     super.dispose();
   }
@@ -131,10 +135,7 @@ class _CelebrationState extends State<_Celebration> with SingleTickerProviderSta
       ),
     );
     // Fade in fast, hold, fade out over the last fifth.
-    final fade = CurvedAnimation(
-      parent: _c,
-      curve: const Interval(0, 1, curve: _HoldFade()),
-    );
+    const fade = _HoldFade();
     // An overlay entry has no route Material above it: supply the text
     // defaults (no debug underline).
     if (t.reducedMotion) {
@@ -142,7 +143,11 @@ class _CelebrationState extends State<_Celebration> with SingleTickerProviderSta
         child: Material(
           type: MaterialType.transparency,
           child: Center(
-            child: FadeTransition(opacity: fade, child: tid('celebration', pill)),
+            child: ValueListenableBuilder<double>(
+              valueListenable: _phase,
+              builder: (context, p, child) => Opacity(opacity: fade.transform(p), child: child),
+              child: tid('celebration', pill),
+            ),
           ),
         ),
       );
@@ -156,39 +161,38 @@ class _CelebrationState extends State<_Celebration> with SingleTickerProviderSta
           children: [
             RepaintBoundary(child: CustomPaint(painter: _ParticlePainter(_phase, _particles, widget.style))),
             Center(
-              child: FadeTransition(
-                opacity: fade,
-                child: AnimatedBuilder(
-                  animation: _c,
-                  builder: (context, child) {
-                    final p = _c.value;
-                    // Pop in with overshoot, then a little dance.
-                    final pop = Curves.elasticOut.transform((p / 0.35).clamp(0.0, 1.0));
-                    final wiggle = widget.calm ? 0.0 : math.sin(p * math.pi * 8) * 0.12 * (1 - p);
-                    return Transform.scale(
+              child: ValueListenableBuilder<double>(
+                valueListenable: _phase,
+                builder: (context, p, child) {
+                  // Pop in with overshoot, then a little dance.
+                  final pop = Curves.elasticOut.transform((p / 0.35).clamp(0.0, 1.0));
+                  final wiggle = widget.calm ? 0.0 : math.sin(p * math.pi * 8) * 0.12 * (1 - p);
+                  return Opacity(
+                    opacity: fade.transform(p),
+                    child: Transform.scale(
                       scale: 0.4 + 0.6 * pop,
                       child: Transform.rotate(angle: wiggle, child: child),
-                    );
-                  },
-                  child: RepaintBoundary(
-                    // The emojis and the pill (with their shadow) record
-                    // once; the per-frame transforms above stay outside.
-                    child: tid(
-                      'celebration',
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (widget.buddy != null) ...[DEmoji(widget.buddy!, size: s), SizedBox(width: t.space.md)],
-                              DEmoji(widget.emoji, size: s),
-                            ],
-                          ),
-                          SizedBox(height: t.space.lg),
-                          pill,
-                        ],
-                      ),
+                    ),
+                  );
+                },
+                child: RepaintBoundary(
+                  // The emojis and the pill (with their shadow) record
+                  // once; the per-frame transforms above stay outside.
+                  child: tid(
+                    'celebration',
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (widget.buddy != null) ...[DEmoji(widget.buddy!, size: s), SizedBox(width: t.space.md)],
+                            DEmoji(widget.emoji, size: s),
+                          ],
+                        ),
+                        SizedBox(height: t.space.lg),
+                        pill,
+                      ],
                     ),
                   ),
                 ),

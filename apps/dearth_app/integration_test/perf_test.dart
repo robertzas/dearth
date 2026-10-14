@@ -15,9 +15,11 @@ import 'package:dearth_app/core/session.dart';
 import 'package:dearth_app/features/calendar/calendar_screen.dart';
 import 'package:dearth_app/features/calendar/calendar_state.dart';
 import 'package:dearth_app/features/toybox/game_host.dart';
+import 'package:dearth_app/features/toybox/games/registry.dart';
 import 'package:dearth_app/features/toybox/toybox_screen.dart';
 import 'package:dearth_core/dearth_core.dart';
 import 'package:dearth_integrations/dearth_integrations.dart' show DemoIds;
+import 'package:dearth_ui/dearth_ui.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -175,11 +177,11 @@ Future<void> _run(WidgetTester tester, {required int soakMinutes}) async {
   final ava = await (db.select(db.profiles)..where((p) => p.id.equals(DemoIds.ava))).getSingle();
   final size = tester.view.physicalSize / tester.view.devicePixelRatio;
   final rng = math.Random(7);
-  Future<void> inGame(String id, Future<void> Function() play) async {
+  Future<void> inGame(String id, Future<void> Function() play, {String? name}) async {
     final navigator = Navigator.of(tester.element(find.byType(ToyboxScreen)), rootNavigator: true);
     unawaited(navigator.push<void>(PageRouteBuilder<void>(pageBuilder: (_, _, _) => GameScreen(game: gameById(id)!, kid: ava))));
     await _wait(const Duration(seconds: 3));
-    await _measure(id, play);
+    await _measure(name ?? id, play);
     navigator.pop();
     await _wait(const Duration(seconds: 2));
   }
@@ -197,6 +199,46 @@ Future<void> _run(WidgetTester tester, {required int soakMinutes}) async {
       await _wait(const Duration(milliseconds: 300));
     }
   });
+
+  // What costs a frame on this GPU, one technique at a time over a small
+  // spinner that keeps frames coming (opt-in: `--only probes`): a blank
+  // screen, a full-screen gradient, path clips, cards under a perspective
+  // matrix or flat, and emoji scaling as text or as cached images.
+  if (_only.contains('probes')) {
+    final navigator = Navigator.of(tester.element(find.byType(ToyboxScreen)), rootNavigator: true);
+    for (final (name, probe) in _probes) {
+      DEmoji.rasterize = !name.contains('emoji_text');
+      unawaited(navigator.push<void>(PageRouteBuilder<void>(pageBuilder: (_, _, _) => _Probe(probe))));
+      await _wait(const Duration(seconds: 2));
+      await _measure(name, () => _wait(const Duration(seconds: 5)));
+      navigator.pop();
+      await _wait(const Duration(seconds: 1));
+    }
+    DEmoji.rasterize = true;
+  }
+
+  // Every game, opt-in (`--only games`, ~12 min): three seconds as it
+  // opens and idles, then random taps and short drags over the play area
+  // (clear of the home button), so wrong picks, hints, wins and the
+  // celebration all draw. Each is measured as `game.<id>`.
+  // `--only game.memory,game.shapes` measures just those.
+  final games = _only.contains('games') ? kGameBuilders.keys.toList() : [for (final id in kGameBuilders.keys) if (_only.contains('game.$id')) id];
+  if (games.isNotEmpty) {
+    for (final id in games) {
+      await inGame(id, () async {
+        await _wait(const Duration(seconds: 3));
+        for (var i = 0; i < 24; i++) {
+          final at = Offset(size.width * (0.12 + 0.8 * rng.nextDouble()), size.height * (0.2 + 0.75 * rng.nextDouble()));
+          if (i % 6 == 5) {
+            await tester.timedDragFrom(at, Offset(size.width * 0.15 * (rng.nextDouble() - 0.5), size.height * 0.15 * (rng.nextDouble() - 0.5)), const Duration(milliseconds: 500));
+          } else {
+            await tester.tapAt(at);
+          }
+          await _wait(const Duration(milliseconds: 350));
+        }
+      }, name: 'game.$id');
+    }
+  }
 
   // The photo frame: a transition every 10 s.
   final w = c.read(writerProvider);
@@ -273,7 +315,7 @@ Set<String> _readOnly() {
 /// scenario runs), each frame also counts under the label it started in,
 /// reported as `parts`: frames, build p90 and total p90 per label.
 Future<void> _measure(String name, Future<void> Function() scenario, {List<(int, String)>? marks}) async {
-  if (_only.isNotEmpty && !_only.contains(name)) return;
+  if (_only.isNotEmpty && !_only.contains(name) && !(name.startsWith('game.') && _only.contains('games')) && !(name.startsWith('probe.') && _only.contains('probes'))) return;
   final timings = <FrameTiming>[];
   void collect(List<FrameTiming> t) => timings.addAll(t);
   SchedulerBinding.instance.addTimingsCallback(collect);
@@ -344,4 +386,98 @@ int? _cpuTicks() {
   } on Object {
     return null;
   }
+}
+
+enum _ProbeKind { blank, gradient, clipPaths, perspectiveCards, flatCards, emojiTextScaling, emojiImageScaling }
+
+const List<(String, _ProbeKind)> _probes = [
+  ('probe.blank', _ProbeKind.blank),
+  ('probe.gradient', _ProbeKind.gradient),
+  ('probe.clip_paths', _ProbeKind.clipPaths),
+  ('probe.perspective_cards', _ProbeKind.perspectiveCards),
+  ('probe.flat_cards', _ProbeKind.flatCards),
+  ('probe.emoji_text_scaling', _ProbeKind.emojiTextScaling),
+  ('probe.emoji_image_scaling', _ProbeKind.emojiImageScaling),
+];
+
+const List<String> _probeEmoji = ['🐶', '🐱', '🦊', '🐸', '🌻', '🍎', '🚀', '⭐', '🎈', '🐢', '🦋', '🍪'];
+
+/// One perf probe: [kind] drawn under a small spinner that asks for every
+/// frame, as a game's own little animation would.
+class _Probe extends StatefulWidget {
+  const _Probe(this.kind);
+  final _ProbeKind kind;
+
+  @override
+  State<_Probe> createState() => _ProbeState();
+}
+
+class _ProbeState extends State<_Probe> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  Widget _card(String e) => Container(
+        width: 260,
+        height: 300,
+        margin: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(36), border: Border.all(color: const Color(0xFFD9D6FA), width: 6)),
+        child: Center(child: DEmoji(e, size: 160)),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final spinner = Positioned(
+      left: 20,
+      bottom: 20,
+      child: RotationTransition(turns: _c, child: Container(width: 40, height: 40, color: const Color(0xFF5B5BD6))),
+    );
+    final Widget body = switch (widget.kind) {
+      _ProbeKind.blank => const SizedBox.expand(),
+      _ProbeKind.gradient => const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFFE6F6EE), Color(0xFFFDF1DC)])), child: SizedBox.expand()),
+      _ProbeKind.clipPaths => const RepaintBoundary(child: CustomPaint(painter: _ClipProbePainter(), size: Size.infinite)),
+      _ProbeKind.perspectiveCards => Wrap(children: [
+          for (final e in _probeEmoji)
+            Transform(alignment: Alignment.center, transform: Matrix4.identity()..setEntry(3, 2, 0.001), child: RepaintBoundary(child: _card(e))),
+        ]),
+      _ProbeKind.flatCards => Wrap(children: [for (final e in _probeEmoji) RepaintBoundary(child: _card(e))]),
+      _ProbeKind.emojiTextScaling || _ProbeKind.emojiImageScaling => Wrap(children: [
+          for (final e in _probeEmoji)
+            AnimatedBuilder(
+              animation: _c,
+              builder: (context, child) => Transform.scale(scale: 0.8 + 0.3 * _c.value, child: child),
+              child: SizedBox.square(dimension: 300, child: Center(child: DEmoji(e, size: 220))),
+            ),
+        ]),
+    };
+    return ColoredBox(color: Colors.white, child: Stack(fit: StackFit.expand, children: [body, spinner]));
+  }
+}
+
+/// Eight shapes cut from a board with anti-aliased path clips, like Shape
+/// Sorter's holes.
+class _ClipProbePainter extends CustomPainter {
+  const _ClipProbePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawRect(Offset.zero & size, Paint()..color = const Color(0xFFD9A066));
+    for (var i = 0; i < 8; i++) {
+      final c = Offset(size.width * (i % 4 + 0.5) / 4, size.height * (i ~/ 4 + 0.5) / 2);
+      final path = Path()..addOval(Rect.fromCircle(center: c, radius: 120));
+      canvas
+        ..save()
+        ..drawPath(path, Paint()..color = const Color(0xFF3A2312))
+        ..clipPath(path)
+        ..drawPath(path.shift(const Offset(0, 10)), Paint()..color = const Color(0xFF5E3B20))
+        ..restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ClipProbePainter old) => false;
 }

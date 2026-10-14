@@ -9,6 +9,7 @@ import 'creature.dart';
 import 'creaturecount.dart';
 import 'dots.dart';
 import 'dressup.dart';
+import 'expansion.dart';
 import 'fishing.dart';
 import 'freeze.dart';
 import 'hear.dart';
@@ -17,6 +18,7 @@ import 'lettercreature.dart';
 import 'lettermonster.dart';
 import 'race.dart';
 import 'rocket.dart';
+import 'rounds.dart';
 import 'sight.dart';
 import 'spell.dart';
 import 'storytime.dart';
@@ -267,8 +269,77 @@ String findNumberClip(int n) => 'find_num_$n';
 /// "It's a star!": the picture the dots made.
 String dotsDoneClip(DotPicture p) => 'dots_${p.id}';
 
+// The first games' voices (2026-10-13): the launch set and the first
+// expansion batch were built before the Toybox could speak, so a
+// pre-reader got pictures and silence. These are their prompts, names and
+// praise.
+
+/// "Three flowers!": Counting Garden's answer, said back.
+String countingYesClip(int n) => 'counting_yes_$n';
+
+/// "I only eat red food!": the monster's sign, said.
+String monsterRuleClip(MonsterRule r) => 'monster_${voiceSlug(r.words)}';
+
+/// Why the odd one out is odd (color, shape, kind or use).
+String oddYesClip(String rule) => 'odd_yes_$rule';
+
+/// [kStories] at [story], told as it plays back.
+String storyTellingClip(int story) => 'stories_$story';
+
+/// The animal's name: its picture word's clip where there is one.
+String farmNameClip(FarmAnimal a) => kWordsByName[a.id]?.clip ?? 'farm_${a.id}';
+
+/// "Yes! The cow says moo!"
+String farmYesClip(FarmAnimal a) => 'farm_yes_${a.id}';
+
+/// "Circle!"
+String shapeNameClip(ToyShape s) => 'shape_${s.name}';
+
+/// "Pop the blue bubbles!"
+String bubblesCallClip(String color) => 'bubbles_$color';
+
+/// The crayons and paints by name, as the coloring games say them.
+const Map<String, String> kCrayonWords = {
+  'red': 'red', 'orange': 'orange', 'yellow': 'yellow', 'lime': 'light green', 'green': 'green', 'sky': 'light blue', //
+  'blue': 'blue', 'purple': 'purple', 'pink': 'pink', 'brown': 'brown', 'gray': 'gray', 'white': 'white', 'black': 'black',
+};
+
+/// The word clip for a picture shown as [emoji], or null.
+String? emojiWordClip(String emoji) => wordForEmoji(emoji)?.clip;
+
 /// Lines that aren't about one letter or word.
 abstract final class VoiceLine {
+  static const countingStart = 'counting_start';
+  static const countingAsk = 'counting_ask';
+  static const monsterYum = 'monster_yum';
+  static const monsterNo = 'monster_no';
+  static const monsterFull = 'monster_full';
+  static const oddAsk = 'odd_ask';
+  static const patternsTower = 'patterns_tower';
+  static const patternsYes = 'patterns_yes';
+  static const shadowsAsk = 'shadows_ask';
+  static const sizesAsk = 'sizes_ask';
+  static const sizesDone = 'sizes_done';
+  static const sudokuAsk = 'sudoku_ask';
+  static const sudokuRule = 'sudoku_rule';
+  static const sudokuDone = 'sudoku_done';
+  static const storiesFirst = 'stories_first';
+  static const diffAsk = 'diff_ask';
+  static const mazeAsk = 'maze_ask';
+  static const mazeDone = 'maze_done';
+  static const coloringAsk = 'coloring_ask';
+  static const coloringDone = 'coloring_done';
+  static const jigsawAsk = 'jigsaw_ask';
+  static const jigsawDone = 'jigsaw_done';
+  static const paintStart = 'paint_start';
+  static const farmWho = 'farm_who';
+  static const memoryAsk = 'memory_ask';
+  static const memoryMatch = 'memory_match';
+  static const shapesAsk = 'shapes_ask';
+  static const bubblesStart = 'bubbles_start';
+  static const musicEcho = 'music_echo';
+  static const musicTurn = 'music_turn';
+  static const musicYes = 'music_yes';
   static const traceName = 'trace_name';
   static const traceNameDone = 'trace_name_done';
   static const breatheStart = 'breathe_start';
@@ -664,5 +735,66 @@ Map<String, String> _lines() {
   for (final (from, more) in kHopSums) {
     lines[hopAskClip(HopRound(HopMode.add, 11, from, from + more))] = '${_cap(_numbers[from])} and ${_numbers[more]} more!';
   }
+  // The first games' voices.
+  lines[VoiceLine.countingStart] = 'Tap each bud, and count!';
+  lines[VoiceLine.countingAsk] = 'How many flowers?';
+  for (var n = 1; n <= 10; n++) {
+    lines[countingYesClip(n)] = '${_cap(numberWord(n))} flower${n == 1 ? '' : 's'}!';
+  }
+  const kindWords = {'fruit': 'fruit', 'vegetable': 'vegetables', 'treat': 'treats'};
+  for (final r in kMonsterRules) {
+    final kind = kindWords[r.kind];
+    final what = [?r.color, if (r.round == true) 'round'].join(', ');
+    lines[monsterRuleClip(r)] = kind == null ? 'I only eat $what food!' : (what.isEmpty ? 'I only eat $kind!' : 'I only eat $what $kind!');
+  }
+  lines[VoiceLine.monsterYum] = 'Yum, yum!';
+  lines[VoiceLine.monsterNo] = 'No, thank you!';
+  lines[VoiceLine.monsterFull] = "I'm full! Thank you!";
+  lines[VoiceLine.oddAsk] = "Which one doesn't belong?";
+  lines[oddYesClip('color')] = 'Yes! That one is a different color!';
+  lines[oddYesClip('shape')] = 'Yes! That one is a different shape!';
+  lines[oddYesClip('kind')] = "Yes! That one isn't like the others!";
+  lines[oddYesClip('use')] = "Yes! That one doesn't go with the others!";
+  lines[VoiceLine.patternsTower] = 'Which tower comes next?';
+  lines[VoiceLine.patternsYes] = 'You found the pattern!';
+  lines[VoiceLine.shadowsAsk] = 'Put each picture on its shadow!';
+  lines[VoiceLine.sizesAsk] = 'Tap the smallest one first!';
+  lines[VoiceLine.sizesDone] = 'Small, bigger, biggest!';
+  lines[VoiceLine.sudokuAsk] = 'Which fruit goes in the empty box?';
+  lines[VoiceLine.sudokuRule] = 'Every row needs one of each fruit.';
+  lines[VoiceLine.sudokuDone] = 'Every row has one of each!';
+  lines[VoiceLine.storiesFirst] = 'What happens first?';
+  for (var i = 0; i < kStoryTellings.length; i++) {
+    lines[storyTellingClip(i)] = kStoryTellings[i];
+  }
+  lines[VoiceLine.diffAsk] = "What's different in this picture?";
+  lines[VoiceLine.mazeAsk] = 'Help your buddy get home!';
+  lines[VoiceLine.mazeDone] = 'Home, sweet home!';
+  lines[VoiceLine.coloringAsk] = 'Pick a color, then tap to paint!';
+  lines[VoiceLine.coloringDone] = 'What a beautiful picture!';
+  lines[VoiceLine.jigsawAsk] = 'Put the puzzle together!';
+  lines[VoiceLine.jigsawDone] = 'You did it! Look at the picture!';
+  lines[VoiceLine.paintStart] = "Let's paint! Pick a color.";
+  for (final MapEntry(key: crayon, value: words) in kCrayonWords.entries) {
+    lines[colorClip(crayon)] = '${_cap(words)}!';
+  }
+  lines[VoiceLine.farmWho] = 'Who says this?';
+  for (final a in kFarmAnimals) {
+    lines.putIfAbsent(farmNameClip(a), () => '${a.name}.');
+    lines[farmYesClip(a)] = 'Yes! The ${a.name.toLowerCase()} says ${a.says.toLowerCase()}';
+  }
+  lines[VoiceLine.memoryAsk] = 'Find two that match!';
+  lines[VoiceLine.memoryMatch] = 'A match!';
+  lines[VoiceLine.shapesAsk] = 'Put each shape in its hole!';
+  for (final shape in ToyShape.values) {
+    lines[shapeNameClip(shape)] = '${_cap(shape.name)}!';
+  }
+  lines[VoiceLine.bubblesStart] = 'Pop the bubbles!';
+  for (final c in const ['blue', 'red', 'yellow', 'green', 'purple']) {
+    lines[bubblesCallClip(c)] = 'Pop the $c bubbles!';
+  }
+  lines[VoiceLine.musicEcho] = 'Listen, then play it back!';
+  lines[VoiceLine.musicTurn] = 'Your turn!';
+  lines[VoiceLine.musicYes] = 'You played it!';
   return lines.map((id, line) => MapEntry(id, _americanize(line)));
 }

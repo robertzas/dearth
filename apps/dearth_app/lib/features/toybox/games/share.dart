@@ -488,7 +488,7 @@ class ShareGameState extends State<ShareGame> with TickerProviderStateMixin {
                         excludeSemantics: true,
                         onTap: _ring,
                         borderRadius: BorderRadius.circular(l.bell.width / 2),
-                        child: Hop(count: _bellHops, child: const RepaintBoundary(child: CustomPaint(painter: BellPainter(), size: Size.infinite))),
+                        child: Hop(count: _bellHops, child: const Snapshot(child: CustomPaint(painter: BellPainter(), size: Size.infinite))),
                       ),
                     ),
                     for (final e in _flights.entries) _flight(e.key, e.value, l.cupcake),
@@ -637,7 +637,8 @@ class _Layout {
     final gap = math.max(12.0, a.shortestSide * 0.03);
     final wide = a.width > a.height;
     final bellD = math.max(72 * scale, math.min(150 * scale, wide ? a.height * 0.2 : a.width * 0.3));
-    final trayH = wide ? math.max(bellD, a.height * 0.2) : math.min(a.height * 0.15, a.width * 0.32);
+    // The tray gets real height on a wall: its cupcakes are what she picks up.
+    final trayH = wide ? math.max(bellD, a.height * 0.25) : math.min(a.height * 0.15, a.width * 0.32);
     final room = a.height - trayH - gap * 2 - (wide ? 0 : bellD + gap);
     final column = a.width / count;
     final mb = math.min(column * (wide ? 0.6 : 0.8), room * 0.46);
@@ -651,7 +652,7 @@ class _Layout {
     final plates = [for (var i = 0; i < count; i++) Rect.fromCenter(center: Offset(monsters[i].center.dx, top + mb + gap * 0.5 + ps / 2), width: ps, height: ps)];
     final trayTop = top + mb + gap * 0.5 + ps + gap;
     // Room for twelve cupcakes in two rows of six.
-    final cupcake = math.min(trayH * 0.38, math.min(ps * 0.27, (wide ? a.width - bellD - gap * 3 : a.width) / 8));
+    final cupcake = math.min(trayH * 0.42, math.min(ps * 0.3, (wide ? a.width - bellD - gap * 3 : a.width) / 8));
     final trayW = math.min(cupcake * 8, wide ? a.width - bellD - gap * 3 : a.width * 0.96);
     final Rect tray, bell;
     if (wide) {

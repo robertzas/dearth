@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:dearth_core/dearth_core.dart';
@@ -6,6 +7,73 @@ import 'package:material_ui/material_ui.dart';
 
 import '../game_host.dart';
 import 'game_widgets.dart';
+
+/// The spoken side of a round for the choice games: the prompt a beat
+/// after the round lands (so it can land), the prompt again after a long
+/// pause with the hint showing (a pause isn't a slip, so it's not counted),
+/// and timers that end with the game. A game calls [askSoon] for a new
+/// round, [stillHere] on every touch, and [quiet] once the round is won.
+mixin RoundVoice<T extends StatefulWidget> on State<T> {
+  Timer? _askTimer, _idleTimer;
+
+  /// The game's controller.
+  GameController get voiceOf;
+
+  /// What the prompt says now, or null for nothing.
+  String? get promptClip;
+
+  /// A long pause: the hint shows, as after two slips.
+  bool idleHint = false;
+
+  /// Seconds of stillness before the prompt comes again.
+  Duration get idleAfter => const Duration(seconds: 10);
+
+  void askSoon({Duration after = const Duration(milliseconds: 600)}) {
+    idleHint = false;
+    _askTimer?.cancel();
+    _askTimer = Timer(after, sayPrompt);
+    stillHere();
+  }
+
+  void sayPrompt() {
+    final clip = promptClip;
+    if (clip != null && mounted) voiceOf.say(clip);
+  }
+
+  /// Prompts said into a pause since the last touch: two, then quiet (she
+  /// may have walked off, and a wall that keeps talking is a nuisance).
+  int _nudges = 0;
+
+  /// A touch: the pause starts over.
+  void stillHere() {
+    _nudges = 0;
+    _armIdle();
+  }
+
+  void _armIdle() {
+    _idleTimer?.cancel();
+    if (_nudges >= 2) return;
+    _idleTimer = Timer(idleAfter, () {
+      if (!mounted) return;
+      _nudges++;
+      sayPrompt();
+      setState(() => idleHint = true);
+      _armIdle();
+    });
+  }
+
+  /// The round is over: no more prompts.
+  void quiet() {
+    _askTimer?.cancel();
+    _idleTimer?.cancel();
+  }
+
+  @override
+  void dispose() {
+    quiet();
+    super.dispose();
+  }
+}
 
 /// Letters in the Montessori colors: vowels blue, consonants red.
 const Color kVowelColor = Color(0xFF2F6FD6);

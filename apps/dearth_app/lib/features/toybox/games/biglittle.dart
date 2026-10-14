@@ -36,7 +36,7 @@ class BigLittleGameState extends State<BigLittleGame> {
   final _wiggles = <String, int>{}, _tokenHops = <String, int>{}, _cardHops = <String, int>{};
   int _slips = 0, _deal = 0;
   String? _dragging, _selected, _nudge;
-  Offset _dragAt = Offset.zero, _grip = Offset.zero;
+  Offset _dragAt = Offset.zero, _grip = Offset.zero, _dragFrom = Offset.zero;
   Timer? _ask, _idle, _finish, _next;
   _Layout? _layout;
 
@@ -159,6 +159,9 @@ class BigLittleGameState extends State<BigLittleGame> {
     }
     if (near != null && best < layout.card * 0.62) {
       _fit(l, near);
+    } else if ((_dragAt - _dragFrom).distance < layout.token * 0.35) {
+      // A tap that slid a little picks the letter up, as a tap would.
+      _tapLittle(l);
     } else {
       setState(() {});
     }
@@ -259,7 +262,7 @@ class BigLittleGameState extends State<BigLittleGame> {
                 _dragging = s;
                 _selected = null;
                 _grip = center - _local(d.globalPosition);
-                _dragAt = center;
+                _dragAt = _dragFrom = center;
               }),
               onPanUpdate: (d) => setState(() => _dragAt = _local(d.globalPosition) + _grip),
               onPanEnd: (_) => _dragEnd(),

@@ -288,7 +288,7 @@ class SnackSnapGameState extends State<SnackSnapGame> with TickerProviderStateMi
           final s = size * (1 - 0.8 * k);
           return Positioned(left: at.dx - s / 2, top: at.dy - s / 2, width: s, height: s, child: k >= 1 ? const SizedBox.shrink() : child!);
         },
-        child: const IgnorePointer(child: RepaintBoundary(child: CustomPaint(painter: _TreatPainter(), size: Size.infinite))),
+        child: const IgnorePointer(child: Snapshot(child: CustomPaint(painter: _TreatPainter(), size: Size.infinite))),
       );
 }
 

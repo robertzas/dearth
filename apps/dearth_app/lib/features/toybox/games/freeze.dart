@@ -3,7 +3,6 @@ import 'dart:math' as math;
 
 import 'package:dearth_core/dearth_core.dart';
 import 'package:dearth_ui/dearth_ui.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/sound.dart';
@@ -35,10 +34,10 @@ enum _Phase { ready, dancing, frozen, done }
 class FreezeGameState extends State<FreezeGame> with SingleTickerProviderStateMixin {
   late List<FreezeTurn> _song;
   late Creature _creature;
-  int _turn = 0, _step = 0, _frames = 0, _twirls = 0, _songs = 0;
+  int _turn = 0, _step = 0, _twirls = 0, _songs = 0;
   _Phase _phase = _Phase.ready;
   Duration _danced = Duration.zero, _from = Duration.zero;
-  late final Ticker _ticker = createTicker(_tick);
+  late final AmbientTicker _ticker = AmbientTicker(this, _tick, fps: () => DTheme.of(context).policy.ambientFps);
   final _dance = ValueNotifier<double?>(0);
   final _timers = <Timer>[];
   Timer? _beat;
@@ -147,8 +146,6 @@ class FreezeGameState extends State<FreezeGame> with SingleTickerProviderStateMi
   }
 
   void _tick(Duration elapsed) {
-    // Ambient motion: 30 fps is plenty on the slowest displays.
-    if (DTheme.of(context).policy.ambientFps < 60 && (_frames++).isOdd) return;
     _danced = _from + elapsed;
     _dance.value = _danced.inMicroseconds / 1e6;
   }

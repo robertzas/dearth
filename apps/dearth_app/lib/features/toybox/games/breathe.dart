@@ -4,7 +4,6 @@ import 'dart:math' as math;
 import 'package:dearth_core/dearth_core.dart';
 import 'package:dearth_ui/dearth_ui.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/sound.dart';
@@ -36,12 +35,12 @@ class BreatheGameState extends State<BreatheGame> with SingleTickerProviderState
   /// The welcome runs as long as its line: "breathe in" would cut it off.
   static final intro = afterVoice(VoiceLine.breatheStart, atLeast: const Duration(milliseconds: 3600)).inMilliseconds / 1000;
 
-  late final Ticker _ticker = createTicker(_tick);
+  late final AmbientTicker _ticker = AmbientTicker(this, _tick, fps: () => DTheme.of(context).policy.ambientFps);
 
   /// Seconds since the session started.
   final _clock = ValueNotifier<double>(0);
   BreathStep _step = BreathStep.ready;
-  int _breaths = 3, _breathed = 0, _frames = 0;
+  int _breaths = 3, _breathed = 0;
   Timer? _rest;
 
   @visibleForTesting
@@ -66,7 +65,6 @@ class BreatheGameState extends State<BreatheGame> with SingleTickerProviderState
       _step = BreathStep.starting;
     });
     _clock.value = 0;
-    _frames = 0;
     if (_ticker.isActive) _ticker.stop();
     unawaited(_ticker.start());
   }
@@ -88,8 +86,6 @@ class BreatheGameState extends State<BreatheGame> with SingleTickerProviderState
       _enter(step, i);
       if (!mounted) return;
     }
-    // A slow animation: 30 fps is plenty on the slowest displays.
-    if (DTheme.of(context).policy.ambientFps < 60 && (_frames++).isOdd) return;
     _clock.value = t;
   }
 

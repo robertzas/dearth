@@ -9,6 +9,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../core/sound.dart';
 import '../game_host.dart';
 import 'game_widgets.dart';
+import 'voice_widgets.dart';
 
 const Color _shade = Color(0xFF3A3452);
 
@@ -26,7 +27,7 @@ class ShadowsGame extends StatefulWidget {
 }
 
 @visibleForTesting
-class ShadowsGameState extends State<ShadowsGame> {
+class ShadowsGameState extends State<ShadowsGame> with RoundVoice {
   final _area = GlobalKey();
   late ShadowRound _round;
   final _placed = <String>{};
@@ -39,6 +40,12 @@ class ShadowsGameState extends State<ShadowsGame> {
 
   @visibleForTesting
   ShadowRound get debugRound => _round;
+
+  @override
+  GameController get voiceOf => widget.c;
+
+  @override
+  String? get promptClip => _placed.length == _round.pictures.length ? null : VoiceLine.shadowsAsk;
 
   @override
   void initState() {
@@ -58,11 +65,13 @@ class ShadowsGameState extends State<ShadowsGame> {
     _slips = 0;
     _dragging = _selected = null;
     _deal++;
+    askSoon();
     if (mounted) setState(() {});
   }
 
   /// Tries [picture] on the shadow of [shadow].
   void _fit(String picture, String shadow) {
+    stillHere();
     if (picture != shadow) {
       _slips++;
       widget.c.sound(Sfx.boing, volume: 0.7);
@@ -77,7 +86,16 @@ class ShadowsGameState extends State<ShadowsGame> {
       _placed.add(picture);
       _selected = null;
     });
-    if (_placed.length == _round.pictures.length) {
+    final done = _placed.length == _round.pictures.length;
+    // Its name, while she plays; all of them found, a cheer.
+    final name = emojiWordClip(picture);
+    if (done) {
+      quiet();
+      widget.c.say(VoiceLine.bigLittleDone);
+    } else if (name != null) {
+      widget.c.say(name);
+    }
+    if (done) {
       unawaited(widget.c.finishRound(expansionResult(_slips, size: _round.pictures.length), emoji: picture));
       _next = Timer(const Duration(milliseconds: 2600), _newRound);
     }
@@ -85,6 +103,7 @@ class ShadowsGameState extends State<ShadowsGame> {
 
   void _tapPicture(String p) {
     if (_placed.contains(p)) return;
+    stillHere();
     widget.c.sound(Sfx.tap, volume: 0.6);
     setState(() => _selected = _selected == p ? null : p);
   }
@@ -93,6 +112,15 @@ class ShadowsGameState extends State<ShadowsGame> {
     final p = _selected;
     if (p == null || _placed.contains(s)) return;
     _fit(p, s);
+  }
+
+  /// After two slips, the shadow of the picture in her hand glows; after a
+  /// long pause, the next picture's shadow does.
+  String? get _hintShadow {
+    final held = _dragging ?? _selected;
+    if (_slips >= 2 && held != null) return held;
+    if (idleHint) return held ?? _round.pictures.where((p) => !_placed.contains(p)).firstOrNull;
+    return null;
   }
 
   Offset _local(Offset global) => (_area.currentContext!.findRenderObject()! as RenderBox).globalToLocal(global);
@@ -110,6 +138,9 @@ class ShadowsGameState extends State<ShadowsGame> {
     }
     if (near != null && best < l.size * 0.6) {
       _fit(p, near);
+    } else if ((_dragAt - l.tray[_round.pictures.indexOf(p)]).distance < l.size * 0.35) {
+      // A tap that slid a little picks the picture up, as a tap would.
+      _tapPicture(p);
     } else {
       setState(() {});
     }
@@ -143,7 +174,7 @@ class ShadowsGameState extends State<ShadowsGame> {
                           excludeFromSemantics: true,
                           behavior: HitTestBehavior.opaque,
                           onTap: () => _tapShadow(s),
-                          child: _Shadow(emoji: s, size: l.size, glow: _slips >= 2 && (_dragging ?? _selected) == s),
+                          child: _Shadow(emoji: s, size: l.size, glow: _hintShadow == s),
                         ),
                       ),
                     ),
@@ -221,8 +252,7 @@ class _Shadow extends StatelessWidget {
               height: size,
               decoration: BoxDecoration(shape: BoxShape.circle, color: glow ? const Color(0x55FFD54F) : const Color(0x14000000)),
             ),
-            // A small layer, filtered once and then kept: cheap on a frame.
-            RepaintBoundary(child: ColorFiltered(colorFilter: const ColorFilter.mode(_shade, BlendMode.srcIn), child: DEmoji(emoji, size: size * 0.86))),
+            DEmoji(emoji, size: size * 0.86, tint: _shade),
           ],
         ),
       );

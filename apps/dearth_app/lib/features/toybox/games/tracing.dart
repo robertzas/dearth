@@ -3,7 +3,6 @@ import 'dart:math' as math;
 
 import 'package:dearth_core/dearth_core.dart';
 import 'package:dearth_ui/dearth_ui.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/sound.dart';
@@ -577,9 +576,8 @@ class _StartDot extends StatefulWidget {
 }
 
 class _StartDotState extends State<_StartDot> with SingleTickerProviderStateMixin {
-  late final Ticker _ticker = createTicker(_tick);
+  late final AmbientTicker _ticker = AmbientTicker(this, _tick, fps: () => DTheme.of(context).policy.ambientFps);
   final _phase = ValueNotifier<double>(0);
-  int _frames = 0;
 
   @override
   void initState() {
@@ -597,7 +595,6 @@ class _StartDotState extends State<_StartDot> with SingleTickerProviderStateMixi
   void _tick(Duration elapsed) {
     final t = DTheme.of(context);
     if (t.reducedMotion) return;
-    if (t.policy.ambientFps < 60 && (_frames++).isOdd) return;
     _phase.value = (elapsed.inMilliseconds % 1400) / 1400;
   }
 

@@ -128,7 +128,15 @@ on the frame.
 - **No reading.** Pictures, numbers and letters she's learning, and the
   voice. Text labels exist for grown-ups' screen readers and for tests.
 - **Every touch answers within a frame**: a sound, a hop, a wiggle. Silence
-  after a tap reads as "broken" to a toddler.
+  after a tap reads as "broken" to a toddler. Answer on the finger going
+  *down* (a `Listener`, or `DPressable`): a `GestureDetector` with both tap
+  and pan waits up to 100 ms, and a tap that slides 18 px becomes a pan.
+  In drag games, a drag that ends near where it started is the tap she
+  meant (`_dragFrom`, see `shapes.dart`).
+- **The voice carries every round**: the prompt ~600 ms in, a 🔊 on the
+  pill, the names of what she picks (`emojiWordClip`, `numberClip`),
+  praise that says why, and the prompt again after ~10 s of stillness,
+  twice at most (`RoundVoice` in `voice_widgets.dart` does this).
 - **Mistakes are soft.** A wrong pick plays `c.cue()`, wiggles, maybe says
   what she picked; after two slips the right answer glows (`hint`). A long
   pause shows the same hint without counting a slip. Nothing ever says
@@ -166,14 +174,29 @@ PowerVR GE8300 on the OpenGL ES fallback, a 56 Hz panel. What keeps a game
 smooth there (AGENTS rule 8, SPEC §12):
 
 - No `BackdropFilter`, `ShaderMask`, `Opacity` over large subtrees, blurs
-  that animate, or a `saveLayer` per frame. Fade by multiplying each
-  paint's alpha instead.
+  that animate (a `BoxShadow` whose `blurRadius` changes counts), or a
+  `saveLayer` per frame. Fade by multiplying each paint's alpha instead.
 - Put each independently moving region in a `RepaintBoundary`. Drive
   per-frame motion with a `ValueNotifier` that a `CustomPainter` listens
   to (`super(repaint: notifier)`), not with `setState` on the whole board.
-- Cap continuous motion at 30 fps on T1: in a `Ticker` callback, skip
-  every other frame when `DTheme.of(context).policy.ambientFps < 60`.
-  Respect `policy.maxParticles`.
+- **Continuous motion runs on an `AmbientTicker`** (`dearth_ui`), never a
+  plain `Ticker` or a repeating `AnimationController`: it mutes itself
+  between ticks, so T1 draws 30 frames a second. Skipping updates inside a
+  plain ticker's callback saves nothing (it still asks for every vsync,
+  and every frame is rasterized in full: Number Tracing ran at 57 fps,
+  every frame over budget). Motion from `dt` must use the time since the
+  last *drawn* tick. Respect `policy.maxParticles`.
+- **Anything that scales, turns or flips is an image.** On the frame's
+  GPU, text and concave paths under a changing transform are rebuilt and
+  uploaded every frame: twelve pulsing emoji drawn as text measured 7 fps
+  (184 ms raster); the same from images, 57 fps (6 ms). `DEmoji` draws
+  from cached images already (and `tint:` makes a shadow without a
+  layer); wrap painted pieces that move in `Snapshot` (`game_widgets.dart`).
+  Static full-screen painters get `CustomPaint(isComplex: true)` so the
+  raster cache keeps them.
+- Measure on the frame: `tool/perf_gate.sh <ip> --only game.<id>`
+  (or `games` for all, `probes` for the technique probes) prints each
+  game's frame times; it mutes the frame while it plays.
 - Build geometry once per size and cache it: `Path.combine` and path
   metrics are slow on this CPU (Build-a-Creature caches its unioned
   outlines; a dance frame unions nothing).

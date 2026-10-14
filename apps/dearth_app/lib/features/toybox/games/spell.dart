@@ -44,7 +44,7 @@ class SpellGameState extends State<SpellGame> {
   /// The slot whose sound the voice is saying while it blends.
   int? _lit;
   int? _dragging;
-  Offset _dragAt = Offset.zero, _grip = Offset.zero;
+  Offset _dragAt = Offset.zero, _grip = Offset.zero, _dragFrom = Offset.zero;
   Timer? _ask, _idle, _blend, _next;
   _Layout? _layout;
 
@@ -205,6 +205,9 @@ class SpellGameState extends State<SpellGame> {
     final near = a != null && _round.missing.any((s) => !_filled.containsKey(s) && (l.slots[s] - _dragAt).distance < l.slot * 0.9);
     if (near) {
       _try(i);
+    } else if ((_dragAt - _dragFrom).distance < l.slot * 0.35) {
+      // A tap that slid a little: she meant to tap the tile.
+      _tapTile(i);
     } else {
       setState(() {});
     }
@@ -363,7 +366,7 @@ class SpellGameState extends State<SpellGame> {
                     setState(() {
                       _dragging = i;
                       _grip = center - _local(d.globalPosition);
-                      _dragAt = center;
+                      _dragAt = _dragFrom = center;
                     });
                   },
             onPanUpdate: slot != null || _done ? null : (d) => setState(() => _dragAt = _local(d.globalPosition) + _grip),

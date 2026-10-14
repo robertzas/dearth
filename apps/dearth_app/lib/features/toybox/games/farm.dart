@@ -3,7 +3,6 @@ import 'dart:math' as math;
 
 import 'package:dearth_core/dearth_core.dart';
 import 'package:dearth_ui/dearth_ui.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/sound.dart';
@@ -39,6 +38,9 @@ class FarmGameState extends State<FarmGame> {
   /// The pause between a round won and the next: time to enjoy it.
   Timer? _next;
 
+  /// The voice after an animal's own sound (its name, or "Yes! …").
+  Timer? _then;
+
   /// The animal to find, for tests.
   @visibleForTesting
   String? get debugFind => _round.find?.id;
@@ -53,6 +55,8 @@ class FarmGameState extends State<FarmGame> {
   void dispose() {
     _ask?.cancel();
     _next?.cancel();
+    _then?.cancel();
+    _idle?.cancel();
     super.dispose();
   }
 
@@ -60,17 +64,43 @@ class FarmGameState extends State<FarmGame> {
     _round = farmRound(widget.c.level, widget.c.random);
     _met.clear();
     _slips = 0;
+    _nudges = 0;
     if (_round.find != null) _ask = Timer(const Duration(milliseconds: 700), _askAgain);
     if (mounted) setState(() {});
   }
 
+  /// "Who says this?", then the sound.
   void _askAgain() {
     final find = _round.find;
-    if (find != null && mounted) widget.c.sound(Sfx.values.byName(find.id));
+    if (find == null || !mounted) return;
+    widget.c.say(VoiceLine.farmWho);
+    _then?.cancel();
+    _then = Timer(afterVoice(VoiceLine.farmWho, atLeast: const Duration(milliseconds: 900)), () {
+      if (mounted) widget.c.sound(Sfx.values.byName(find.id));
+    });
+    _armIdle();
   }
 
-  void _hello(FarmAnimal a) {
+  /// A long pause in a "who says…?" round: the question again, twice at most.
+  Timer? _idle;
+  int _nudges = 0;
+  void _armIdle() {
+    _idle?.cancel();
+    if (_round.find == null || _nudges >= 2) return;
+    _idle = Timer(const Duration(seconds: 12), () {
+      if (!mounted) return;
+      _nudges++;
+      _askAgain();
+    });
+  }
+
+  void _hello(FarmAnimal a, {String? after}) {
     widget.c.sound(Sfx.values.byName(a.id));
+    // Its name once its own voice is done: the word with the sound.
+    _then?.cancel();
+    _then = Timer(const Duration(milliseconds: 1300), () {
+      if (mounted) widget.c.say(after ?? farmNameClip(a));
+    });
     final ticket = ++_talkTicket;
     setState(() {
       _talking = a.id;
@@ -82,8 +112,10 @@ class FarmGameState extends State<FarmGame> {
   }
 
   void _tap(FarmAnimal a) {
-    _hello(a);
     final find = _round.find;
+    _nudges = 0;
+    _idle?.cancel();
+    _hello(a, after: find?.id == a.id ? farmYesClip(a) : null);
     if (find == null) {
       // Free play: meeting everyone is the round.
       if (_met.add(a.id) && _met.length == _round.animals.length) _won(GameResult.win, a);
@@ -98,8 +130,11 @@ class FarmGameState extends State<FarmGame> {
   }
 
   void _won(String result, FarmAnimal a) {
+    _idle?.cancel();
     unawaited(widget.c.finishRound(result, emoji: a.emoji));
-    _next = Timer(const Duration(milliseconds: 2400), _newRound);
+    // Time for its sound and "Yes! The cow says moo!".
+    final yes = _round.find == null ? Duration.zero : afterVoice(farmYesClip(a));
+    _next = Timer(const Duration(milliseconds: 1500) + yes, _newRound);
   }
 
   @override
@@ -112,7 +147,7 @@ class FarmGameState extends State<FarmGame> {
       return Stack(
         fit: StackFit.expand,
         children: [
-          const RepaintBoundary(child: CustomPaint(painter: _FarmPainter())),
+          const RepaintBoundary(child: CustomPaint(isComplex: true, painter: _FarmPainter())),
           for (final (i, a) in _round.animals.indexed)
             Positioned(
               left: spots[i].dx * box.maxWidth - size / 2,
@@ -123,7 +158,7 @@ class FarmGameState extends State<FarmGame> {
                 bounces: _bounces[a.id] ?? 0,
                 talking: _talking == a.id,
                 // After two wrong tries, the right one glows.
-                glow: find?.id == a.id && _slips >= 2,
+                glow: find?.id == a.id && (_slips >= 2 || _nudges > 0),
                 onTap: () => _tap(a),
               ),
             ),
@@ -226,8 +261,7 @@ class _Glow extends StatefulWidget {
 
 class _GlowState extends State<_Glow> with TickerProviderStateMixin {
   late final AnimationController _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
-  late final Ticker _ticker = createTicker(_tick);
-  int _frames = 0;
+  late final AmbientTicker _ticker = AmbientTicker(this, _tick, fps: () => DTheme.of(context).policy.ambientFps);
 
   @override
   void initState() {
@@ -245,7 +279,6 @@ class _GlowState extends State<_Glow> with TickerProviderStateMixin {
   // The hint ring breathes forever: on the slowest displays it does so at
   // the tier's ambient fps, not every vsync (SPEC §12.3).
   void _tick(Duration elapsed) {
-    if (DTheme.of(context).policy.ambientFps < 60 && (_frames++).isOdd) return;
     final cycle = _pulse.duration!.inMilliseconds * 2; // forward, then reverse
     final p = (elapsed.inMilliseconds % cycle) / cycle;
     _pulse.value = p < 0.5 ? p * 2 : 2 - p * 2;

@@ -270,18 +270,27 @@ class HopGameState extends State<HopGame> {
 
 Then register it: `'hop': HopGame.new,` in `registry.dart` (and the import).
 
-Continuous motion: drive a `CustomPainter` from a `ValueNotifier` fed by a
-`Ticker`, and skip frames on T1:
+Continuous motion: drive a `CustomPainter` from a `ValueNotifier` fed by an
+`AmbientTicker` (30 fps on T1 by muting itself between ticks; a plain
+`Ticker` that skips updates still has every frame drawn):
 
 ```dart
+late final AmbientTicker _ticker = AmbientTicker(this, _tick, fps: () => DTheme.of(context).policy.ambientFps);
+
 void _tick(Duration elapsed) {
-  // Ambient motion: 30 fps is plenty on the slowest displays.
-  if (DTheme.of(context).policy.ambientFps < 60 && (_frames++).isOdd) return;
-  _time.value = elapsed.inMicroseconds / 1e6;
+  // Move by the time since the last drawn tick, not a fixed step.
+  final dt = ((elapsed - _last).inMicroseconds / 1e6).clamp(0.0, 0.08);
+  _last = elapsed;
+  _time.value += dt;
 }
 …
 RepaintBoundary(child: CustomPaint(painter: _Painter(…, time: _time)))  // _Painter: super(repaint: time)
 ```
+
+The choice games share their spoken rhythm through `RoundVoice`
+(`voice_widgets.dart`): `with RoundVoice`, override `voiceOf` and
+`promptClip`, call `askSoon()` in a new round, `stillHere()` on every
+touch and `quiet()` once it's won; `idleHint` is true after a long pause.
 
 ## 7. Template: widget tests
 

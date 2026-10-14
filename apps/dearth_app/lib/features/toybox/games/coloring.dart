@@ -126,6 +126,7 @@ class ColoringGameState extends State<ColoringGame> with SingleTickerProviderSta
       if (s == AnimationStatus.completed) _settleWipe();
     });
   _Wipe? _wiping;
+  Timer? _ask;
 
   @visibleForTesting
   String get debugPicture => _pic.picture.id;
@@ -142,6 +143,7 @@ class ColoringGameState extends State<ColoringGame> with SingleTickerProviderSta
   @override
   void dispose() {
     _wipe.dispose();
+    _ask?.cancel();
     super.dispose();
   }
 
@@ -158,7 +160,18 @@ class ColoringGameState extends State<ColoringGame> with SingleTickerProviderSta
     _fills = List<Color?>.filled(_pic.visible.length, null);
     _done = false;
     _wiping = null;
+    _ask?.cancel();
+    _ask = Timer(const Duration(milliseconds: 600), () {
+      if (mounted) widget.c.say(VoiceLine.coloringAsk);
+    });
     if (mounted) setState(() {});
+  }
+
+  /// A crayon picked: its color, by name.
+  void _pick(int i) {
+    _ask?.cancel();
+    widget.c.say(colorClip(kCrayons[i].$1));
+    setState(() => _crayon = i);
   }
 
   void _tapAt(Offset local, Size box) {
@@ -185,6 +198,7 @@ class ColoringGameState extends State<ColoringGame> with SingleTickerProviderSta
     setState(() => _fills = [..._fills]..[w.part] = w.color);
     if (!_done && _fills.every((f) => f != null)) {
       _done = true;
+      widget.c.say(VoiceLine.coloringDone);
       unawaited(widget.c.finishRound(GameResult.win, emoji: _pic.picture.emoji));
     }
   }
@@ -199,7 +213,7 @@ class ColoringGameState extends State<ColoringGame> with SingleTickerProviderSta
           padding: EdgeInsets.fromLTRB(t.space.lg, 96 * t.scale, t.space.lg, t.space.lg),
           child: LayoutBuilder(builder: (context, box) {
             final wide = box.maxWidth > box.maxHeight;
-            final palette = _Palette(selected: _crayon, vertical: wide, onPick: (i) => setState(() => _crayon = i));
+            final palette = _Palette(selected: _crayon, vertical: wide, onPick: _pick);
             final canvas = Expanded(child: _canvas(t));
             return wide ? Row(children: [canvas, SizedBox(width: t.space.lg), palette]) : Column(children: [canvas, SizedBox(height: t.space.lg), palette]);
           }),

@@ -9,6 +9,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../core/sound.dart';
 import '../game_host.dart';
+import 'voice_widgets.dart';
 
 /// The colors the monster's sign paints, by food color.
 const Map<String, Color> kFoodColors = {
@@ -52,7 +53,7 @@ class MonsterGame extends StatefulWidget {
 }
 
 @visibleForTesting
-class MonsterGameState extends State<MonsterGame> with TickerProviderStateMixin {
+class MonsterGameState extends State<MonsterGame> with TickerProviderStateMixin, RoundVoice {
   final _area = GlobalKey();
   late MonsterRound _round;
   final _eaten = <int>{};
@@ -68,6 +69,12 @@ class MonsterGameState extends State<MonsterGame> with TickerProviderStateMixin 
 
   @visibleForTesting
   MonsterRound get debugRound => _round;
+
+  @override
+  GameController get voiceOf => widget.c;
+
+  @override
+  String? get promptClip => _full ? null : monsterRuleClip(_round.rule);
 
   @override
   void initState() {
@@ -93,6 +100,7 @@ class MonsterGameState extends State<MonsterGame> with TickerProviderStateMixin 
     _flying = _dragging = null;
     _full = false;
     _puppet.look.value = Offset.zero;
+    askSoon(after: const Duration(milliseconds: 700));
     if (mounted) setState(() {});
   }
 
@@ -108,6 +116,7 @@ class MonsterGameState extends State<MonsterGame> with TickerProviderStateMixin 
 
   void _feed(int i) {
     if (_flying != null || _dragging != null || _eaten.contains(i) || _full) return;
+    stillHere();
     final l = _layout;
     if (l != null) _lookAt(l.plates[i]);
     setState(() => _flying = i);
@@ -122,6 +131,16 @@ class MonsterGameState extends State<MonsterGame> with TickerProviderStateMixin 
     unawaited(_puppet.open.reverse());
     if (_wants(i)) {
       c.sound(Sfx.munch);
+      // Its name if the Toybox knows it (words while she plays), and a
+      // thank-you for the last one.
+      final last = _eaten.length + 1 == _round.toEat;
+      final name = emojiWordClip(_round.tray[i].emoji);
+      if (last) {
+        quiet();
+        c.say(VoiceLine.monsterFull);
+      } else {
+        c.say(name ?? VoiceLine.monsterYum);
+      }
       unawaited(_puppet.chew.forward(from: 0));
       setState(() {
         _eaten.add(i);
@@ -136,6 +155,7 @@ class MonsterGameState extends State<MonsterGame> with TickerProviderStateMixin 
     } else {
       _slips++;
       c.cue();
+      c.say(VoiceLine.monsterNo);
       unawaited(_puppet.shake.forward(from: 0));
       setState(() {
         _flying = null;
@@ -150,6 +170,7 @@ class MonsterGameState extends State<MonsterGame> with TickerProviderStateMixin 
   void _dragStart(int i, DragStartDetails d) {
     final l = _layout;
     if (l == null || _flying != null || _eaten.contains(i) || _full) return;
+    stillHere();
     final p = _local(d.globalPosition);
     setState(() {
       _dragging = i;
@@ -176,6 +197,9 @@ class MonsterGameState extends State<MonsterGame> with TickerProviderStateMixin 
     _dragging = null;
     if ((_dragAt - l.mouth).distance < l.food * 1.2) {
       _taste(i);
+    } else if ((_dragAt - l.plates[i]).distance < l.food * 0.45) {
+      // A tap that slid a little: she meant to feed it.
+      _feed(i);
     } else {
       unawaited(_puppet.open.reverse());
       _puppet.look.value = Offset.zero;
@@ -198,7 +222,7 @@ class MonsterGameState extends State<MonsterGame> with TickerProviderStateMixin 
                 key: _area,
                 builder: (context, box) {
                   final l = _layout = _Layout.of(box.biggest, _round.tray.length);
-                  final hint = _slips >= 2;
+                  final hint = _slips >= 2 || idleHint;
                   return Stack(
                     clipBehavior: Clip.none,
                     children: [
@@ -226,7 +250,7 @@ class MonsterGameState extends State<MonsterGame> with TickerProviderStateMixin 
               ),
             ),
           ),
-          Positioned(top: t.space.md, left: 0, right: 0, child: SafeArea(child: Center(child: _Sign(rule: _round.rule)))),
+          Positioned(top: t.space.md, left: 0, right: 0, child: SafeArea(child: Center(child: _Sign(rule: _round.rule, onSayAgain: sayPrompt)))),
         ],
       ),
     );
@@ -310,8 +334,9 @@ class _Layout {
 /// What the monster eats today, in pictures: a splash of its color, a ring
 /// for round, two foods for a kind.
 class _Sign extends StatelessWidget {
-  const _Sign({required this.rule});
+  const _Sign({required this.rule, required this.onSayAgain});
   final MonsterRule rule;
+  final VoidCallback onSayAgain;
 
   @override
   Widget build(BuildContext context) {
@@ -328,20 +353,18 @@ class _Sign extends StatelessWidget {
         Container(width: d, height: d, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFF3B3355), width: d * 0.16))),
       if (rule.kind != null) Row(mainAxisSize: MainAxisSize.min, children: [for (final e in _kindSigns[rule.kind] ?? const ['🍽️']) DEmoji(e, size: d)]),
     ];
-    return tid(
-      'monster.sign',
-      Semantics(
-        label: monsterSignLabel(rule),
-        excludeSemantics: true,
-        child: GamePill(children: [
-          DEmoji('😋', size: 44 * t.scale),
-          SizedBox(width: t.space.sm),
-          for (final (i, p) in parts.indexed) ...[
-            if (i > 0) Padding(padding: EdgeInsets.symmetric(horizontal: t.space.xs), child: Text('+', style: t.text.kidTitle.copyWith(color: const Color(0xFF3B3355)))),
-            p,
-          ],
-        ]),
-      ),
+    return PromptPill(
+      id: 'monster.sign',
+      label: monsterSignLabel(rule),
+      onSayAgain: onSayAgain,
+      children: [
+        DEmoji('😋', size: 44 * t.scale),
+        SizedBox(width: t.space.sm),
+        for (final (i, p) in parts.indexed) ...[
+          if (i > 0) Padding(padding: EdgeInsets.symmetric(horizontal: t.space.xs), child: Text('+', style: t.text.kidTitle.copyWith(color: const Color(0xFF3B3355)))),
+          p,
+        ],
+      ],
     );
   }
 }

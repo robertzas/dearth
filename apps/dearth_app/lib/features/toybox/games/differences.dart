@@ -3,12 +3,12 @@ import 'dart:math' as math;
 
 import 'package:dearth_core/dearth_core.dart';
 import 'package:dearth_ui/dearth_ui.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/sound.dart';
 import '../game_host.dart';
 import 'game_widgets.dart';
+import 'voice_widgets.dart';
 
 /// Spot the Difference (SPEC FR-TOY-03, Appendix B: attention). Two little
 /// scenes, nearly the same: something missing, something swapped, and at
@@ -31,7 +31,7 @@ class DifferencesGameState extends State<DifferencesGame> {
   int? _hint;
   Offset? _puff;
   int _puffs = 0;
-  Timer? _next, _hinter;
+  Timer? _next, _hinter, _ask;
 
   @visibleForTesting
   DifferenceRound get debugRound => _round;
@@ -46,6 +46,7 @@ class DifferencesGameState extends State<DifferencesGame> {
   void dispose() {
     _next?.cancel();
     _hinter?.cancel();
+    _ask?.cancel();
     super.dispose();
   }
 
@@ -56,16 +57,25 @@ class DifferencesGameState extends State<DifferencesGame> {
     _hint = null;
     _deal++;
     _armHint();
+    _ask?.cancel();
+    _ask = Timer(const Duration(milliseconds: 600), _sayAsk);
     if (mounted) setState(() {});
   }
 
-  /// After 25 seconds without a find, one of the rest pulses.
+  void _sayAsk() {
+    if (mounted && _found.length < _round.spots.length) widget.c.say(VoiceLine.diffAsk);
+  }
+
+  /// After 15 seconds without a find, one of the rest pulses, and the
+  /// question comes again.
   void _armHint() {
     _hinter?.cancel();
-    _hinter = Timer(const Duration(seconds: 25), () {
+    _hinter = Timer(const Duration(seconds: 15), () {
       if (!mounted) return;
       final left = [for (var i = 0; i < _round.spots.length; i++) if (!_found.contains(i)) i];
-      if (left.isNotEmpty) setState(() => _hint = left.first);
+      if (left.isEmpty) return;
+      _sayAsk();
+      setState(() => _hint = left.first);
     });
   }
 
@@ -89,6 +99,9 @@ class DifferencesGameState extends State<DifferencesGame> {
       return;
     }
     widget.c.sound(Sfx.sparkle);
+    // Each find counted out loud; the last one cheered.
+    widget.c.say(_found.length + 1 == _round.spots.length ? VoiceLine.bigLittleDone : numberClip(_found.length + 1));
+    _ask?.cancel();
     setState(() {
       _found.add(hit!);
       if (_hint == hit) _hint = null;
@@ -149,12 +162,11 @@ class DifferencesGameState extends State<DifferencesGame> {
             right: 0,
             child: SafeArea(
               child: Center(
-                child: tid(
-                  'differences.count',
-                  Semantics(
-                    label: 'Found ${_found.length} of $n',
-                    excludeSemantics: true,
-                    child: GamePill(children: [
+                child: PromptPill(
+                  id: 'differences.count',
+                  label: 'Found ${_found.length} of $n',
+                  onSayAgain: _sayAsk,
+                  children: [
                       DEmoji('🔎', size: 40 * t.scale),
                       SizedBox(width: t.space.sm),
                       for (var i = 0; i < n; i++)
@@ -167,8 +179,7 @@ class DifferencesGameState extends State<DifferencesGame> {
                                 margin: EdgeInsets.all(4 * t.scale),
                                 decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFFC9BFA8), width: 3 * t.scale)),
                               ),
-                    ]),
-                  ),
+                  ],
                 ),
               ),
             ),
@@ -349,8 +360,7 @@ class _Pulse extends StatefulWidget {
 
 class _PulseState extends State<_Pulse> with TickerProviderStateMixin {
   late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
-  late final Ticker _ticker = createTicker(_tick);
-  int _frames = 0;
+  late final AmbientTicker _ticker = AmbientTicker(this, _tick, fps: () => DTheme.of(context).policy.ambientFps);
 
   @override
   void initState() {
@@ -368,7 +378,6 @@ class _PulseState extends State<_Pulse> with TickerProviderStateMixin {
   // The hint breathes forever: on the slowest displays it does so at the
   // tier's ambient fps, not every vsync (SPEC §12.3).
   void _tick(Duration elapsed) {
-    if (DTheme.of(context).policy.ambientFps < 60 && (_frames++).isOdd) return;
     final cycle = _c.duration!.inMilliseconds * 2; // forward, then reverse
     final p = (elapsed.inMilliseconds % cycle) / cycle;
     _c.value = p < 0.5 ? p * 2 : 2 - p * 2;

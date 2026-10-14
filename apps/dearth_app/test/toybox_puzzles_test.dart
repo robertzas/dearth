@@ -14,6 +14,11 @@ import 'support/toybox_harness.dart';
 /// The Toybox's puzzles (SPEC FR-TOY-02): Memory Match, Shape Sorter and
 /// Jigsaw, played through the Toybox on the demo household.
 void main() {
+  for (final size in const [Size(390, 844), Size(844, 390), Size(1080, 1920), Size(1920, 1080)]) {
+    testWidgets('every launch-set puzzle lays out on a ${size.width.toInt()}×${size.height.toInt()} screen at its busiest level', (tester) async {
+      await expectGamesLayOut(tester, const [('memory', 1), ('memory', 6), ('shapes', 1), ('shapes', 5), ('jigsaw', 1), ('jigsaw', 7)], size: size);
+    });
+  }
   group('Memory Match', () {
     testWidgets('the faces show, then turn; two that differ turn back; found pairs stay up; a full board is a win', (tester) async {
       final handle = tester.ensureSemantics();

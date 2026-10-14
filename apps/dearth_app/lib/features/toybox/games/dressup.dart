@@ -259,7 +259,7 @@ class _Buddy extends StatelessWidget {
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                const Positioned.fill(child: RepaintBoundary(child: CustomPaint(painter: _BuddyPainter()))),
+                const Positioned.fill(child: RepaintBoundary(child: CustomPaint(isComplex: true, painter: _BuddyPainter()))),
                 if (worn[DressSlot.legs] case final legs?) at(0.5, 0.72, legs.emoji, 0.36),
                 if (worn[DressSlot.top] case final top?) at(0.5, 0.47, top.emoji, 0.42),
                 if (worn[DressSlot.feet] case final feet?) at(0.5, 0.93, feet.emoji, 0.16),

@@ -189,6 +189,9 @@ class LetterMonsterGameState extends State<LetterMonsterGame> with TickerProvide
     _dragging = null;
     if ((_dragAt - l.mouth).distance < l.food * 1.2) {
       _taste(i);
+    } else if ((_dragAt - l.plates[i]).distance < l.food * 0.45) {
+      // A tap that slid a little: she meant to feed it.
+      _feed(i);
     } else {
       unawaited(_puppet.open.reverse());
       _puppet.look.value = Offset.zero;
@@ -333,7 +336,7 @@ class LetterBiscuit extends StatelessWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            const Positioned.fill(child: RepaintBoundary(child: CustomPaint(painter: _BiscuitPainter()))),
+            const Positioned.fill(child: Snapshot(child: CustomPaint(painter: _BiscuitPainter()))),
             GlyphView(letter, height: size * 0.62, color: const Color(0xFF5B3418), weight: 1.6, frameTop: 0, frameBottom: 14),
           ],
         ),

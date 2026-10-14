@@ -247,10 +247,18 @@ class BeadGameState extends State<BeadGame> with TickerProviderStateMixin {
             child: LayoutBuilder(builder: (context, box) {
               final wide = box.maxWidth > box.maxHeight;
               final dd = math.max(72 * t.scale, math.min(box.maxHeight * 0.24, 150 * t.scale));
-              // Wide: the bell (or the numbers) stands beside the rack.
-              final room = wide ? box.maxWidth - (r.read ? box.maxWidth * 0.3 : dd) - 32 * t.scale : box.maxWidth;
-              final rackW = math.min(room * 0.96, 1150 * t.scale);
-              final d = rackW / kRackBeads;
+              // The bell sits right under the rack, close to the beads it
+              // checks; reading a rack on a wide screen, the numbers stand
+              // beside it. The beads take all the room that leaves (they
+              // were a thin strip in the middle of a wall).
+              // A very short screen (a phone on its side) puts the bell
+              // beside the rack too: under it, the rack would be a sliver.
+              final side = wide && (r.read || box.maxHeight < box.maxWidth * 0.4);
+              final room = side ? (r.read ? box.maxWidth * 0.7 : box.maxWidth - dd) - 32 * t.scale : box.maxWidth;
+              final rowsTall = r.rows * 1.6 + (r.rows - 1) * 0.4;
+              final below = side ? 0.0 : (r.read ? box.maxHeight * 0.3 : dd);
+              final d = math.min(math.min(room * 0.96 / kRackBeads, (box.maxHeight - below) / (rowsTall + (side ? 0.2 : 0.8))), 130 * t.scale);
+              final rackW = d * kRackBeads;
               final rowH = d * 1.6;
               final rows = [for (var row = 0; row < r.rows; row++) row];
               final rackH = r.rows * rowH + (r.rows - 1) * d * 0.4;
@@ -267,7 +275,7 @@ class BeadGameState extends State<BeadGame> with TickerProviderStateMixin {
                   excludeSemantics: true,
                   onTap: _ring,
                   borderRadius: BorderRadius.circular(dd / 2),
-                  child: Hop(count: _bellHops, child: SizedBox.square(dimension: dd, child: const RepaintBoundary(child: CustomPaint(painter: BellPainter(), size: Size.infinite)))),
+                  child: Hop(count: _bellHops, child: SizedBox.square(dimension: dd, child: const Snapshot(child: CustomPaint(painter: BellPainter(), size: Size.infinite)))),
                 );
               }
               final rack = Column(
@@ -275,9 +283,7 @@ class BeadGameState extends State<BeadGame> with TickerProviderStateMixin {
                 mainAxisSize: MainAxisSize.min,
                 children: [for (final row in rows) _row(context, row, rackW, d, rowH)],
               );
-              // Wide: the rack centered, the bell (or the numbers) beside
-              // it. Tall: the rack on top, it under.
-              return wide
+              return side
                   ? Row(children: [Expanded(child: Center(child: rack)), beside])
                   : Column(mainAxisAlignment: MainAxisAlignment.center, children: [Center(child: rack), SizedBox(height: d * 0.8), beside]);
             }),

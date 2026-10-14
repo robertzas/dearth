@@ -32,7 +32,9 @@ enum _Echo { off, listening, yourTurn }
 
 @visibleForTesting
 class MusicGameState extends State<MusicGame> {
-  final _lit = List<int>.filled(kXylophoneMidi.length, 0);
+  /// Rings per bar: each bar listens to its own, so a hit redraws one bar,
+  /// not the whole toy (a toddler drums with several fingers).
+  final _lit = [for (var i = 0; i < kXylophoneMidi.length; i++) ValueNotifier<int>(0)];
   _Echo _echo = _Echo.off;
   List<int> _tune = const [];
   int _played = 0, _slips = 0;
@@ -45,22 +47,31 @@ class MusicGameState extends State<MusicGame> {
   @override
   void dispose() {
     _player?.cancel();
+    for (final n in _lit) {
+      n.dispose();
+    }
     super.dispose();
   }
 
   void _ring(int bar) {
     widget.c.sound(Sfx.xylophone, rate: math.pow(2, (kXylophoneMidi[bar] - kXylophoneBaseMidi) / 12).toDouble());
-    setState(() => _lit[bar]++);
+    _lit[bar].value++;
   }
 
   void _hit(int bar) {
-    if (_echo == _Echo.listening) return;
+    // The parrot is playing: the bar dips without a sound, so the touch
+    // still answers but the tune stays clear.
+    if (_echo == _Echo.listening) {
+      _lit[bar].value++;
+      return;
+    }
     _ring(bar);
     if (_echo != _Echo.yourTurn) return;
     if (bar == _tune[_played]) {
       if (++_played == _tune.length) {
         final level = math.max(2, widget.c.level);
         setState(() => _echo = _Echo.off);
+        widget.c.say(VoiceLine.musicYes);
         unawaited(widget.c.finishRound(resultFor(_slips, allowed: 1), emoji: '🦜', level: level));
       }
     } else {
@@ -75,7 +86,9 @@ class MusicGameState extends State<MusicGame> {
     final level = math.max(2, widget.c.level);
     _tune = echoPattern(level, widget.c.random);
     _slips = 0;
-    _play();
+    // What to do first, then the tune once that's said.
+    widget.c.say(VoiceLine.musicEcho);
+    _play(after: afterVoice(VoiceLine.musicEcho, atLeast: const Duration(milliseconds: 400)));
   }
 
   /// Plays the tune, lighting each bar, then hands over.
@@ -93,6 +106,7 @@ class MusicGameState extends State<MusicGame> {
           _player = Timer(const Duration(milliseconds: 520), next);
         } else {
           setState(() => _echo = _Echo.yourTurn);
+          widget.c.say(VoiceLine.musicTurn);
         }
       }
 
@@ -193,7 +207,7 @@ class _Instant extends StatelessWidget {
 
 class _Xylophone extends StatelessWidget {
   const _Xylophone({required this.lit, required this.onHit, required this.sideways});
-  final List<int> lit;
+  final List<ValueNotifier<int>> lit;
   final ValueChanged<int> onHit;
 
   /// Bars stacked top to bottom on a narrow screen.
@@ -213,7 +227,12 @@ class _Xylophone extends StatelessWidget {
             id: 'music.bar.$i',
             label: _noteNames[i],
             onHit: () => onHit(i),
-            child: _Bar(color: kBarColors[i], length: long * (1 - i * 0.055), thick: thick, sideways: sideways, hits: lit[i], radius: t.radius.s),
+            child: RepaintBoundary(
+              child: ValueListenableBuilder<int>(
+                valueListenable: lit[i],
+                builder: (context, hits, _) => _Bar(color: kBarColors[i], length: long * (1 - i * 0.055), thick: thick, sideways: sideways, hits: hits, radius: t.radius.s),
+              ),
+            ),
           ),
       ];
       return sideways
@@ -234,6 +253,7 @@ class _Bar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final w = sideways ? length : thick, h = sideways ? thick : length;
+    final pin = math.min(math.min(w, h) * 0.16, math.max(w, h) * 0.12);
     return TweenAnimationBuilder<double>(
       key: ValueKey(hits),
       tween: Tween(begin: hits == 0 ? 0 : 1, end: 0),
@@ -247,7 +267,9 @@ class _Bar extends StatelessWidget {
           decoration: BoxDecoration(
             color: Color.lerp(color, Colors.white, glow * 0.45),
             borderRadius: BorderRadius.circular(radius),
-            boxShadow: [BoxShadow(color: color.withValues(alpha: 0.45), blurRadius: 4 + glow * 14, offset: const Offset(0, 3))],
+            // A flat shadow and a solid halo as it rings: an animated blur
+            // is a full blur pass per frame on the wall display.
+            boxShadow: [BoxShadow(color: color.withValues(alpha: 0.35 * glow), spreadRadius: glow * 8), BoxShadow(color: Color.lerp(color, Colors.black, 0.25)!.withValues(alpha: 0.5), offset: const Offset(0, 4))],
           ),
           child: child,
         ),
@@ -259,8 +281,9 @@ class _Bar extends StatelessWidget {
         children: [
           for (var i = 0; i < 2; i++)
             Padding(
-              padding: EdgeInsets.all(math.min(w, h) * 0.28),
-              child: Container(width: math.min(w, h) * 0.16, height: math.min(w, h) * 0.16, decoration: const BoxDecoration(color: Color(0xCCFFFFFF), shape: BoxShape.circle)),
+              // Short bars (a landscape phone) have room for both pins too.
+              padding: EdgeInsets.all(math.min(math.min(w, h) * 0.28, math.max(w, h) * 0.12)),
+              child: Container(width: pin, height: pin, decoration: const BoxDecoration(color: Color(0xCCFFFFFF), shape: BoxShape.circle)),
             ),
         ],
       ),

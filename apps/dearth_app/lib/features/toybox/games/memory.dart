@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../core/sound.dart';
 import '../game_host.dart';
+import 'game_widgets.dart';
 
 const Color _hue = Color(0xFF7067E8);
 const Color _matchedRing = Color(0xFF4CC46A);
@@ -33,7 +34,7 @@ class MemoryGameState extends State<MemoryGame> {
 
   /// Two different faces showing, about to turn back.
   bool _differ = false;
-  Timer? _timer;
+  Timer? _timer, _ask;
 
   /// The faces in board order, for tests.
   @visibleForTesting
@@ -51,6 +52,7 @@ class MemoryGameState extends State<MemoryGame> {
   @override
   void dispose() {
     _timer?.cancel();
+    _ask?.cancel();
     super.dispose();
   }
 
@@ -64,9 +66,16 @@ class MemoryGameState extends State<MemoryGame> {
     _misses = 0;
     _differ = false;
     _peeking = memoryPeek(level);
+    _ask?.cancel();
     if (_peeking) {
       _timer = Timer(const Duration(milliseconds: 2200), () {
-        if (mounted) setState(() => _peeking = false);
+        if (!mounted) return;
+        setState(() => _peeking = false);
+        widget.c.say(VoiceLine.memoryAsk);
+      });
+    } else {
+      _ask = Timer(const Duration(milliseconds: 600), () {
+        if (mounted && _up.isEmpty) widget.c.say(VoiceLine.memoryAsk);
       });
     }
     if (mounted) setState(() {});
@@ -82,10 +91,20 @@ class MemoryGameState extends State<MemoryGame> {
     }
     if (_up.length == 2) return; // a pair settling in
     widget.c.sound(Sfx.tap, volume: 0.7);
+    _ask?.cancel();
     setState(() => _up.add(i));
+    // Each card says what it is (when the voice knows the word); a second
+    // card that matches says so instead.
+    final match = _up.length == 2 && _deck[_up[0]] == _deck[_up[1]];
+    final name = emojiWordClip(_deck[i]);
+    if (match) {
+      widget.c.say(VoiceLine.memoryMatch);
+    } else if (name != null) {
+      widget.c.say(name);
+    }
     if (_up.length < 2) return;
     final a = _up[0], b = _up[1];
-    if (_deck[a] == _deck[b]) {
+    if (match) {
       _timer = Timer(const Duration(milliseconds: 420), () => _pair(a, b));
     } else {
       _misses++;
@@ -208,6 +227,12 @@ class _Card extends StatelessWidget {
           curve: Curves.easeInOutCubic,
           builder: (context, k, _) {
             final showFace = k >= 0.5;
+            // At rest a card is drawn flat: a perspective matrix (even with
+            // no turn in it) sends everything under it down the GPU's slow
+            // path on every frame, and a board of them cost the kitchen
+            // frame 100–400 ms a frame.
+            final side = SizedBox.fromSize(size: size, child: Snapshot(child: showFace ? _Face(face: face, matched: matched, radius: radius) : _Back(radius: radius)));
+            if (k == 0 || k == 1) return side;
             final m = Matrix4.identity()
               ..setEntry(3, 2, 0.001)
               ..rotateY(math.pi * k);
@@ -216,7 +241,7 @@ class _Card extends StatelessWidget {
             return Transform(
               alignment: Alignment.center,
               transform: m,
-              child: SizedBox.fromSize(size: size, child: showFace ? _Face(face: face, matched: matched, radius: radius) : _Back(radius: radius)),
+              child: side,
             );
           },
         ),

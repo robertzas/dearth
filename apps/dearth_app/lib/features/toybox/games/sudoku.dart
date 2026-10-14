@@ -8,6 +8,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../core/sound.dart';
 import '../game_host.dart';
 import 'game_widgets.dart';
+import 'voice_widgets.dart';
 
 /// Picture Sudoku (SPEC FR-TOY-03, Appendix B: logic). A 4 × 4 board of
 /// fruit where every row, column and corner square holds each fruit once,
@@ -22,7 +23,7 @@ class SudokuGame extends StatefulWidget {
 }
 
 @visibleForTesting
-class SudokuGameState extends State<SudokuGame> {
+class SudokuGameState extends State<SudokuGame> with RoundVoice {
   late SudokuRound _round;
   final _filled = <int>{};
   final _wiggles = <int, int>{};
@@ -32,6 +33,12 @@ class SudokuGameState extends State<SudokuGame> {
 
   @visibleForTesting
   SudokuRound get debugRound => _round;
+
+  @override
+  GameController get voiceOf => widget.c;
+
+  @override
+  String? get promptClip => _open.isEmpty ? null : VoiceLine.sudokuAsk;
 
   @override
   void initState() {
@@ -51,6 +58,7 @@ class SudokuGameState extends State<SudokuGame> {
     _slips = 0;
     _deal++;
     _chosen = _open.firstOrNull;
+    askSoon();
     if (mounted) setState(() {});
   }
 
@@ -58,6 +66,7 @@ class SudokuGameState extends State<SudokuGame> {
 
   void _choose(int cell) {
     if (!_round.blanks.contains(cell) || _filled.contains(cell)) return;
+    stillHere();
     widget.c.sound(Sfx.tap, volume: 0.5);
     setState(() => _chosen = cell);
   }
@@ -65,13 +74,23 @@ class SudokuGameState extends State<SudokuGame> {
   void _place(int fruit) {
     final cell = _chosen ?? _open.firstOrNull;
     if (cell == null) return;
+    stillHere();
     if (_round.solution[cell] != fruit) {
       _slips++;
       widget.c.cue();
+      // The rule, once she's tried: a row already has that one.
+      if (_slips == 2) widget.c.say(VoiceLine.sudokuRule);
       setState(() => _wiggles[fruit] = (_wiggles[fruit] ?? 0) + 1);
       return;
     }
     widget.c.sound(Sfx.snap);
+    final word = emojiWordClip(kSudokuFruit[fruit]);
+    if (_open.length == 1) {
+      quiet();
+      widget.c.say(VoiceLine.sudokuDone);
+    } else if (word != null) {
+      widget.c.say(word);
+    }
     setState(() {
       _filled.add(cell);
       _chosen = _open.firstOrNull;
@@ -88,34 +107,49 @@ class SudokuGameState extends State<SudokuGame> {
     return Backdrop(
       top: const Color(0xFFFFF4E0),
       bottom: const Color(0xFFFFE4EC),
-      child: PlayArea(
-        child: LayoutBuilder(builder: (context, box) {
-          final wide = box.maxWidth > box.maxHeight;
-          final board = math.min(wide ? math.min(box.maxHeight, box.maxWidth * 0.62) : math.min(box.maxWidth, box.maxHeight * 0.66), 760 * t.scale);
-          final button = math.min(board / 4.4, 150 * t.scale);
-          final next = _chosen == null ? null : _round.solution[_chosen!];
-          final fruits = [
-            for (var k = 0; k < 4; k++)
-              Padding(
-                padding: EdgeInsets.all(button * 0.1),
-                child: PictureTile(
-                  id: 'sudoku.fruit.$k',
-                  label: kSudokuFruit[k],
-                  size: button,
-                  hint: _slips >= 2 && k == next,
-                  wiggles: _wiggles[k] ?? 0,
-                  onTap: () => _place(k),
-                  child: DEmoji(kSudokuFruit[k], size: button * 0.66),
-                ),
-              ),
-          ];
-          final grid = SizedBox.square(dimension: board, child: _board(board));
-          return Center(
-            child: wide
-                ? Row(mainAxisSize: MainAxisSize.min, children: [grid, SizedBox(width: t.space.xl), Column(mainAxisSize: MainAxisSize.min, children: fruits)])
-                : Column(mainAxisSize: MainAxisSize.min, children: [grid, SizedBox(height: t.space.xl), Row(mainAxisSize: MainAxisSize.min, children: fruits)]),
-          );
-        }),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          PlayArea(
+            top: 140,
+            child: LayoutBuilder(builder: (context, box) {
+              final wide = box.maxWidth > box.maxHeight;
+              final board = math.min(wide ? math.min(box.maxHeight, box.maxWidth * 0.62) : math.min(box.maxWidth, box.maxHeight * 0.66), 760 * t.scale);
+              // Four buttons and their padding (4.8 buttons) fit beside or under the board.
+              final button = math.min(math.min(board / 4.4, (wide ? box.maxHeight : box.maxWidth) / 4.8), 150 * t.scale);
+              final next = _chosen == null ? null : _round.solution[_chosen!];
+              final fruits = [
+                for (var k = 0; k < 4; k++)
+                  Padding(
+                    padding: EdgeInsets.all(button * 0.1),
+                    child: PictureTile(
+                      id: 'sudoku.fruit.$k',
+                      label: kSudokuFruit[k],
+                      size: button,
+                      hint: (_slips >= 2 || idleHint) && k == next,
+                      wiggles: _wiggles[k] ?? 0,
+                      onTap: () => _place(k),
+                      child: DEmoji(kSudokuFruit[k], size: button * 0.66),
+                    ),
+                  ),
+              ];
+              final grid = SizedBox.square(dimension: board, child: _board(board));
+              return Center(
+                child: wide
+                    ? Row(mainAxisSize: MainAxisSize.min, children: [grid, SizedBox(width: t.space.xl), Column(mainAxisSize: MainAxisSize.min, children: fruits)])
+                    : Column(mainAxisSize: MainAxisSize.min, children: [grid, SizedBox(height: t.space.xl), Row(mainAxisSize: MainAxisSize.min, children: fruits)]),
+              );
+            }),
+          ),
+          TopPrompt(
+            child: PromptPill(
+              id: 'sudoku.ask',
+              label: _open.isEmpty ? 'Every row has one of each!' : 'Which fruit goes here?',
+              onSayAgain: sayPrompt,
+              children: [for (final f in kSudokuFruit) DEmoji(f, size: 36 * t.scale), SizedBox(width: t.space.xs), DEmoji(_open.isEmpty ? '✅' : '❓', size: 40 * t.scale)],
+            ),
+          ),
+        ],
       ),
     );
   }

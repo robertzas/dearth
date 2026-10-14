@@ -3,7 +3,6 @@ import 'dart:math' as math;
 
 import 'package:dearth_core/dearth_core.dart';
 import 'package:dearth_ui/dearth_ui.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/sound.dart';
@@ -48,8 +47,7 @@ class CreatureCountGameState extends State<CreatureCountGame> with TickerProvide
 
   /// Seconds into the dance; null when standing still.
   final _dance = ValueNotifier<double?>(null);
-  late final Ticker _ticker = createTicker(_tick);
-  int _frames = 0;
+  late final AmbientTicker _ticker = AmbientTicker(this, _tick, fps: () => DTheme.of(context).policy.ambientFps);
 
   @visibleForTesting
   CreatureCountRound get debugRound => _round!;
@@ -229,7 +227,6 @@ class CreatureCountGameState extends State<CreatureCountGame> with TickerProvide
 
   void _startDance() {
     if (_dance.value != null) return;
-    _frames = 0;
     _dance.value = 0;
     unawaited(_ticker.start());
     // A little tune under the voice: a pentatonic run up and back.
@@ -250,8 +247,6 @@ class CreatureCountGameState extends State<CreatureCountGame> with TickerProvide
       if (mounted) setState(() {});
       return;
     }
-    // Ambient motion: 30 fps is plenty on the slowest displays.
-    if (DTheme.of(context).policy.ambientFps < 60 && (_frames++).isOdd) return;
     _dance.value = t;
   }
 
@@ -303,10 +298,11 @@ class CreatureCountGameState extends State<CreatureCountGame> with TickerProvide
                 ],
               );
               final me = _creature(side);
-              // Wide: the creature on the left, the controls beside it.
+              // Wide: the creature and its controls side by side, together
+              // in the middle (apart, the right of a wall stood empty).
               // Tall: the creature on top, the controls in a row under it.
               final board = wide
-                  ? Row(key: ValueKey(_deal), children: [me, Expanded(child: Center(child: controls))])
+                  ? Row(key: ValueKey(_deal), mainAxisAlignment: MainAxisAlignment.center, children: [me, SizedBox(width: gap * 2), controls])
                   : Column(
                       key: ValueKey(_deal),
                       mainAxisAlignment: MainAxisAlignment.center,

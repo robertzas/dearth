@@ -13,6 +13,11 @@ import 'support/toybox_harness.dart';
 /// The Toybox's thinking games (SPEC FR-TOY-02): Counting Garden and Feed
 /// the Monster, played through the Toybox on the demo household.
 void main() {
+  for (final size in const [Size(390, 844), Size(844, 390), Size(1080, 1920), Size(1920, 1080)]) {
+    testWidgets('every thinking game lays out on a ${size.width.toInt()}×${size.height.toInt()} screen at its busiest level', (tester) async {
+      await expectGamesLayOut(tester, const [('counting', 1), ('counting', 3), ('counting', 4), ('monster', 1), ('monster', 4)], size: size);
+    });
+  }
   group('Counting Garden', () {
     testWidgets('each bud blooms with its number on a rising note; a wrong “how many?” first makes the round “helped”', (tester) async {
       final handle = tester.ensureSemantics();
@@ -33,15 +38,19 @@ void main() {
       for (var i = 1; i < rates.length; i++) {
         expect(rates[i], greaterThan(rates[i - 1]), reason: 'each count sounds higher');
       }
-      await tester.pump(const Duration(milliseconds: 800));
+      // Each bloom said its number; the question waits for the last one.
+      expect(sound.said, [VoiceLine.countingStart, for (var i = 1; i <= n; i++) numberClip(i)]);
+      await tester.pump(afterVoice(numberClip(n)));
       await h.settle(2);
       expect(byId('counting.ask'), findsOneWidget);
+      expect(sound.said.last, VoiceLine.countingAsk);
       final wrong = n == 1 ? 2 : n - 1;
       await tester.tap(byId('counting.choice.$wrong'));
       await tester.pump(const Duration(milliseconds: 100));
       expect(sound.played.last.$1, Sfx.nope, reason: 'a gentle “uh-uh”');
       await tester.tap(byId('counting.choice.$n'));
       await h.settle();
+      expect(sound.said.last, countingYesClip(n), reason: '"Three flowers!"');
       expect(await toyboxRounds(h), [('counting', 1, 'helped')]);
       await tester.pump(const Duration(seconds: 3));
       await h.settle(2);
@@ -90,6 +99,8 @@ void main() {
       final h = await openToyboxGame(tester, 'monster', sound: sound);
       final round = tester.state<MonsterGameState>(find.byType(MonsterGame)).debugRound;
       expect(labelOf(tester, 'monster.sign'), 'Only ${round.rule.color} food', reason: 'level 1: one color');
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(sound.said, [monsterRuleClip(round.rule)], reason: '"I only eat red food!"');
       expectNoFallbackText(byId('screen.game'));
       final wants = [for (var i = 0; i < round.tray.length; i++) if (round.rule.accepts(round.tray[i])) i];
       final refuses = [for (var i = 0; i < round.tray.length; i++) if (!round.rule.accepts(round.tray[i])) i];
@@ -98,6 +109,7 @@ void main() {
       await tester.tap(byId('monster.food.${refuses.first}'));
       await tester.pump(const Duration(milliseconds: 500));
       expect(sound.played.last.$1, Sfx.nope);
+      expect(sound.said.last, VoiceLine.monsterNo);
       await tester.pump(const Duration(milliseconds: 600));
       expect((tester.getCenter(byId('monster.food.${refuses.first}')) - plate).distance, lessThan(2), reason: 'back on its plate');
 
@@ -109,6 +121,7 @@ void main() {
         expect(labelOf(tester, 'monster.food.$i'), 'Eaten');
         await tester.pump(const Duration(milliseconds: 300));
       }
+      expect(sound.said.last, VoiceLine.monsterFull, reason: 'the last one: "I\'m full!"');
       await h.settle();
       expect(await toyboxRounds(h), [('monster', 1, 'win')]);
       await tester.pump(const Duration(seconds: 3));

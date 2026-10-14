@@ -4,7 +4,6 @@ import 'dart:ui' as ui;
 
 import 'package:dearth_core/dearth_core.dart';
 import 'package:dearth_ui/dearth_ui.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/sound.dart';
@@ -33,8 +32,7 @@ class RaceGameState extends State<RaceGame> with TickerProviderStateMixin {
 
   /// Seconds since the gun; null before it.
   final _t = ValueNotifier<double?>(null);
-  late final Ticker _ticker = createTicker(_tick);
-  int _frames = 0;
+  late final AmbientTicker _ticker = AmbientTicker(this, _tick, fps: () => DTheme.of(context).policy.ambientFps);
   bool _racing = true;
 
   int _ask = 0, _slips = 0, _deal = 0;
@@ -109,7 +107,6 @@ class RaceGameState extends State<RaceGame> with TickerProviderStateMixin {
     _after(const Duration(milliseconds: 600), () {
       widget.c.sound(Sfx.ding, volume: 0.4);
       widget.c.say(VoiceLine.raceGo);
-      _frames = 0;
       _t.value = 0;
       unawaited(_ticker.start());
     });
@@ -126,9 +123,6 @@ class RaceGameState extends State<RaceGame> with TickerProviderStateMixin {
       _waitIdle();
       return;
     }
-    // The race is the game's own animation, but on the slowest displays
-    // every other frame is plenty.
-    if (DTheme.of(context).policy.ambientFps < 60 && (_frames++).isOdd) return;
     _t.value = t;
   }
 
@@ -146,7 +140,6 @@ class RaceGameState extends State<RaceGame> with TickerProviderStateMixin {
     }
     _timers.clear();
     widget.c.say(VoiceLine.raceGo);
-    _frames = 0;
     _t.value = 0;
     setState(() => _racing = true);
     unawaited(_ticker.start());

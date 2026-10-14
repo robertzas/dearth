@@ -8,6 +8,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../core/sound.dart';
 import '../game_host.dart';
 import 'game_widgets.dart';
+import 'voice_widgets.dart';
 
 /// Finger Mazes (SPEC FR-TOY-03, Appendix B: planning and motor control).
 /// Her buddy waits in one corner and home is in the other; she drags the
@@ -24,7 +25,7 @@ class MazesGame extends StatefulWidget {
 }
 
 @visibleForTesting
-class MazesGameState extends State<MazesGame> {
+class MazesGameState extends State<MazesGame> with RoundVoice {
   final _area = GlobalKey();
   late MazeRound _maze;
   late int _at;
@@ -39,6 +40,12 @@ class MazesGameState extends State<MazesGame> {
 
   @visibleForTesting
   int get debugAt => _at;
+
+  @override
+  GameController get voiceOf => widget.c;
+
+  @override
+  String? get promptClip => _home ? null : VoiceLine.mazeAsk;
 
   @override
   void initState() {
@@ -61,6 +68,7 @@ class MazesGameState extends State<MazesGame> {
     _bumps = 0;
     _home = false;
     _deal++;
+    askSoon();
     if (mounted) setState(() {});
   }
 
@@ -103,8 +111,11 @@ class MazesGameState extends State<MazesGame> {
       _at = cell;
       _trail.addAll(route.skip(1));
     });
+    stillHere();
     if (_at == _maze.home) {
       _home = true;
+      quiet();
+      widget.c.say(VoiceLine.mazeDone);
       unawaited(widget.c.finishRound(resultFor(_bumps, allowed: _maze.cols), emoji: '🏠'));
       _next = Timer(const Duration(milliseconds: 2800), _newRound);
     }
@@ -149,73 +160,92 @@ class MazesGameState extends State<MazesGame> {
   Widget build(BuildContext context) {
     final buddy = buddyEmoji(widget.c.kid.buddy);
     final m = _maze;
+    final t = DTheme.of(context);
     return Backdrop(
       top: const Color(0xFFE6F7EA),
       bottom: const Color(0xFFFFF7DC),
-      child: PlayArea(
-        child: LayoutBuilder(
-          key: _area,
-          builder: (context, box) {
-            final cell = math.min(box.maxWidth / m.cols, box.maxHeight / m.rows);
-            final origin = Offset((box.maxWidth - cell * m.cols) / 2, (box.maxHeight - cell * m.rows) / 2);
-            final g = _geo = _Geometry(origin, cell);
-            Offset centerOf(int i) => origin + Offset((i % m.cols + 0.5) * cell, (i ~/ m.cols + 0.5) * cell);
-            String ways(int i) => [
-                  if (i >= m.cols && m.connected(i, i - m.cols)) 'up',
-                  if (i < (m.rows - 1) * m.cols && m.connected(i, i + m.cols)) 'down',
-                  if (i % m.cols > 0 && m.connected(i, i - 1)) 'left',
-                  if (i % m.cols < m.cols - 1 && m.connected(i, i + 1)) 'right',
-                ].join(' ');
-            return Listener(
-              behavior: HitTestBehavior.opaque,
-              onPointerDown: (e) {
-                final c = _cellAt(e.position);
-                _dragging = c == _at;
-                // A tap on a neighbour steps there (or bumps a hedge).
-                if (c != null && !_dragging) _tapCell(c);
-              },
-              onPointerMove: (e) {
-                if (!_dragging) return;
-                final c = _cellAt(e.position);
-                if (c != null) _toward(c);
-              },
-              onPointerUp: (_) => _dragging = false,
-              onPointerCancel: (_) => _dragging = false,
-              child: Stack(
-                key: ValueKey(_deal),
-                children: [
-                  Positioned.fill(child: RepaintBoundary(child: CustomPaint(painter: _MazePainter(m, g, _trail.length, _trail)))),
-                  for (var i = 0; i < m.cols * m.rows; i++)
-                    Positioned(
-                      left: centerOf(i).dx - cell / 2,
-                      top: centerOf(i).dy - cell / 2,
-                      width: cell,
-                      height: cell,
-                      child: tid(
-                        'mazes.cell.$i',
-                        Semantics(
-                          button: true,
-                          label: 'Square ${i + 1}: ${ways(i)}${i == _at ? ', buddy here' : ''}${i == m.home ? ', home' : ''}',
-                          onTap: () => _tapCell(i),
-                          excludeSemantics: true,
-                          child: const SizedBox.expand(),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          PlayArea(
+            top: 140,
+            child: LayoutBuilder(
+              key: _area,
+              builder: (context, box) {
+                final cell = math.min(box.maxWidth / m.cols, box.maxHeight / m.rows);
+                final origin = Offset((box.maxWidth - cell * m.cols) / 2, (box.maxHeight - cell * m.rows) / 2);
+                final g = _geo = _Geometry(origin, cell);
+                Offset centerOf(int i) => origin + Offset((i % m.cols + 0.5) * cell, (i ~/ m.cols + 0.5) * cell);
+                String ways(int i) => [
+                      if (i >= m.cols && m.connected(i, i - m.cols)) 'up',
+                      if (i < (m.rows - 1) * m.cols && m.connected(i, i + m.cols)) 'down',
+                      if (i % m.cols > 0 && m.connected(i, i - 1)) 'left',
+                      if (i % m.cols < m.cols - 1 && m.connected(i, i + 1)) 'right',
+                    ].join(' ');
+                return Listener(
+                  behavior: HitTestBehavior.opaque,
+                  onPointerDown: (e) {
+                    final c = _cellAt(e.position);
+                    _dragging = c == _at;
+                    // A tap on a neighbour steps there (or bumps a hedge), and a
+                    // finger that stays down keeps leading the buddy from there.
+                    if (c != null && !_dragging) {
+                      _tapCell(c);
+                      _dragging = _at == c;
+                    }
+                  },
+                  onPointerMove: (e) {
+                    if (!_dragging) return;
+                    final c = _cellAt(e.position);
+                    if (c != null) _toward(c);
+                  },
+                  onPointerUp: (_) => _dragging = false,
+                  onPointerCancel: (_) => _dragging = false,
+                  child: Stack(
+                    key: ValueKey(_deal),
+                    children: [
+                      Positioned.fill(child: RepaintBoundary(child: CustomPaint(painter: _MazePainter(m, g, _trail.length, _trail)))),
+                      for (var i = 0; i < m.cols * m.rows; i++)
+                        Positioned(
+                          left: centerOf(i).dx - cell / 2,
+                          top: centerOf(i).dy - cell / 2,
+                          width: cell,
+                          height: cell,
+                          child: tid(
+                            'mazes.cell.$i',
+                            Semantics(
+                              button: true,
+                              label: 'Square ${i + 1}: ${ways(i)}${i == _at ? ', buddy here' : ''}${i == m.home ? ', home' : ''}',
+                              onTap: () => _tapCell(i),
+                              excludeSemantics: true,
+                              child: const SizedBox.expand(),
+                            ),
+                          ),
+                        ),
+                      Positioned(left: centerOf(m.home).dx - cell * 0.32, top: centerOf(m.home).dy - cell * 0.32, child: IgnorePointer(child: DEmoji('🏠', size: cell * 0.64))),
+                      AnimatedPositioned(
+                        duration: const Duration(milliseconds: 160),
+                        left: centerOf(_at).dx - cell * 0.36,
+                        top: centerOf(_at).dy - cell * 0.36,
+                        child: IgnorePointer(
+                          child: tid('mazes.buddy', Semantics(label: 'Buddy', excludeSemantics: true, child: Hop(count: _home ? 1 : 0, child: DEmoji(buddy, size: cell * 0.72)))),
                         ),
                       ),
-                    ),
-                  Positioned(left: centerOf(m.home).dx - cell * 0.32, top: centerOf(m.home).dy - cell * 0.32, child: IgnorePointer(child: DEmoji('🏠', size: cell * 0.64))),
-                  AnimatedPositioned(
-                    duration: const Duration(milliseconds: 160),
-                    left: centerOf(_at).dx - cell * 0.36,
-                    top: centerOf(_at).dy - cell * 0.36,
-                    child: IgnorePointer(
-                      child: tid('mazes.buddy', Semantics(label: 'Buddy', excludeSemantics: true, child: Hop(count: _home ? 1 : 0, child: DEmoji(buddy, size: cell * 0.72)))),
-                    ),
+                    ],
                   ),
-                ],
-              ),
-            );
-          },
-        ),
+                );
+              },
+            ),
+          ),
+          TopPrompt(
+            child: PromptPill(
+              id: 'mazes.ask',
+              label: _home ? 'Home!' : 'Help your buddy get home',
+              onSayAgain: sayPrompt,
+              children: [DEmoji(buddy, size: 44 * t.scale), SizedBox(width: t.space.xs), DEmoji('➡️', size: 32 * t.scale), SizedBox(width: t.space.xs), DEmoji('🏠', size: 44 * t.scale)],
+            ),
+          ),
+        ],
       ),
     );
   }

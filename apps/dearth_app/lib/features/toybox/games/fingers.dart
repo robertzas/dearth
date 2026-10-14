@@ -328,10 +328,11 @@ class FingerGameState extends State<FingerGame> with TickerProviderStateMixin {
                 final d = math.max(72 * t.scale, math.min(box.maxHeight * 0.24, 150 * t.scale));
                 beside = _doneButton(context, d);
               }
-              // Wide: the hands centered, the check (or the numbers) beside
-              // them. Tall: the hands on top, it under them.
+              // Wide: the hands and the check (or the numbers) together in
+              // the middle, the check within reach of the hands. Tall: the
+              // hands on top, it under them.
               return wide
-                  ? Row(key: ValueKey(_deal), children: [Expanded(child: Center(child: handsRow())), beside])
+                  ? Row(key: ValueKey(_deal), mainAxisAlignment: MainAxisAlignment.center, children: [handsRow(), SizedBox(width: 48 * t.scale), beside])
                   : Column(
                       key: ValueKey(_deal),
                       mainAxisAlignment: MainAxisAlignment.center,

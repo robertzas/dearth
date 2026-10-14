@@ -9,6 +9,7 @@ import '../../../core/sound.dart';
 import '../game_host.dart';
 import 'game_widgets.dart';
 import 'shapes.dart';
+import 'voice_widgets.dart';
 
 /// Odd One Out (SPEC FR-TOY-03, Appendix B: categorizing). Four pictures,
 /// one doesn't belong: by color first (a banana among red fruit), then by
@@ -24,7 +25,7 @@ class OddOneGame extends StatefulWidget {
 }
 
 @visibleForTesting
-class OddOneGameState extends State<OddOneGame> {
+class OddOneGameState extends State<OddOneGame> with RoundVoice {
   late OddRound _round;
   final _tried = <int>{};
   final _wiggles = <int, int>{};
@@ -34,6 +35,12 @@ class OddOneGameState extends State<OddOneGame> {
 
   @visibleForTesting
   OddRound get debugRound => _round;
+
+  @override
+  GameController get voiceOf => widget.c;
+
+  @override
+  String? get promptClip => _solved ? null : VoiceLine.oddAsk;
 
   @override
   void initState() {
@@ -53,11 +60,13 @@ class OddOneGameState extends State<OddOneGame> {
     _slips = 0;
     _solved = false;
     _deal++;
+    askSoon();
     if (mounted) setState(() {});
   }
 
   void _pick(int i) {
     if (_solved || _tried.contains(i)) return;
+    stillHere();
     if (i != _round.odd) {
       _slips++;
       widget.c.cue();
@@ -68,6 +77,8 @@ class OddOneGameState extends State<OddOneGame> {
       return;
     }
     widget.c.sound(Sfx.sparkle);
+    quiet();
+    widget.c.say(oddYesClip(_round.rule));
     setState(() => _solved = true);
     final odd = _round.items[i];
     unawaited(widget.c.finishRound(countingResult(_slips), emoji: odd.emoji ?? '🔍'));
@@ -102,7 +113,7 @@ class OddOneGameState extends State<OddOneGame> {
                     label: _label(item),
                     size: size,
                     tried: _tried.contains(i),
-                    hint: _slips >= 2 && i == _round.odd && !_solved,
+                    hint: (_slips >= 2 || idleHint) && i == _round.odd && !_solved,
                     wiggles: _wiggles[i] ?? 0,
                     hops: _solved && i == _round.odd ? 1 : 0,
                     onTap: () => _pick(i),
@@ -128,13 +139,11 @@ class OddOneGameState extends State<OddOneGame> {
             right: 0,
             child: SafeArea(
               child: Center(
-                child: tid(
-                  'oddone.ask',
-                  Semantics(
-                    label: _solved ? 'You found it!' : 'Which one is different?',
-                    excludeSemantics: true,
-                    child: GamePill(children: [DEmoji('🔍', size: 44 * t.scale), SizedBox(width: t.space.xs), DEmoji('❓', size: 44 * t.scale)]),
-                  ),
+                child: PromptPill(
+                  id: 'oddone.ask',
+                  label: _solved ? 'You found it!' : 'Which one is different?',
+                  onSayAgain: sayPrompt,
+                  children: [DEmoji('🔍', size: 44 * t.scale), SizedBox(width: t.space.xs), DEmoji('❓', size: 44 * t.scale)],
                 ),
               ),
             ),

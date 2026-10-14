@@ -3,7 +3,6 @@ import 'dart:math' as math;
 
 import 'package:dearth_core/dearth_core.dart';
 import 'package:dearth_ui/dearth_ui.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/sound.dart';
@@ -33,12 +32,12 @@ class LetterCreatureGameState extends State<LetterCreatureGame> with SingleTicke
   static const _danceSeconds = 3.4;
 
   LetterCreatureRound? _round;
-  int _step = 0, _slips = 0, _slipsHere = 0, _deal = 0, _frames = 0, _hops = 0;
+  int _step = 0, _slips = 0, _slipsHere = 0, _deal = 0, _hops = 0;
   bool _glow = false, _done = false, _toldStart = false;
   final _wiggles = <int, int>{};
   final _timers = <Timer>[];
   Timer? _idle;
-  late final Ticker _ticker = createTicker(_tick);
+  late final AmbientTicker _ticker = AmbientTicker(this, _tick, fps: () => DTheme.of(context).policy.ambientFps);
 
   /// Seconds into the dance; null when standing still.
   final _dance = ValueNotifier<double?>(null);
@@ -157,7 +156,6 @@ class LetterCreatureGameState extends State<LetterCreatureGame> with SingleTicke
 
   void _startDance() {
     widget.c.say(creatureClip(_round!.creature));
-    _frames = 0;
     _dance.value = 0;
     unawaited(_ticker.start());
     // Build-a-Creature's tune: a pentatonic run up and back, a drum on the beat.
@@ -177,8 +175,6 @@ class LetterCreatureGameState extends State<LetterCreatureGame> with SingleTicke
       _dance.value = null;
       return;
     }
-    // Ambient motion: 30 fps is plenty on the slowest displays.
-    if (DTheme.of(context).policy.ambientFps < 60 && (_frames++).isOdd) return;
     _dance.value = t;
   }
 

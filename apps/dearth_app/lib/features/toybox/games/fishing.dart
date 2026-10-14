@@ -4,7 +4,6 @@ import 'dart:math' as math;
 import 'package:dearth_core/dearth_core.dart';
 import 'package:dearth_ui/dearth_ui.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/sound.dart';
@@ -33,15 +32,15 @@ const List<Color> _kFishPaints = [Color(0xFFFF8A3D), Color(0xFF2EC4B6), Color(0x
 
 @visibleForTesting
 class FishingGameState extends State<FishingGame> with SingleTickerProviderStateMixin {
-  late final Ticker _ticker = createTicker(_tick);
+  late final AmbientTicker _ticker = AmbientTicker(this, _tick, fps: () => DTheme.of(context).policy.ambientFps);
   final _time = ValueNotifier<double>(0);
   FishRound? _round;
   List<double> _phases = const [];
   final _caught = <int>[];
   final _leaping = <int>{};
   final _wiggles = <int, int>{};
-  int _slips = 0, _deal = 0, _bucketHops = 0, _frames = 0;
-  bool _done = false, _glow = false, _slow = false;
+  int _slips = 0, _deal = 0, _bucketHops = 0;
+  bool _done = false, _glow = false;
   Duration _last = Duration.zero;
   final _timers = <Timer>[];
   Timer? _idle;
@@ -63,13 +62,6 @@ class FishingGameState extends State<FishingGame> with SingleTickerProviderState
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Ambient motion at 30 fps on the slowest displays (SPEC §12.3).
-    _slow = DTheme.of(context).policy.ambientFps < 60;
-  }
-
-  @override
   void dispose() {
     for (final t in _timers) {
       t.cancel();
@@ -85,9 +77,8 @@ class FishingGameState extends State<FishingGame> with SingleTickerProviderState
       }));
 
   void _tick(Duration elapsed) {
-    final dt = ((elapsed - _last).inMicroseconds / 1e6).clamp(0.0, 0.05);
+    final dt = ((elapsed - _last).inMicroseconds / 1e6).clamp(0.0, 0.08);
     _last = elapsed;
-    if (_slow && (_frames++).isOdd) return;
     _time.value += dt;
   }
 
@@ -201,7 +192,7 @@ class FishingGameState extends State<FishingGame> with SingleTickerProviderState
               children: [
                 // The water, from just above the top lane out past the play
                 // area's padding to the screen's edges.
-                Positioned(left: -400, right: -400, top: l.top - l.laneHeight * 0.12, bottom: -400, child: const RepaintBoundary(child: CustomPaint(painter: _PondPainter()))),
+                Positioned(left: -400, right: -400, top: l.top - l.laneHeight * 0.12, bottom: -400, child: const RepaintBoundary(child: CustomPaint(isComplex: true, painter: _PondPainter()))),
                 Positioned.fromRect(
                   rect: l.bucket,
                   child: tid(

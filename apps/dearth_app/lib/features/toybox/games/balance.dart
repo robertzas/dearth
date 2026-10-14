@@ -137,7 +137,7 @@ class BalanceGameState extends State<BalanceGame> {
                     top: l.pivot.dy,
                     width: l.stand.width,
                     height: l.stand.height,
-                    child: const RepaintBoundary(child: CustomPaint(painter: _StandPainter())),
+                    child: const RepaintBoundary(child: CustomPaint(isComplex: true, painter: _StandPainter())),
                   ),
                   Positioned(
                     left: l.pivot.dx - l.plank / 2,

@@ -301,6 +301,26 @@ void main() {
           letterMonsterAskClip(LetterMonsterRound(LetterMonsterAsk.name, l.letter, [l.letter])),
           if (l.starts) letterMonsterAskClip(LetterMonsterRound(LetterMonsterAsk.sound, l.letter, [l.letter])),
         ],
+        // The first games' voices (2026-10-13).
+        VoiceLine.countingStart, VoiceLine.countingAsk,
+        for (var n = 1; n <= 10; n++) countingYesClip(n),
+        for (final r in kMonsterRules) monsterRuleClip(r),
+        VoiceLine.monsterYum, VoiceLine.monsterNo, VoiceLine.monsterFull,
+        VoiceLine.oddAsk,
+        for (final rule in const ['color', 'shape', 'kind', 'use']) oddYesClip(rule),
+        VoiceLine.patternsTower, VoiceLine.patternsYes, VoiceLine.shadowsAsk, VoiceLine.sizesAsk, VoiceLine.sizesDone,
+        VoiceLine.sudokuAsk, VoiceLine.sudokuRule, VoiceLine.sudokuDone, VoiceLine.storiesFirst,
+        for (var i = 0; i < kStories.length; i++) storyTellingClip(i),
+        VoiceLine.diffAsk, VoiceLine.mazeAsk, VoiceLine.mazeDone, VoiceLine.coloringAsk, VoiceLine.coloringDone,
+        VoiceLine.jigsawAsk, VoiceLine.jigsawDone, VoiceLine.paintStart,
+        for (final c in kCrayonWords.keys) colorClip(c),
+        VoiceLine.farmWho,
+        for (final a in kFarmAnimals) ...[farmNameClip(a), farmYesClip(a)],
+        VoiceLine.memoryAsk, VoiceLine.memoryMatch, VoiceLine.shapesAsk,
+        for (final shape in ToyShape.values) shapeNameClip(shape),
+        VoiceLine.bubblesStart,
+        for (final c in const ['blue', 'red', 'yellow', 'green', 'purple']) bubblesCallClip(c),
+        VoiceLine.musicEcho, VoiceLine.musicTurn, VoiceLine.musicYes,
       ];
       expect(asked.where((a) => !ids.contains(a)), isEmpty);
       expect(ids.difference(asked.toSet()), isEmpty, reason: 'no line nothing says');

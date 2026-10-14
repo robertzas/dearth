@@ -4,11 +4,12 @@ import 'dart:math' as math;
 import 'package:dearth_core/dearth_core.dart';
 import 'package:dearth_ui/dearth_ui.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/sound.dart';
 import '../game_host.dart';
+import 'game_widgets.dart';
+import 'voice_widgets.dart';
 
 /// Each shape's color: bright and distinct, like painted wooden toys.
 const Map<ToyShape, Color> kShapeColors = {
@@ -72,7 +73,7 @@ class ShapeGame extends StatefulWidget {
 }
 
 @visibleForTesting
-class ShapeGameState extends State<ShapeGame> {
+class ShapeGameState extends State<ShapeGame> with RoundVoice {
   final _area = GlobalKey();
   late ShapeRound _round;
   List<ToyShape> _tray = const [];
@@ -92,6 +93,12 @@ class ShapeGameState extends State<ShapeGame> {
 
   @visibleForTesting
   bool get debugRotated => _round.rotated;
+
+  @override
+  GameController get voiceOf => widget.c;
+
+  @override
+  String? get promptClip => _placed.length == _round.shapes.length ? null : VoiceLine.shapesAsk;
 
   @override
   void initState() {
@@ -118,6 +125,7 @@ class ShapeGameState extends State<ShapeGame> {
     _slips = 0;
     _deal++;
     _dragging = _selected = null;
+    askSoon();
     if (mounted) setState(() {});
   }
 
@@ -143,6 +151,7 @@ class ShapeGameState extends State<ShapeGame> {
   /// Tries [shape] in [hole]'s hole.
   void _fit(ToyShape shape, ToyShape hole) {
     final c = widget.c;
+    stillHere();
     if (shape != hole) {
       _slips++;
       c.sound(Sfx.boing, volume: 0.7);
@@ -153,6 +162,8 @@ class ShapeGameState extends State<ShapeGame> {
       return;
     }
     c.sound(Sfx.snap);
+    c.say(shapeNameClip(shape));
+    if (_placed.length + 1 == _round.shapes.length) quiet();
     setState(() {
       _placed.add(shape);
       _selected = null;
@@ -165,7 +176,9 @@ class ShapeGameState extends State<ShapeGame> {
 
   void _tapPiece(ToyShape s) {
     if (_placed.contains(s)) return;
+    stillHere();
     widget.c.sound(Sfx.tap, volume: 0.6);
+    if (_selected != s) widget.c.say(shapeNameClip(s));
     setState(() => _selected = _selected == s ? null : s);
   }
 
@@ -184,6 +197,8 @@ class ShapeGameState extends State<ShapeGame> {
 
   void _dragStart(ToyShape s, DragStartDetails d, Offset center) {
     final p = _local(d.globalPosition);
+    stillHere();
+    widget.c.say(shapeNameClip(s));
     setState(() {
       _dragging = s;
       _selected = null;
@@ -198,9 +213,14 @@ class ShapeGameState extends State<ShapeGame> {
   }
 
   void _dragEnd() {
-    final s = _dragging;
-    if (s == null) return;
+    final s = _dragging, l = _layout;
+    if (s == null || l == null) return;
     _dragging = null;
+    // A tap that slid a little picks the shape up, as a tap would.
+    if ((_dragAt - l.tray[_tray.indexOf(s)]).distance < l.size * 0.35) {
+      _tapPiece(s);
+      return;
+    }
     _drop(s, _dragAt);
   }
 
@@ -216,13 +236,15 @@ class ShapeGameState extends State<ShapeGame> {
             key: _area,
             builder: (context, box) {
               final l = _layout = _Layout.of(box.biggest, _round.shapes.length);
-              final hint = _slips >= 2 ? (_dragging ?? _selected) : null;
+              // After two slips, the hole for the shape in her hand; after a
+              // long pause, the next shape's.
+              final hint = (_slips >= 2 ? (_dragging ?? _selected) : null) ?? (idleHint ? (_dragging ?? _selected ?? _round.shapes.where((s) => !_placed.contains(s)).firstOrNull) : null);
               return Stack(
                 clipBehavior: Clip.none,
                 children: [
                   Positioned.fromRect(
                     rect: l.board,
-                    child: RepaintBoundary(child: CustomPaint(painter: _BoardPainter(board: l.board, holes: l.holes, shapes: _round.shapes, angles: _angles, size: l.size))),
+                    child: RepaintBoundary(child: CustomPaint(isComplex: true, painter: _BoardPainter(board: l.board, holes: l.holes, shapes: _round.shapes, angles: _angles, size: l.size))),
                   ),
                   for (final (i, s) in _round.shapes.indexed) ...[
                     if (hint == s) Positioned(left: l.holes[i].dx - l.size * 0.75, top: l.holes[i].dy - l.size * 0.75, child: _Glow(size: l.size * 1.5)),
@@ -287,7 +309,7 @@ class ShapeGameState extends State<ShapeGame> {
                   duration: const Duration(milliseconds: 160),
                   child: _Hop(
                     hops: _bounces[s] ?? 0,
-                    child: RepaintBoundary(child: CustomPaint(size: Size.square(l.size), painter: _PiecePainter(s, lifted: lifted))),
+                    child: Snapshot(child: CustomPaint(size: Size.square(l.size), painter: _PiecePainter(s, lifted: lifted))),
                   ),
                 ),
               ),
@@ -338,7 +360,7 @@ class ToyShapeView extends StatelessWidget {
   final Color? color;
 
   @override
-  Widget build(BuildContext context) => RepaintBoundary(child: CustomPaint(size: Size.square(size), painter: _PiecePainter(shape, lifted: false, color: color)));
+  Widget build(BuildContext context) => Snapshot(child: CustomPaint(size: Size.square(size), painter: _PiecePainter(shape, lifted: false, color: color)));
 }
 
 /// A painted wooden shape: a soft top light and a darker rim.
@@ -452,8 +474,7 @@ class _Glow extends StatefulWidget {
 
 class _GlowState extends State<_Glow> with TickerProviderStateMixin {
   late final AnimationController _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
-  late final Ticker _ticker = createTicker(_tick);
-  int _frames = 0;
+  late final AmbientTicker _ticker = AmbientTicker(this, _tick, fps: () => DTheme.of(context).policy.ambientFps);
 
   @override
   void initState() {
@@ -471,7 +492,6 @@ class _GlowState extends State<_Glow> with TickerProviderStateMixin {
   // The hint ring breathes forever: on the slowest displays it does so at
   // the tier's ambient fps, not every vsync (SPEC §12.3).
   void _tick(Duration elapsed) {
-    if (DTheme.of(context).policy.ambientFps < 60 && (_frames++).isOdd) return;
     final cycle = _pulse.duration!.inMilliseconds * 2; // forward, then reverse
     final p = (elapsed.inMilliseconds % cycle) / cycle;
     _pulse.value = p < 0.5 ? p * 2 : 2 - p * 2;

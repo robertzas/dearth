@@ -3,12 +3,12 @@ import 'dart:math' as math;
 
 import 'package:dearth_core/dearth_core.dart';
 import 'package:dearth_ui/dearth_ui.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/sound.dart';
 import '../game_host.dart';
 import 'game_widgets.dart';
+import 'voice_widgets.dart';
 
 /// Patterns (SPEC FR-TOY-03, Appendix B: logic). "What comes next?": a row
 /// of pictures that repeat (AB, then AAB, then ABC) ends in a question
@@ -24,7 +24,7 @@ class PatternsGame extends StatefulWidget {
 }
 
 @visibleForTesting
-class PatternsGameState extends State<PatternsGame> {
+class PatternsGameState extends State<PatternsGame> with RoundVoice {
   late PatternRound _round;
   final _tried = <int>{};
   final _wiggles = <int, int>{};
@@ -34,6 +34,12 @@ class PatternsGameState extends State<PatternsGame> {
 
   @visibleForTesting
   PatternRound get debugRound => _round;
+
+  @override
+  GameController get voiceOf => widget.c;
+
+  @override
+  String? get promptClip => _solved ? null : (_round.towers ? VoiceLine.patternsTower : VoiceLine.trainNext);
 
   @override
   void initState() {
@@ -53,11 +59,13 @@ class PatternsGameState extends State<PatternsGame> {
     _slips = 0;
     _solved = false;
     _deal++;
+    askSoon();
     if (mounted) setState(() {});
   }
 
   void _pick(int i) {
     if (_solved || _tried.contains(i)) return;
+    stillHere();
     if (_round.choices[i] != _round.answer) {
       _slips++;
       widget.c.cue();
@@ -68,6 +76,8 @@ class PatternsGameState extends State<PatternsGame> {
       return;
     }
     widget.c.sound(Sfx.snap);
+    quiet();
+    widget.c.say(VoiceLine.patternsYes);
     setState(() => _solved = true);
     unawaited(widget.c.finishRound(countingResult(_slips), emoji: _round.answer.characters.first));
     _next = Timer(const Duration(milliseconds: 2400), _newRound);
@@ -80,87 +90,101 @@ class PatternsGameState extends State<PatternsGame> {
     return Backdrop(
       top: const Color(0xFFF3EEFF),
       bottom: const Color(0xFFFFF4E6),
-      child: PlayArea(
-        child: LayoutBuilder(builder: (context, box) {
-          final count = r.shown.length + 1;
-          final wide = box.maxWidth > box.maxHeight;
-          Widget tower(String p, double e) => Column(mainAxisSize: MainAxisSize.min, verticalDirection: VerticalDirection.up, children: [for (final c in p.characters) DEmoji(c, size: e)]);
-          final List<Widget> row;
-          final List<Widget> choices;
-          if (r.towers) {
-            // One emoji size for the towers and the answers, sized by the
-            // tallest of them.
-            final tallest = [...r.shown, ...r.choices].map((p) => p.characters.length).reduce(math.max);
-            final e = math.min(math.min(box.maxHeight * 0.42 / (tallest + 0.6), box.maxWidth / (count * 1.5)), 96 * t.scale);
-            row = [
-              for (final (i, p) in r.shown.indexed) tid('patterns.item.$i', Semantics(label: p, excludeSemantics: true, child: SizedBox(width: e * 1.4, child: Center(child: tower(p, e))))),
-              tid(
-                'patterns.slot',
-                Semantics(
-                  label: _solved ? r.answer : 'What comes next?',
-                  excludeSemantics: true,
-                  child: SizedBox(width: e * 1.4, child: Center(child: _solved ? Hop(count: 1, child: tower(r.answer, e)) : _Question(size: e * 1.2))),
-                ),
-              ),
-            ];
-            choices = [
-              for (final (i, p) in r.choices.indexed)
-                PictureTile(
-                  id: 'patterns.choice.$i',
-                  label: p,
-                  size: e * (tallest + 0.7),
-                  width: e * 1.8,
-                  tried: _tried.contains(i),
-                  hint: _slips >= 2 && p == r.answer && !_solved,
-                  wiggles: _wiggles[i] ?? 0,
-                  onTap: () => _pick(i),
-                  child: tower(p, e * 0.92),
-                ),
-            ];
-          } else {
-            // A long row wraps on a tall screen.
-            final perRow = wide ? count : math.min(count, 5);
-            final lines = (count / perRow).ceil();
-            final cell = math.min(math.min(box.maxWidth / perRow * 0.9, box.maxHeight * 0.48 / lines), 210 * t.scale);
-            final choice = math.min(math.min(box.maxWidth / 3.4, box.maxHeight * 0.3), 230 * t.scale);
-            row = [
-              for (final (i, p) in r.shown.indexed) tid('patterns.item.$i', Semantics(label: p, excludeSemantics: true, child: SizedBox.square(dimension: cell, child: Center(child: DEmoji(p, size: cell * 0.78))))),
-              tid(
-                'patterns.slot',
-                Semantics(
-                  label: _solved ? r.answer : 'What comes next?',
-                  excludeSemantics: true,
-                  child: SizedBox.square(dimension: cell, child: Center(child: _solved ? Hop(count: 1, child: DEmoji(r.answer, size: cell * 0.78)) : _Question(size: cell * 0.86))),
-                ),
-              ),
-            ];
-            choices = [
-              for (final (i, p) in r.choices.indexed)
-                PictureTile(
-                  id: 'patterns.choice.$i',
-                  label: p,
-                  size: choice,
-                  tried: _tried.contains(i),
-                  hint: _slips >= 2 && p == r.answer && !_solved,
-                  wiggles: _wiggles[i] ?? 0,
-                  onTap: () => _pick(i),
-                  child: DEmoji(p, size: choice * 0.62),
-                ),
-            ];
-          }
-          return Column(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              Wrap(
-                key: ValueKey(_deal),
-                alignment: WrapAlignment.center,
-                crossAxisAlignment: r.towers ? WrapCrossAlignment.end : WrapCrossAlignment.center,
-                children: row,
-              ),
-              Wrap(alignment: WrapAlignment.center, spacing: t.space.lg, runSpacing: t.space.lg, children: choices),
-            ],
-          );
-        }),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          PlayArea(
+            top: 140,
+            child: LayoutBuilder(builder: (context, box) {
+              final count = r.shown.length + 1;
+              final wide = box.maxWidth > box.maxHeight;
+              Widget tower(String p, double e) => Column(mainAxisSize: MainAxisSize.min, verticalDirection: VerticalDirection.up, children: [for (final c in p.characters) DEmoji(c, size: e)]);
+              final List<Widget> row;
+              final List<Widget> choices;
+              if (r.towers) {
+                // One emoji size for the towers and the answers, sized by the
+                // tallest of them.
+                final tallest = [...r.shown, ...r.choices].map((p) => p.characters.length).reduce(math.max);
+                final e = math.min(math.min(box.maxHeight * 0.42 / (tallest + 0.6), box.maxWidth / (count * 1.5)), 96 * t.scale);
+                row = [
+                  for (final (i, p) in r.shown.indexed) tid('patterns.item.$i', Semantics(label: p, excludeSemantics: true, child: SizedBox(width: e * 1.4, child: Center(child: tower(p, e))))),
+                  tid(
+                    'patterns.slot',
+                    Semantics(
+                      label: _solved ? r.answer : 'What comes next?',
+                      excludeSemantics: true,
+                      child: SizedBox(width: e * 1.4, child: Center(child: _solved ? Hop(count: 1, child: tower(r.answer, e)) : _Question(size: e * 1.2))),
+                    ),
+                  ),
+                ];
+                choices = [
+                  for (final (i, p) in r.choices.indexed)
+                    PictureTile(
+                      id: 'patterns.choice.$i',
+                      label: p,
+                      size: e * (tallest + 0.7),
+                      width: e * 1.8,
+                      tried: _tried.contains(i),
+                      hint: (_slips >= 2 || idleHint) && p == r.answer && !_solved,
+                      wiggles: _wiggles[i] ?? 0,
+                      onTap: () => _pick(i),
+                      child: tower(p, e * 0.92),
+                    ),
+                ];
+              } else {
+                // A long row wraps on a tall screen.
+                final perRow = wide ? count : math.min(count, 5);
+                final lines = (count / perRow).ceil();
+                final cell = math.min(math.min(box.maxWidth / perRow * 0.9, box.maxHeight * 0.48 / lines), 210 * t.scale);
+                final choice = math.min(math.min(box.maxWidth / 3.4, box.maxHeight * 0.3), 230 * t.scale);
+                row = [
+                  for (final (i, p) in r.shown.indexed) tid('patterns.item.$i', Semantics(label: p, excludeSemantics: true, child: SizedBox.square(dimension: cell, child: Center(child: DEmoji(p, size: cell * 0.78))))),
+                  tid(
+                    'patterns.slot',
+                    Semantics(
+                      label: _solved ? r.answer : 'What comes next?',
+                      excludeSemantics: true,
+                      child: SizedBox.square(dimension: cell, child: Center(child: _solved ? Hop(count: 1, child: DEmoji(r.answer, size: cell * 0.78)) : _Question(size: cell * 0.86))),
+                    ),
+                  ),
+                ];
+                choices = [
+                  for (final (i, p) in r.choices.indexed)
+                    PictureTile(
+                      id: 'patterns.choice.$i',
+                      label: p,
+                      size: choice,
+                      tried: _tried.contains(i),
+                      hint: (_slips >= 2 || idleHint) && p == r.answer && !_solved,
+                      wiggles: _wiggles[i] ?? 0,
+                      onTap: () => _pick(i),
+                      child: DEmoji(p, size: choice * 0.62),
+                    ),
+                ];
+              }
+              return Column(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Wrap(
+                    key: ValueKey(_deal),
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment: r.towers ? WrapCrossAlignment.end : WrapCrossAlignment.center,
+                    children: row,
+                  ),
+                  Wrap(alignment: WrapAlignment.center, spacing: t.space.lg, runSpacing: t.space.lg, children: choices),
+                ],
+              );
+            }),
+          ),
+          TopPrompt(
+            child: PromptPill(
+              id: 'patterns.ask',
+              label: _solved ? 'You found the pattern!' : 'What comes next?',
+              onSayAgain: sayPrompt,
+              children: [DEmoji('👉', size: 44 * t.scale), SizedBox(width: t.space.xs), DEmoji(_solved ? '✨' : '❓', size: 44 * t.scale)],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -178,8 +202,7 @@ class _Question extends StatefulWidget {
 
 class _QuestionState extends State<_Question> with TickerProviderStateMixin {
   late final AnimationController _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100));
-  late final Ticker _ticker = createTicker(_tick);
-  int _frames = 0;
+  late final AmbientTicker _ticker = AmbientTicker(this, _tick, fps: () => DTheme.of(context).policy.ambientFps);
 
   @override
   void initState() {
@@ -197,7 +220,6 @@ class _QuestionState extends State<_Question> with TickerProviderStateMixin {
   // The question mark breathes forever: on the slowest displays it does so
   // at the tier's ambient fps, not every vsync (SPEC §12.3).
   void _tick(Duration elapsed) {
-    if (DTheme.of(context).policy.ambientFps < 60 && (_frames++).isOdd) return;
     final cycle = _pulse.duration!.inMilliseconds * 2; // forward, then reverse
     final p = (elapsed.inMilliseconds % cycle) / cycle;
     _pulse.value = p < 0.5 ? p * 2 : 2 - p * 2;

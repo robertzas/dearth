@@ -8,6 +8,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../core/sound.dart';
 import '../game_host.dart';
 import 'game_widgets.dart';
+import 'voice_widgets.dart';
 
 /// What Happens Next (SPEC FR-TOY-03 "Sequencing Stories", Appendix B:
 /// narrative, cause and effect). A little story in three to five pictures
@@ -23,7 +24,7 @@ class StoriesGame extends StatefulWidget {
 }
 
 @visibleForTesting
-class StoriesGameState extends State<StoriesGame> {
+class StoriesGameState extends State<StoriesGame> with RoundVoice {
   late StoryRound _round;
 
   /// Card indices in the line, in story order.
@@ -34,6 +35,12 @@ class StoriesGameState extends State<StoriesGame> {
 
   @visibleForTesting
   StoryRound get debugRound => _round;
+
+  @override
+  GameController get voiceOf => widget.c;
+
+  @override
+  String? get promptClip => _line.isEmpty ? VoiceLine.storiesFirst : null;
 
   @override
   void initState() {
@@ -54,11 +61,13 @@ class StoriesGameState extends State<StoriesGame> {
     _slips = 0;
     _playing = -1;
     _deal++;
+    askSoon();
     if (mounted) setState(() {});
   }
 
   void _tap(int card) {
     if (_line.contains(card) || _line.length == _round.story.length) return;
+    stillHere();
     final want = _round.story[_line.length];
     if (_round.cards[card] != want) {
       _slips++;
@@ -68,18 +77,31 @@ class StoriesGameState extends State<StoriesGame> {
     }
     widget.c.sound(Sfx.snap);
     setState(() => _line.add(card));
-    if (_line.length == _round.story.length) _playBack();
+    if (_line.length == _round.story.length) {
+      quiet();
+      _playBack();
+    } else {
+      // The place it went to: first, second… counted out loud.
+      widget.c.say(numberClip(_line.length));
+    }
   }
 
   /// The finished story, card by card, then the round.
   void _playBack() {
+    // The story told aloud while its cards light up one by one, in step
+    // with the telling.
+    final story = kStories.indexWhere((s) => s.join() == _round.story.join());
+    final telling = story < 0 ? null : storyTellingClip(story);
+    if (telling != null) widget.c.say(telling);
+    final told = telling == null ? Duration.zero : afterVoice(telling);
+    final each = Duration(milliseconds: math.max(420, told.inMilliseconds ~/ _line.length));
     var k = 0;
     void step() {
       if (!mounted) return;
       if (k < _line.length) {
-        widget.c.sound(Sfx.blip, rate: math.pow(2, const [0, 4, 7, 12, 16][k.clamp(0, 4)] / 12).toDouble());
+        widget.c.sound(Sfx.blip, volume: 0.4, rate: math.pow(2, const [0, 4, 7, 12, 16][k.clamp(0, 4)] / 12).toDouble());
         setState(() => _playing = k++);
-        _player = Timer(const Duration(milliseconds: 420), step);
+        _player = Timer(each, step);
       } else {
         setState(() => _playing = -1);
         unawaited(widget.c.finishRound(expansionResult(_slips, size: _round.story.length), emoji: _round.story.last));
@@ -92,53 +114,68 @@ class StoriesGameState extends State<StoriesGame> {
 
   @override
   Widget build(BuildContext context) {
+    final t = DTheme.of(context);
     final r = _round;
     final n = r.story.length;
     return Backdrop(
       top: const Color(0xFFFDF0FF),
       bottom: const Color(0xFFEAF6FF),
-      child: PlayArea(
-        child: LayoutBuilder(builder: (context, box) {
-          final card = math.min(math.min(box.maxWidth / (n + 0.8), box.maxHeight * 0.36), 240.0);
-          double x(int k) => box.maxWidth * (k + 0.5) / n;
-          final lineY = box.maxHeight * 0.26, trayY = box.maxHeight * 0.74;
-          final placedAt = {for (final (k, c) in _line.indexed) c: k};
-          // The card that comes next, for the hint.
-          final want = _line.length < n ? r.story[_line.length] : null;
-          return Stack(
-            key: ValueKey(_deal),
-            children: [
-              for (var k = 0; k < n; k++)
-                Positioned(
-                  left: x(k) - card / 2,
-                  top: lineY - card / 2,
-                  width: card,
-                  height: card,
-                  child: tid('stories.slot.$k', Semantics(label: 'Place ${k + 1}', excludeSemantics: true, child: _Slot(number: k + 1, size: card))),
-                ),
-              for (var i = 0; i < n; i++)
-                AnimatedPositioned(
-                  duration: const Duration(milliseconds: 420),
-                  curve: Curves.easeOutBack,
-                  left: (placedAt.containsKey(i) ? x(placedAt[i]!) : x(i)) - card / 2,
-                  top: (placedAt.containsKey(i) ? lineY : trayY) - card / 2,
-                  child: AnimatedScale(
-                    scale: placedAt[i] == _playing ? 1.12 : 1,
-                    duration: const Duration(milliseconds: 180),
-                    child: PictureTile(
-                      id: 'stories.card.$i',
-                      label: placedAt.containsKey(i) ? 'Place ${placedAt[i]! + 1}: ${r.cards[i]}' : r.cards[i],
-                      size: card,
-                      hint: _slips >= 2 && !placedAt.containsKey(i) && r.cards[i] == want,
-                      wiggles: _wiggles[i] ?? 0,
-                      onTap: () => _tap(i),
-                      child: DEmoji(r.cards[i], size: card * 0.64),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          PlayArea(
+            top: 140,
+            child: LayoutBuilder(builder: (context, box) {
+              final card = math.min(math.min(box.maxWidth / (n + 0.8), box.maxHeight * 0.36), 240.0);
+              double x(int k) => box.maxWidth * (k + 0.5) / n;
+              final lineY = box.maxHeight * 0.26, trayY = box.maxHeight * 0.74;
+              final placedAt = {for (final (k, c) in _line.indexed) c: k};
+              // The card that comes next, for the hint.
+              final want = _line.length < n ? r.story[_line.length] : null;
+              return Stack(
+                key: ValueKey(_deal),
+                children: [
+                  for (var k = 0; k < n; k++)
+                    Positioned(
+                      left: x(k) - card / 2,
+                      top: lineY - card / 2,
+                      width: card,
+                      height: card,
+                      child: tid('stories.slot.$k', Semantics(label: 'Place ${k + 1}', excludeSemantics: true, child: _Slot(number: k + 1, size: card))),
                     ),
-                  ),
-                ),
-            ],
-          );
-        }),
+                  for (var i = 0; i < n; i++)
+                    AnimatedPositioned(
+                      duration: const Duration(milliseconds: 420),
+                      curve: Curves.easeOutBack,
+                      left: (placedAt.containsKey(i) ? x(placedAt[i]!) : x(i)) - card / 2,
+                      top: (placedAt.containsKey(i) ? lineY : trayY) - card / 2,
+                      child: AnimatedScale(
+                        scale: placedAt[i] == _playing ? 1.12 : 1,
+                        duration: const Duration(milliseconds: 180),
+                        child: PictureTile(
+                          id: 'stories.card.$i',
+                          label: placedAt.containsKey(i) ? 'Place ${placedAt[i]! + 1}: ${r.cards[i]}' : r.cards[i],
+                          size: card,
+                          hint: (_slips >= 2 || idleHint) && !placedAt.containsKey(i) && r.cards[i] == want,
+                          wiggles: _wiggles[i] ?? 0,
+                          onTap: () => _tap(i),
+                          child: DEmoji(r.cards[i], size: card * 0.64),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            }),
+          ),
+          TopPrompt(
+            child: PromptPill(
+              id: 'stories.ask',
+              label: _line.length == n ? 'The story!' : 'What happens first?',
+              onSayAgain: sayPrompt,
+              children: [DEmoji('📖', size: 44 * t.scale), SizedBox(width: t.space.xs), Text('1', style: t.text.kidTitle), DEmoji('❓', size: 40 * t.scale)],
+            ),
+          ),
+        ],
       ),
     );
   }

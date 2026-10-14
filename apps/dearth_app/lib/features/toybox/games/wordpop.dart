@@ -4,7 +4,6 @@ import 'dart:ui' as ui;
 
 import 'package:dearth_core/dearth_core.dart';
 import 'package:dearth_ui/dearth_ui.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/sound.dart';
@@ -50,7 +49,7 @@ class _Spark {
 
 @visibleForTesting
 class WordPopGameState extends State<WordPopGame> with SingleTickerProviderStateMixin {
-  late final Ticker _ticker = createTicker(_tick);
+  late final AmbientTicker _ticker = AmbientTicker(this, _tick, fps: () => DTheme.of(context).policy.ambientFps);
   final _bubbles = <_Bubble>[];
   final _sparks = <_Spark>[];
   final _repaint = ValueNotifier<int>(0);
@@ -62,14 +61,13 @@ class WordPopGameState extends State<WordPopGame> with SingleTickerProviderState
   double _radius = 60;
   Duration _last = Duration.zero;
   double _clock = 0, _spawnIn = 0;
-  int _frames = 0, _moves = 0, _next = 0, _popped = 0, _slips = 0;
+  int _moves = 0, _next = 0, _popped = 0, _slips = 0;
   bool _done = false, _glow = false;
   WordPopRound? _round;
   final _words = <String, (ui.Picture, Size)>{};
   double _wordsFor = 0;
   final _timers = <Timer>[];
   Timer? _idle;
-  bool _slow = false;
 
   math.Random get _rng => widget.c.random;
 
@@ -95,13 +93,6 @@ class WordPopGameState extends State<WordPopGame> with SingleTickerProviderState
     super.initState();
     _newRound();
     _ticker.start();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Ambient motion at 30 fps on the slowest displays (SPEC §12.3).
-    _slow = DTheme.of(context).policy.ambientFps < 60;
   }
 
   @override
@@ -167,9 +158,8 @@ class WordPopGameState extends State<WordPopGame> with SingleTickerProviderState
   }
 
   void _tick(Duration elapsed) {
-    final dt = ((elapsed - _last).inMicroseconds / 1e6).clamp(0.0, 0.05);
+    final dt = ((elapsed - _last).inMicroseconds / 1e6).clamp(0.0, 0.08);
     _last = elapsed;
-    if (_slow && (_frames++).isOdd) return;
     final r = _round;
     if (r == null || _size.isEmpty) return;
     _clock += dt;
@@ -216,8 +206,7 @@ class WordPopGameState extends State<WordPopGame> with SingleTickerProviderState
     }
     _sparks.removeWhere((s) => s.life <= 0);
     _repaint.value++;
-    // Every other frame that moved (its own count: on T1 [_frames] is always
-    // odd here, and the layer would never follow the bubbles).
+    // The semantics layer follows every other frame that moved.
     if ((_moves++).isEven) _moved.value++;
   }
 
