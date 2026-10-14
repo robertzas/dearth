@@ -341,11 +341,13 @@ void main() {
     await h.settle();
     expect(labelOf(tester, 'google.client.redirect'), 'http://localhost/dearth-oauth', reason: 'the URI to give the new client');
     await tester.enterText(find.descendant(of: byId('google.client.id'), matching: find.byType(EditableText)), 'not-a-client');
+    await tester.ensureVisible(byId('google.client.save'));
     await tester.tap(byId('google.client.save'));
     await h.settle();
     expect(puts, isEmpty, reason: 'a client ID ends in .apps.googleusercontent.com');
     await tester.enterText(find.descendant(of: byId('google.client.id'), matching: find.byType(EditableText)), ' 123-abc.apps.googleusercontent.com ');
     await tester.enterText(find.descendant(of: byId('google.client.secret'), matching: find.byType(EditableText)), 'GOCSPX-secret');
+    await tester.ensureVisible(byId('google.client.save'));
     await tester.tap(byId('google.client.save'));
     await h.settle();
     expect(puts.single, {'clientId': '123-abc.apps.googleusercontent.com', 'clientSecret': 'GOCSPX-secret'});
