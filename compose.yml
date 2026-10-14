@@ -1,6 +1,6 @@
 # Dearth Hub — production compose (SPEC §14.6).
 #
-#   cp .env.example .env    # set DEARTH_PUBLIC_URL, DEARTH_ADMIN_PASSWORD, …
+#   cp .env.example .env    # set DEARTH_ADMIN_PASSWORD, TZ, …
 #   openssl rand -hex 32 > dearth_key
 #   openssl rand -hex 32 > dearth_update_token
 #   docker compose up -d

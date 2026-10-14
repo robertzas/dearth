@@ -49,7 +49,9 @@ back.
   included. Once Google is connected, Settings → Calendars offers to make a
   shared "Family" calendar in Google, so events added on the wall show up
   on both parents' phones (your Google project's consent screen needs the
-  `calendar.app.created` and `calendar.acls` scopes for it).
+  `calendar.app.created` and `calendar.acls` scopes for it). Setup is under
+  [Google Calendar](#google-calendar); the Hub doesn't need to be reachable
+  from the internet.
 - **Meals.** A week planner of days and meal slots, holding recipes or a
   free-text entry like "Leftovers". Recipes scale with the servings
   stepper, using friendly fractions, and switch between US and metric
@@ -226,7 +228,7 @@ and Google sign-ins don't move: connect them again afterwards.
 mkdir dearth && cd dearth
 curl -fsSLO https://raw.githubusercontent.com/robertzas/dearth/main/compose.yml
 curl -fsSL -o .env https://raw.githubusercontent.com/robertzas/dearth/main/.env.example
-$EDITOR .env                          # public URL, admin password, time zone, folders
+$EDITOR .env                          # admin password, time zone, folders
 openssl rand -hex 32 > dearth_key     # encrypts stored integration secrets: back it up
 openssl rand -hex 32 > dearth_update_token   # lets the Hub ask its updater for a new version
 docker compose up -d
@@ -281,7 +283,7 @@ it by unpacking the new archive the same way.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `DEARTH_PUBLIC_URL` | (none) | The Hub's public HTTPS origin behind a reverse proxy or tunnel. Needed for Google sign-in callbacks and calendar push updates. |
+| `DEARTH_PUBLIC_URL` | (none) | Optional. The Hub's public HTTPS origin behind a reverse proxy or tunnel, for one-tap Google sign-in and instant Google Calendar updates. Google works without it (see [Google Calendar](#google-calendar)). |
 | `DEARTH_LAN_URLS` | (none) | Extra origins allowed to call the API, e.g. `http://10.0.1.20:8080`. |
 | `DEARTH_ADMIN_PASSWORD` | generated | If unset, a password is generated and printed once in the log. `dearth_hub reset-admin` prints a new one. |
 | `TZ` | `UTC` | The household time zone on first start. You can change it later in the app. |
@@ -291,6 +293,92 @@ it by unpacking the new archive the same way.
 | `DEARTH_PORT`, `DEARTH_HOST` | `8080`, `0.0.0.0` | Where the Hub listens. |
 | `DEARTH_CONTACT` | `dearth-hub` | The contact sent in the NWS User-Agent (their API asks for one). |
 | `DEARTH_LOG_LEVEL` | `info` | `fine`, `info`, `warning` or `severe`. |
+
+### Google Calendar
+
+Google sync runs on the Hub, or inside the app when it runs on its own.
+**The Hub doesn't need to be reachable from the internet**: it only makes
+outgoing calls to Google. Google does need a sign-in app of your own (an
+OAuth client), which you make once for free in Google Cloud. Plan on about
+ten minutes.
+
+**1. Make the OAuth client** at
+[console.cloud.google.com](https://console.cloud.google.com):
+
+1. Create a project, e.g. "Dearth".
+2. In **APIs & Services → Library**, enable the **Google Calendar API**.
+   Enable the **Google Tasks API** too if lists should sync (Settings →
+   Lists), and the **Photos Picker API** for Google Photos.
+3. In **Google Auth Platform → Branding**, give the app a name and your
+   email.
+4. In **Audience**, pick **External**, then **Publish app** so the status
+   reads **In production**. Don't leave it in Testing: Google ends a
+   Testing app's sign-ins after 7 days, and sync stops. A published app
+   that Google hasn't verified is fine for a family. Google shows an
+   "unverified app" warning at sign-in; choose **Advanced → Go to
+   Dearth**.
+5. In **Data Access → Add or remove scopes**, add
+   `…/auth/calendar.calendarlist.readonly` and `…/auth/calendar.events`.
+   Add these as well for the features that use them:
+   - `…/auth/calendar.app.created` and `…/auth/calendar.acls` for the
+     shared Family calendar.
+   - `…/auth/tasks` for list sync.
+   - `…/auth/photospicker.mediaitems.readonly` for Google Photos.
+6. In **Clients → Create client**, choose **Web application**. Under
+   **Authorized redirect URIs**, add the address Dearth shows in
+   **Settings → Calendars → Set up Google sign-in**. On a Hub without
+   `DEARTH_PUBLIC_URL`, that's `http://localhost/dearth-oauth`. Create the
+   client and keep its **client ID** and **client secret**.
+
+**2. Give the client to Dearth.** On an admin device, open **Settings →
+Calendars → Set up Google sign-in**, paste the client ID and secret, and
+tap **Save**. The Hub stores the secret encrypted (with `dearth_key`) and
+never sends it back to a display. A phone or laptop is the easiest admin
+device to use: the next step copies an address out of a browser.
+
+**3. Connect each Google account.** In **Settings → Calendars → Connect
+Google Calendar**, tap **Open sign-in page**, sign in and allow access.
+Google then sends the browser to `http://localhost/dearth-oauth?code=…`,
+which fails to load. That's expected: nothing on your device answers at
+that address, and the code never goes anywhere but back into Dearth. Copy
+the whole address from the address bar, paste it into Dearth and tap
+**Connect**. The code works once and expires after 15 minutes. Repeat for
+each grown-up's account. Their calendars appear under Settings → Calendars
+a moment later.
+
+**What syncs, and how fast.** Events added or edited on a display go to
+Google within a few seconds. Changes made in Google reach Dearth on the
+Hub's next check, every 10 minutes.
+
+**Instant updates from Google (optional).** Instant updates need Google to
+reach your Hub, so the Hub needs a public HTTPS address. If you set one
+up, set `DEARTH_PUBLIC_URL` to it and change the client's redirect URI to
+`https://<your-domain>/api/oauth/google/callback`. After that, sign-in
+finishes in the browser, with no copying. Publish only these two paths
+through your reverse proxy or tunnel, and keep the rest of the Hub on
+your network or VPN:
+
+- `/api/webhooks/google/calendar`: each request is checked against a
+  random token per calendar.
+- `/api/oauth/google/callback`: it needs a one-time sign-in state that
+  expires after 15 minutes.
+
+**If sign-in goes wrong:**
+
+- **"Google sent the browser to `https://dearth.example.com/…`"** (or to
+  another address that isn't your Hub): `.env` still sets
+  `DEARTH_PUBLIC_URL`. Older copies of `.env.example` set it to a
+  placeholder. Remove the line, restart the Hub, and use
+  `http://localhost/dearth-oauth` as the redirect URI.
+- **`redirect_uri_mismatch`:** the client's redirect URI doesn't exactly
+  match the one Settings shows. Check `http` against `https` and the path.
+- **"Google did not return offline access":** in your Google Account,
+  open **Security → Third-party apps & services**, remove Dearth, and
+  connect again.
+- **Sync stops after a week:** the app is still in Testing. Publish it
+  (step 1.4) and connect again.
+- **You saved a new client:** accounts connected through the old client
+  stop syncing. Connect them again.
 
 ### A wall display (Android kiosk)
 

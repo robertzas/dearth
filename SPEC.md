@@ -2143,14 +2143,16 @@ Hub, adapters included, in a background isolate).
 
 **OAuth (on the Hub)**
 - Each family creates its own Google Cloud project with an OAuth **Web
-  application** client. The redirect URI is
-  `https://<hub-domain>/api/oauth/google/callback`. Use
+  application** client and enters its ID and secret in Settings →
+  Calendars (saved on the Hub). The redirect URI is
+  `https://<hub-domain>/api/oauth/google/callback`, or
+  `http://localhost/dearth-oauth` for the paste-back flow. Use
   `access_type=offline`, `prompt=consent`, and PKCE.
 - **Publishing status must be "In production"**, not "Testing": External
   apps in Testing get refresh tokens that **expire after 7 days**. An
   unverified production app shows Google's "unverified app" warning, which
   the family accepts once. That's fine for personal use (up to 100 users).
-  `docs/google.md` walks through it with screenshots.
+  README.md → Google Calendar walks through it.
 - Scopes, least privilege:
   - M1: `openid email profile`,
     `…/auth/calendar.calendarlist.readonly`, `…/auth/calendar.events`.

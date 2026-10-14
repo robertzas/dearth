@@ -285,7 +285,7 @@ void main() {
 
   testWidgets('FR-CAL-04: “Not now” tucks the offer away under Add calendars; a Google calendar called Family is offered as is', (tester) async {
     final handle = tester.ensureSemantics();
-    final h = await AppHarness.demo(tester, overrides: [hubApiProvider.overrideWithValue(HubApi(Uri.parse('http://hub.invalid')))]);
+    final h = await AppHarness.demo(tester, overrides: [hubApiProvider.overrideWithValue(HubApi(Uri.parse('http://hub.test'), token: 't', client: MockClient((_) async => http.Response('{}', 404))))]);
     h.container.read(routerProvider).go('/settings/calendars');
     await h.write((w) => [w.op('calendar_sources', 'gcal-a', {'kind': 'google', 'account_id': 'a@example.com', 'remote_id': 'primary', 'name': 'Alex', 'writable': true})]);
     await tester.ensureVisible(byId('calendars.family.dismiss'));
@@ -305,6 +305,53 @@ void main() {
     expect((sources['gcal-fam']!.isDefault, sources['gcal-fam']!.enabled), (true, true));
     expect(sources.values.where((s) => s.isDefault).length, 1);
     expect(h.container.read(settingMapProvider(SettingKeys.calendarGoogleFamily))['source'], 'gcal-fam');
+    await h.shutdown();
+    handle.dispose();
+  });
+
+  testWidgets('FR-CAL-01: Connect Google on a Hub without an OAuth client asks for one, saves it on the Hub, then goes on to sign in', (tester) async {
+    final handle = tester.ensureSemantics();
+    final puts = <Map<String, Object?>>[];
+    var hasClient = false, starts = 0;
+    http.Response json(Object body, [int status = 200]) => http.Response(jsonEncode(body), status, headers: {'content-type': 'application/json'});
+    final api = HubApi(Uri.parse('http://hub.test'), token: 't', client: MockClient((req) async {
+      switch ((req.method, req.url.path)) {
+        case ('GET', '/api/admin/integrations'):
+          return json({
+            'google': {'hasClient': hasClient, 'accounts': <Object>[], 'redirectUri': 'http://localhost/dearth-oauth'},
+          });
+        case ('PUT', '/api/admin/integrations/google'):
+          puts.add(jsonDecode(req.body) as Map<String, Object?>);
+          hasClient = true;
+          return json({'ok': true});
+        case ('GET', '/api/admin/oauth/google/start'):
+          starts++;
+          if (!hasClient) return json({'error': 'google_client_required', 'message': 'Add your Google OAuth client ID and secret first'}, 424);
+          return json({'url': 'https://accounts.google.com/o/oauth2/v2/auth?state=s', 'mode': 'paste'});
+      }
+      return http.Response('{}', 404);
+    }));
+    final h = await AppHarness.demo(tester, overrides: [hubApiProvider.overrideWithValue(api)]);
+    h.container.read(routerProvider).go('/settings/calendars');
+    await h.settle();
+    await tester.ensureVisible(byId('calendars.google.client'));
+    expect(labelOf(tester, 'calendars.google.client'), contains('Set up Google sign-in'));
+
+    await tester.tap(byId('calendars.add.google'));
+    await h.settle();
+    expect(labelOf(tester, 'google.client.redirect'), 'http://localhost/dearth-oauth', reason: 'the URI to give the new client');
+    await tester.enterText(find.descendant(of: byId('google.client.id'), matching: find.byType(EditableText)), 'not-a-client');
+    await tester.tap(byId('google.client.save'));
+    await h.settle();
+    expect(puts, isEmpty, reason: 'a client ID ends in .apps.googleusercontent.com');
+    await tester.enterText(find.descendant(of: byId('google.client.id'), matching: find.byType(EditableText)), ' 123-abc.apps.googleusercontent.com ');
+    await tester.enterText(find.descendant(of: byId('google.client.secret'), matching: find.byType(EditableText)), 'GOCSPX-secret');
+    await tester.tap(byId('google.client.save'));
+    await h.settle();
+    expect(puts.single, {'clientId': '123-abc.apps.googleusercontent.com', 'clientSecret': 'GOCSPX-secret'});
+    expect(starts, 2, reason: 'sign-in starts again once the client is saved');
+    expect(find.textContaining('Copy its full address'), findsOneWidget, reason: 'no public URL: the paste-back flow');
+    expectNoFallbackText();
     await h.shutdown();
     handle.dispose();
   });

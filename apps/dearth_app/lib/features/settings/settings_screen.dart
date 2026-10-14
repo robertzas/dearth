@@ -83,7 +83,7 @@ final List<SettingsSection> kSettingsSections = [
   SettingsSection('screensaver', SettingsGroupKind.display, 'Photo frame & night', 'When it starts, what it shows, night hours', Icons.nightlight_round, (_) => const ScreensaverSection(),
       keywords: const ['Screensaver', 'Idle', 'Start after', 'Each photo', 'Clock and date', 'Current weather', 'Next event', 'Captions', 'Pan and zoom', 'At night', 'Night clock', 'Night schedule', 'Screen off', 'Room goes dark', 'Keep the screen on', 'Dim']),
   SettingsSection('calendars', SettingsGroupKind.services, 'Calendars', 'Google, subscriptions, birthdays', Icons.calendar_month_rounded, (_) => const CalendarsSection(),
-      keywords: const ['Google Calendar', 'Subscribe', 'ICS', 'webcal', 'School calendar', 'Family calendar', 'Birthdays', 'Holidays', 'Family days', 'Colors']),
+      keywords: const ['Google Calendar', 'Google sign-in', 'OAuth client', 'Subscribe', 'ICS', 'webcal', 'School calendar', 'Family calendar', 'Birthdays', 'Holidays', 'Family days', 'Colors']),
   SettingsSection('photos', SettingsGroupKind.services, 'Photos', 'Shared albums and folders', Icons.photo_library_rounded, (_) => const PhotosSection(),
       keywords: const ['Amazon Photos', 'Shared album', 'Folder', 'NAS', 'Photo sources']),
   SettingsSection('lists', SettingsGroupKind.services, 'Lists', 'Sync with Google Tasks', Icons.checklist_rounded, (_) => const ListsSection(),

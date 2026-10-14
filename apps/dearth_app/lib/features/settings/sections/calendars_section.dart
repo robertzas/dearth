@@ -77,6 +77,7 @@ class CalendarsSection extends ConsumerWidget {
               chevron: true,
               onTap: api == null || !session.admin ? null : () => _addIcs(context, ref, api),
             ),
+            if (api != null && session.admin) _GoogleClientRow(api: api),
             DListRow(
               id: 'calendars.add.google',
               title: 'Connect Google Calendar',
@@ -132,6 +133,29 @@ class CalendarsSection extends ConsumerWidget {
     } on HubApiException catch (e) {
       ref.read(toastProvider).show(e.friendly, emoji: '⚠️', tone: DBannerTone.warning);
     }
+  }
+}
+
+/// The family's own Google OAuth client, saved on the Hub (SPEC §13.2).
+/// Google sign-in needs it first; the secret never comes back here.
+class _GoogleClientRow extends ConsumerWidget {
+  const _GoogleClientRow({required this.api});
+  final HubApi api;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final setup = ref.watch(googleSetupProvider);
+    final has = setup.value?['hasClient'] == true;
+    return DListRow(
+      id: 'calendars.google.client',
+      title: has ? 'Google sign-in app' : 'Set up Google sign-in',
+      subtitle: setup.hasValue
+          ? (has ? 'Your OAuth client is saved on the Hub' : 'Your own OAuth client ID and secret, needed once before connecting Google')
+          : (setup.hasError ? 'Couldn’t ask the Hub; tap to try anyway' : 'Asking the Hub…'),
+      leading: DEmoji(has ? '🔐' : '🔑', size: 30),
+      chevron: true,
+      onTap: () => setUpGoogleClient(context, ref, api),
+    );
   }
 }
 
