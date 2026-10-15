@@ -703,9 +703,20 @@ else
   changed "Lock screen off"
 fi
 # The vendor status bar refuses to die under lock task: it hangs over Dearth
-# as an empty strip unless the app hides the bars itself, and older builds
-# didn't. policy_control forces Dearth full screen whatever the build.
-setting global policy_control immersive.full="$APP" "No status-bar strip over Dearth"
+# as an empty strip unless the app hides the bars itself, which it does
+# (immersive on walls). An earlier setup forced that from outside with
+# policy_control, but a window forced full screen that way is never told
+# where the keyboard is (no content insets), so the keyboard covered the
+# field being typed in. Removed where an earlier run set it.
+policy=$(sh_ settings get global policy_control)
+if [ "$policy" = null ] || [ -z "$policy" ]; then
+  ok "Dearth hides the status bar itself (no policy_control)"
+elif [ $CHECK = 1 ]; then
+  differs "policy_control is $policy: the keyboard covers fields"
+else
+  sh_ settings delete global policy_control >/dev/null
+  changed "policy_control removed: Dearth makes room for the keyboard"
+fi
 if [ -n "$DENSITY" ]; then
   density=$(sh_ wm density | sed -n 's/^Override density: //p')
   if [ "$density" = "$DENSITY" ]; then
