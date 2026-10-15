@@ -66,12 +66,15 @@ test.describe('Toybox second set', () => {
     // didn't move. Every bubble is read in one go and tapped by position: a
     // locator on a bubble that floats away or pops in between waits for it
     // to come back, forever.
+    // The last pop is told by the host's lasting count: "Popped …" shows for
+    // three seconds before the next round's word, which a slow poll misses.
     for (let k = 1; k <= 3; k++) {
-      const want = k < 3 ? `Pop the word ${word}: ${k} of 3` : `Popped ${word}: 3 of 3`;
+      const done = async () =>
+        k < 3 ? (await textOf(tid(page, 'wordpop.ask'))).includes(`Pop the word ${word}: ${k} of 3`) : /^[1-9]/.test(await textOf(tid(page, 'game.rounds')).catch(() => ''));
       await expect
         .poll(
           async () => {
-            if ((await textOf(tid(page, 'wordpop.ask'))).includes(want)) return true;
+            if (await done()) return true;
             const bubbles = await tids(page, 'wordpop.bubble.').evaluateAll((els) =>
               els.map((e) => {
                 const r = e.getBoundingClientRect();
@@ -82,7 +85,7 @@ test.describe('Toybox second set', () => {
             if (!hit) return false;
             await page.mouse.click(hit.x, hit.y);
             await page.waitForTimeout(1500);
-            return (await textOf(tid(page, 'wordpop.ask'))).includes(want);
+            return done();
           },
           { timeout: 90_000, intervals: [500] },
         )
