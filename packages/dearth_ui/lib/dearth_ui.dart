@@ -14,4 +14,5 @@ export 'src/widgets/controls.dart';
 export 'src/widgets/emoji.dart';
 export 'src/widgets/overlays.dart';
 export 'src/widgets/pressable.dart';
+export 'src/widgets/still_paint.dart';
 export 'src/widgets/surfaces.dart';

@@ -101,6 +101,22 @@ class PictureTile extends StatelessWidget {
   }
 }
 
+/// A hint's light: warm yellow fading out to the edge of its box. Drawn
+/// from one image (`DStillPaint(shareKey: HintGlowPainter, …)`): a radial
+/// gradient that breathes is drawn again on every frame otherwise.
+class HintGlowPainter extends CustomPainter {
+  const HintGlowPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final box = Offset.zero & size;
+    canvas.drawOval(box, Paint()..shader = const RadialGradient(colors: [Color(0xAAFFF2A8), Color(0x00FFF2A8)]).createShader(box));
+  }
+
+  @override
+  bool shouldRepaint(HintGlowPainter old) => false;
+}
+
 /// A soft two-color backdrop.
 class Backdrop extends StatelessWidget {
   const Backdrop({super.key, required this.top, required this.bottom, required this.child});

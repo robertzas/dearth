@@ -324,7 +324,7 @@ class TallyGameState extends State<TallyGame> {
       _Bunny.leaving => -size * 1.2,
     };
     return [
-      Positioned(left: 0, right: 0, top: floor - size * 0.32, height: size * 0.32, child: const RepaintBoundary(child: CustomPaint(isComplex: true, painter: _PathPainter()))),
+      Positioned(left: 0, right: 0, top: floor - size * 0.32, height: size * 0.32, child: const RepaintBoundary(child: DStillPaint(painter: _PathPainter()))),
       if (_bunny != _Bunny.none)
         AnimatedPositioned(
           key: ValueKey('bunny$_bunnyIndex'),

@@ -89,4 +89,61 @@ void main() {
       EmojiImages.budgetBytes = saved;
     });
   });
+
+  group('DStillPaint', () {
+    testWidgets('paints once into an image the size of its box, and again only when the painter changes', (tester) async {
+      final counts = <int, int>{};
+      Widget at(int version, {double width = 200}) => Directionality(
+            textDirection: TextDirection.ltr,
+            child: Center(child: SizedBox(width: width, height: 100, child: DStillPaint(painter: _Counting(version, counts)))),
+          );
+      await tester.pumpWidget(at(1));
+      final first = tester.widget<RawImage>(find.byType(RawImage));
+      expect((first.image!.width, first.image!.height), (200 * tester.view.devicePixelRatio, 100 * tester.view.devicePixelRatio));
+      expect(find.byWidgetPredicate((w) => w is CustomPaint && w.painter is _Counting), findsNothing, reason: 'shown from the image, not painted every frame');
+      await tester.pumpWidget(at(1)); // a rebuild with an equal painter
+      expect(counts, {1: 1});
+      await tester.pumpWidget(at(2));
+      expect(counts, {1: 1, 2: 1});
+      await tester.pumpWidget(at(2, width: 300)); // a new size
+      expect(counts, {1: 1, 2: 2});
+      DStillPaint.rasterize = false;
+      await tester.pumpWidget(at(2));
+      expect(find.byType(RawImage), findsNothing);
+      expect(find.byWidgetPredicate((w) => w is CustomPaint && w.painter is _Counting), findsOneWidget);
+      DStillPaint.rasterize = true;
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('boxes with one share key paint one image between them', (tester) async {
+      DStillPaint.clearShared();
+      final counts = <int, int>{};
+      await tester.pumpWidget(Directionality(
+        textDirection: TextDirection.ltr,
+        child: Row(children: [for (var i = 0; i < 4; i++) SizedBox(width: 80, height: 100, child: DStillPaint(shareKey: _Counting, painter: _Counting(1, counts)))]),
+      ));
+      expect(counts, {1: 1});
+      final images = tester.widgetList<RawImage>(find.byType(RawImage)).toList();
+      expect(images, hasLength(4));
+      expect(images.first.image!.isCloneOf(images.last.image!), isTrue);
+      await tester.pumpWidget(const SizedBox());
+      DStillPaint.clearShared();
+    });
+  });
+}
+
+/// Counts how often each version is painted.
+class _Counting extends CustomPainter {
+  _Counting(this.version, this.counts);
+  final int version;
+  final Map<int, int> counts;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    counts[version] = (counts[version] ?? 0) + 1;
+    canvas.drawRect(Offset.zero & size, Paint()..color = const Color(0xFF7067E8));
+  }
+
+  @override
+  bool shouldRepaint(_Counting old) => old.version != version;
 }

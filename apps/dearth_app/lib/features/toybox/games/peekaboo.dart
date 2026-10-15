@@ -162,7 +162,7 @@ class PeekabooGameState extends State<PeekabooGame> with RoundVoice {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          const RepaintBoundary(child: CustomPaint(isComplex: true, painter: _MeadowPainter())),
+          const RepaintBoundary(child: DStillPaint(painter: _MeadowPainter())),
           PlayArea(
             top: 140,
             child: LayoutBuilder(builder: (context, box) {

@@ -8,6 +8,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../core/sound.dart';
 import '../game_host.dart';
+import 'game_widgets.dart';
 import 'voice_widgets.dart';
 
 /// Each shape's color: bright and distinct, like painted wooden toys.
@@ -243,7 +244,7 @@ class ShapeGameState extends State<ShapeGame> with RoundVoice {
                 children: [
                   Positioned.fromRect(
                     rect: l.board,
-                    child: RepaintBoundary(child: CustomPaint(isComplex: true, painter: _BoardPainter(board: l.board, holes: l.holes, shapes: _round.shapes, angles: _angles, size: l.size))),
+                    child: RepaintBoundary(child: DStillPaint(painter: _BoardPainter(board: l.board, holes: l.holes, shapes: _round.shapes, angles: _angles, size: l.size), outset: const EdgeInsets.only(bottom: 10))),
                   ),
                   for (final (i, s) in _round.shapes.indexed) ...[
                     if (hint == s) Positioned(left: l.holes[i].dx - l.size * 0.75, top: l.holes[i].dy - l.size * 0.75, child: _Glow(size: l.size * 1.5)),
@@ -308,7 +309,7 @@ class ShapeGameState extends State<ShapeGame> with RoundVoice {
                   duration: const Duration(milliseconds: 160),
                   child: _Hop(
                     hops: _bounces[s] ?? 0,
-                    child: RepaintBoundary(child: CustomPaint(size: Size.square(l.size), painter: _PiecePainter(s, lifted: lifted))),
+                    child: RepaintBoundary(child: SizedBox.square(dimension: l.size, child: DStillPaint(painter: _PiecePainter(s, lifted: lifted), outset: EdgeInsets.all(l.size * 0.12)))),
                   ),
                 ),
               ),
@@ -359,7 +360,7 @@ class ToyShapeView extends StatelessWidget {
   final Color? color;
 
   @override
-  Widget build(BuildContext context) => RepaintBoundary(child: CustomPaint(size: Size.square(size), painter: _PiecePainter(shape, lifted: false, color: color)));
+  Widget build(BuildContext context) => RepaintBoundary(child: SizedBox.square(dimension: size, child: DStillPaint(painter: _PiecePainter(shape, lifted: false, color: color), outset: EdgeInsets.all(size * 0.12))));
 }
 
 /// A painted wooden shape: a soft top light and a darker rim.
@@ -501,11 +502,7 @@ class _GlowState extends State<_Glow> with TickerProviderStateMixin {
         child: RepaintBoundary(
           child: ScaleTransition(
             scale: Tween<double>(begin: 0.9, end: 1.1).animate(_pulse),
-            child: Container(
-              width: widget.size,
-              height: widget.size,
-              decoration: const BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [Color(0xAAFFF2A8), Color(0x00FFF2A8)])),
-            ),
+            child: SizedBox.square(dimension: widget.size, child: const DStillPaint(shareKey: HintGlowPainter, painter: HintGlowPainter())),
           ),
         ),
       );

@@ -294,7 +294,7 @@ class GameIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => switch (game.id) {
-        'bubbles' => SizedBox.square(dimension: size, child: const RepaintBoundary(child: CustomPaint(painter: _BubblesIcon()))),
+        'bubbles' => SizedBox.square(dimension: size, child: const RepaintBoundary(child: DStillPaint(painter: _BubblesIcon()))),
         'creature' => SizedBox.square(dimension: size, child: RepaintBoundary(child: CustomPaint(painter: CreaturePainter(_creature)))),
         'compare' => CompareIcon(size: size),
         'lettermonster' => LetterMonsterIcon(size: size),

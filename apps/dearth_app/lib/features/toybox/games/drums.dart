@@ -359,7 +359,7 @@ class _Stage extends StatelessWidget {
             if (curtain)
               Positioned.fill(
                 child: IgnorePointer(
-                  child: tid('drums.curtain', Semantics(label: 'Curtain closed', excludeSemantics: true, child: const RepaintBoundary(child: CustomPaint(isComplex: true, painter: _CurtainPainter())))),
+                  child: tid('drums.curtain', Semantics(label: 'Curtain closed', excludeSemantics: true, child: const RepaintBoundary(child: DStillPaint(painter: _CurtainPainter())))),
                 ),
               ),
           ],

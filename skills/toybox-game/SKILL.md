@@ -190,11 +190,24 @@ smooth there (AGENTS rule 8, SPEC §12):
   GPU, an emoji drawn as text under a changing transform is decoded and
   uploaded again every frame: twelve pulsing emoji measured 7 fps (184 ms
   raster) as text, 57 fps (6 ms) from images. `DEmoji` does this already
-  (and `tint:` makes a shadow without a layer). Don't snapshot painted
-  pieces into images yourself (`SnapshotWidget`): each snapshot is an
-  offscreen pass, and Shape Sorter's slow frames doubled when its pieces
-  were snapshotted. Static full-screen painters get
-  `CustomPaint(isComplex: true)` so the raster cache keeps them.
+  (and `tint:` makes a shadow without a layer).
+- **Still scenery is painted once, into an image: `DStillPaint`.** The
+  frame renders with Impeller, which keeps no raster cache: everything on
+  screen is drawn again on every frame anything moves, and a
+  `RepaintBoundary` only saves recording it. On the frame's GPU a diagonal
+  gradient over the screen, or a gradient filling a path or rounded card,
+  costs 30–60 ms a frame (a vertical gradient over a plain rectangle costs
+  5): Memory Match's table and card backs, Shape Sorter's board and pieces
+  and Counting Garden's hill held those games at 43–85 ms a frame while a
+  card turned or a hint ring breathed; from images, 10–19.
+  `DStillPaint(painter:)` takes the same `CustomPainter` and paints it
+  again only when `shouldRepaint` says so or its box changes size, so
+  inputs must stay equal between rebuilds (no new lists every build).
+  `shareKey:` gives many same-sized boxes one image (a deck's backs), and
+  `outset:` keeps a drop shadow that falls outside the box. Anything that
+  changes every frame stays a `CustomPaint`, and don't wrap moving pieces
+  in `SnapshotWidget` (a fresh offscreen pass each change: Shape Sorter's
+  slow frames doubled).
 - Measure on the frame: `tool/perf_gate.sh <ip> --only game.<id>`
   (or `games` for all, `probes` for the technique probes) prints each
   game's frame times; it mutes the frame while it plays.

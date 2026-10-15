@@ -354,7 +354,7 @@ class _Board extends StatelessWidget {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              Positioned.fill(child: RepaintBoundary(child: CustomPaint(isComplex: true, painter: _BoardPainter(board, g)))),
+              Positioned.fill(child: RepaintBoundary(child: DStillPaint(painter: _BoardPainter(board, g), outset: EdgeInsets.all(g.cell * 0.4)))),
               for (var i = 0; i < board.squares; i++)
                 Positioned(
                   left: g.center(i).dx - square / 2,

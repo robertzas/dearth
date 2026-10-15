@@ -171,7 +171,7 @@ class TowerGameState extends State<TowerGame> with RoundVoice {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          const RepaintBoundary(child: CustomPaint(isComplex: true, painter: _ScenePainter())),
+          const RepaintBoundary(child: DStillPaint(painter: _ScenePainter())),
           PlayArea(
             top: 140,
             child: LayoutBuilder(builder: (context, box) {

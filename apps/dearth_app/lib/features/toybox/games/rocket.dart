@@ -172,7 +172,7 @@ class RocketGameState extends State<RocketGame> with TickerProviderStateMixin {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          const Positioned.fill(child: RepaintBoundary(child: CustomPaint(isComplex: true, painter: _SkyPainter()))),
+          const Positioned.fill(child: RepaintBoundary(child: DStillPaint(painter: _SkyPainter()))),
           PlayArea(
             top: 130,
             child: LayoutBuilder(builder: (context, box) {

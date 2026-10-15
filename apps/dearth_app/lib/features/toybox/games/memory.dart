@@ -135,51 +135,49 @@ class MemoryGameState extends State<MemoryGame> {
   @override
   Widget build(BuildContext context) {
     final t = DTheme.of(context);
-    return DecoratedBox(
-      decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFEDEBFF), Color(0xFFDDF3FF)])),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          SafeArea(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(t.space.lg, 96 * t.scale, t.space.lg, t.space.lg),
-              child: LayoutBuilder(builder: (context, box) {
-                final gap = 14 * t.scale;
-                final grid = memoryGrid(_deck.length, box.biggest, gap: gap, maxWidth: 300 * t.scale);
-                return Center(
-                  child: SizedBox(
-                    width: grid.cols * grid.card.width + gap * (grid.cols - 1),
-                    child: Wrap(
-                      spacing: gap,
-                      runSpacing: gap,
-                      alignment: WrapAlignment.center,
-                      children: [
-                        for (var i = 0; i < _deck.length; i++)
-                          _Card(
-                            key: ValueKey('$_deal.$i'),
-                            index: i,
-                            face: _deck[i],
-                            up: _peeking || _up.contains(i) || _matched.contains(i),
-                            matched: _matched.contains(i),
-                            size: grid.card,
-                            onTap: () => _turn(i),
-                          ),
-                      ],
-                    ),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        const DStillPaint(painter: _BackdropPainter()),
+        SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(t.space.lg, 96 * t.scale, t.space.lg, t.space.lg),
+            child: LayoutBuilder(builder: (context, box) {
+              final gap = 14 * t.scale;
+              final grid = memoryGrid(_deck.length, box.biggest, gap: gap, maxWidth: 300 * t.scale);
+              return Center(
+                child: SizedBox(
+                  width: grid.cols * grid.card.width + gap * (grid.cols - 1),
+                  child: Wrap(
+                    spacing: gap,
+                    runSpacing: gap,
+                    alignment: WrapAlignment.center,
+                    children: [
+                      for (var i = 0; i < _deck.length; i++)
+                        _Card(
+                          key: ValueKey('$_deal.$i'),
+                          index: i,
+                          face: _deck[i],
+                          up: _peeking || _up.contains(i) || _matched.contains(i),
+                          matched: _matched.contains(i),
+                          size: grid.card,
+                          onTap: () => _turn(i),
+                        ),
+                    ],
                   ),
-                );
-              }),
-            ),
+                ),
+              );
+            }),
           ),
-          if (_peeking)
-            Positioned(
-              top: t.space.md,
-              left: 0,
-              right: 0,
-              child: SafeArea(child: Center(child: tid('memory.look', Semantics(label: 'Look!', excludeSemantics: true, child: GamePill(children: [DEmoji('👀', size: 44 * t.scale)]))))),
-            ),
-        ],
-      ),
+        ),
+        if (_peeking)
+          Positioned(
+            top: t.space.md,
+            left: 0,
+            right: 0,
+            child: SafeArea(child: Center(child: tid('memory.look', Semantics(label: 'Look!', excludeSemantics: true, child: GamePill(children: [DEmoji('👀', size: 44 * t.scale)]))))),
+          ),
+      ],
     );
   }
 }
@@ -285,23 +283,27 @@ class _Back extends StatelessWidget {
   const _Back({required this.radius});
   final BorderRadius radius;
 
+  // One image for every back in the deck: a gradient under a rounded edge
+  // is drawn again on every frame otherwise (DStillPaint).
   @override
   Widget build(BuildContext context) => DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: radius,
-          gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color.lerp(_hue, Colors.white, 0.3)!, _hue]),
-          boxShadow: DTheme.of(context).elevation.e1,
-        ),
-        child: const CustomPaint(painter: _BackPainter()),
+        decoration: BoxDecoration(borderRadius: radius, boxShadow: DTheme.of(context).elevation.e1),
+        child: const DStillPaint(shareKey: _BackPainter, painter: _BackPainter()),
       );
 }
 
-/// A card back: an inset frame and a four-point sparkle.
+/// A card back: a violet card (its corners as round as the card's), an
+/// inset frame and a four-point sparkle.
 class _BackPainter extends CustomPainter {
   const _BackPainter();
 
   @override
   void paint(Canvas canvas, Size size) {
+    final box = Offset.zero & size;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(box, Radius.circular(size.width * 0.14)),
+      Paint()..shader = LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color.lerp(_hue, Colors.white, 0.3)!, _hue]).createShader(box),
+    );
     final s = size.shortestSide;
     final frame = Paint()
       ..style = PaintingStyle.stroke
@@ -326,4 +328,18 @@ class _BackPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_BackPainter old) => false;
+}
+
+/// The table: lavender into sky blue, corner to corner.
+class _BackdropPainter extends CustomPainter {
+  const _BackdropPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final box = Offset.zero & size;
+    canvas.drawRect(box, Paint()..shader = const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFEDEBFF), Color(0xFFDDF3FF)]).createShader(box));
+  }
+
+  @override
+  bool shouldRepaint(_BackdropPainter old) => false;
 }

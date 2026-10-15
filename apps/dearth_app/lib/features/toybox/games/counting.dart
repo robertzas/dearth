@@ -173,7 +173,7 @@ class CountingGameState extends State<CountingGame> with RoundVoice {
     return Stack(
       fit: StackFit.expand,
       children: [
-        const RepaintBoundary(child: CustomPaint(isComplex: true, painter: _GardenPainter())),
+        const RepaintBoundary(child: DStillPaint(painter: _GardenPainter())),
         SafeArea(
           child: Padding(
             padding: EdgeInsets.fromLTRB(t.space.lg, 96 * t.scale, t.space.lg, t.space.lg),

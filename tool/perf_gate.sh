@@ -41,7 +41,10 @@
 #   --only SCENARIO    Measure one scenario (home_idle, navigate, agenda_fling,
 #                      week_paging, month_open, toybox_scroll, bubbles, paint,
 #                      screensaver, or games: every Toybox game as
-#                      game.<id>, ~12 min, never in the default run); a
+#                      game.<id>, ~12 min, never in the default run;
+#                      probes: what one technique costs; still.<id>,
+#                      quiet.<id>, idle.<id>: a game's screen held still,
+#                      played muted, left alone; comma-separated); a
 #                      probe, never a baseline.
 #   --no-reset         Measure over the display's data, joined or not.
 #   --reboot           Reboot the display and let it settle before measuring.

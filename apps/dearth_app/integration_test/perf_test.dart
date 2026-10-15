@@ -203,8 +203,9 @@ Future<void> _run(WidgetTester tester, {required int soakMinutes}) async {
 
   // What costs a frame on this GPU, one technique at a time over a small
   // spinner that keeps frames coming (opt-in: `--only probes`): a blank
-  // screen, a full-screen gradient, path clips, cards under a perspective
-  // matrix or flat, and emoji scaling as text or as cached images.
+  // screen, a full-screen gradient top to bottom or corner to corner, path
+  // clips, cards under a perspective matrix or flat, emoji scaling as text
+  // or as cached images, and many small draws of one kind.
   if (_only.contains('probes')) {
     final navigator = Navigator.of(tester.element(find.byType(ToyboxScreen)), rootNavigator: true);
     for (final (name, probe) in _probes) {
@@ -239,6 +240,19 @@ Future<void> _run(WidgetTester tester, {required int soakMinutes}) async {
         }
       }, name: 'game.$id');
     }
+  }
+
+  // Diagnosis (opt-in): `still.<id>` holds the game still under a small
+  // spinner, so every frame draws its whole screen as it stands (Impeller
+  // keeps no raster cache): what the screen costs whenever anything on it
+  // moves. Memory Match's measured 85 ms this way, its table 60 of them.
+  for (final id in kGameBuilders.keys.where((id) => _only.contains('still.$id'))) {
+    final navigator = Navigator.of(tester.element(find.byType(ToyboxScreen)), rootNavigator: true);
+    unawaited(navigator.push<void>(PageRouteBuilder<void>(pageBuilder: (_, _, _) => Stack(children: [Positioned.fill(child: GameScreen(game: gameById(id)!, kid: ava)), const _Spinner()]))));
+    await _wait(const Duration(seconds: 4));
+    await _measure('still.$id', () => _wait(const Duration(seconds: 5)));
+    navigator.pop();
+    await _wait(const Duration(seconds: 2));
   }
 
   // Diagnosis (opt-in): `quiet.<id>` plays like `game.<id>` with the
@@ -408,16 +422,23 @@ int? _cpuTicks() {
   }
 }
 
-enum _ProbeKind { blank, gradient, clipPaths, perspectiveCards, flatCards, emojiTextScaling, emojiImageScaling }
+enum _ProbeKind { blank, gradient, diagonalGradient, clipPaths, perspectiveCards, flatCards, emojiTextScaling, emojiImageScaling, circles100, circles400, gradRRects, strokeRRects, stars, textNumbers }
 
 const List<(String, _ProbeKind)> _probes = [
   ('probe.blank', _ProbeKind.blank),
   ('probe.gradient', _ProbeKind.gradient),
+  ('probe.diagonal_gradient', _ProbeKind.diagonalGradient),
   ('probe.clip_paths', _ProbeKind.clipPaths),
   ('probe.perspective_cards', _ProbeKind.perspectiveCards),
   ('probe.flat_cards', _ProbeKind.flatCards),
   ('probe.emoji_text_scaling', _ProbeKind.emojiTextScaling),
   ('probe.emoji_image_scaling', _ProbeKind.emojiImageScaling),
+  ('probe.circles_100', _ProbeKind.circles100),
+  ('probe.circles_400', _ProbeKind.circles400),
+  ('probe.grad_rrects_16', _ProbeKind.gradRRects),
+  ('probe.stroke_rrects_16', _ProbeKind.strokeRRects),
+  ('probe.stars_16', _ProbeKind.stars),
+  ('probe.text_numbers_10', _ProbeKind.textNumbers),
 ];
 
 const List<String> _probeEmoji = ['🐶', '🐱', '🦊', '🐸', '🌻', '🍎', '🚀', '⭐', '🎈', '🐢', '🦋', '🍪'];
@@ -458,7 +479,13 @@ class _ProbeState extends State<_Probe> with SingleTickerProviderStateMixin {
     );
     final Widget body = switch (widget.kind) {
       _ProbeKind.blank => const SizedBox.expand(),
+      _ProbeKind.circles100 || _ProbeKind.circles400 || _ProbeKind.gradRRects || _ProbeKind.strokeRRects || _ProbeKind.stars =>
+        RepaintBoundary(child: CustomPaint(painter: _DrawsProbePainter(widget.kind), size: Size.infinite)),
+      _ProbeKind.textNumbers => Wrap(children: [
+          for (var i = 1; i <= 10; i++) SizedBox(width: 180, height: 200, child: Center(child: Text('$i', style: const TextStyle(fontSize: 90, color: Color(0xFF2F3A1E))))),
+        ]),
       _ProbeKind.gradient => const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFFE6F6EE), Color(0xFFFDF1DC)])), child: SizedBox.expand()),
+      _ProbeKind.diagonalGradient => const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFEDEBFF), Color(0xFFDDF3FF)])), child: SizedBox.expand()),
       _ProbeKind.clipPaths => const RepaintBoundary(child: CustomPaint(painter: _ClipProbePainter(), size: Size.infinite)),
       _ProbeKind.perspectiveCards => Wrap(children: [
           for (final e in _probeEmoji)
@@ -500,4 +527,79 @@ class _ClipProbePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ClipProbePainter old) => false;
+}
+
+/// Many draws of one kind: 100 or 400 circles, 16 card-sized rounded
+/// rectangles filled with a gradient or stroked, 16 curved stars.
+class _DrawsProbePainter extends CustomPainter {
+  const _DrawsProbePainter(this.kind);
+  final _ProbeKind kind;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final fill = Paint()..color = const Color(0xFFE86A92);
+    switch (kind) {
+      case _ProbeKind.circles100 || _ProbeKind.circles400:
+        final n = kind == _ProbeKind.circles100 ? 100 : 400;
+        for (var i = 0; i < n; i++) {
+          canvas.drawCircle(Offset(40 + (i % 40) * 45.0, 60 + (i ~/ 40) * 90.0), 16, fill);
+        }
+      case _ProbeKind.gradRRects || _ProbeKind.strokeRRects || _ProbeKind.stars:
+        final stroke = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 6
+          ..color = const Color(0xCCFFFFFF);
+        for (var i = 0; i < 16; i++) {
+          final r = Rect.fromLTWH(30 + (i % 6) * 300.0, 30 + (i ~/ 6) * 340.0, 260, 300);
+          final rr = RRect.fromRectAndRadius(r, const Radius.circular(36));
+          if (kind == _ProbeKind.gradRRects) {
+            canvas.drawRRect(rr, Paint()..shader = const LinearGradient(colors: [Color(0xFFB0A9F0), Color(0xFF7067E8)]).createShader(r));
+          } else if (kind == _ProbeKind.strokeRRects) {
+            canvas.drawRRect(rr.deflate(20), stroke);
+          } else {
+            final c = r.center;
+            const s = 60.0, w = 15.0;
+            canvas.drawPath(
+              Path()
+                ..moveTo(c.dx, c.dy - s)
+                ..quadraticBezierTo(c.dx + w, c.dy - w, c.dx + s, c.dy)
+                ..quadraticBezierTo(c.dx + w, c.dy + w, c.dx, c.dy + s)
+                ..quadraticBezierTo(c.dx - w, c.dy + w, c.dx - s, c.dy)
+                ..quadraticBezierTo(c.dx - w, c.dy - w, c.dx, c.dy - s)
+                ..close(),
+              fill,
+            );
+          }
+        }
+      default:
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DrawsProbePainter old) => false;
+}
+
+/// Keeps frames coming over a still screen (`still.<id>`).
+class _Spinner extends StatefulWidget {
+  const _Spinner();
+
+  @override
+  State<_Spinner> createState() => _SpinnerState();
+}
+
+class _SpinnerState extends State<_Spinner> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Positioned(
+        left: 20,
+        bottom: 20,
+        child: RotationTransition(turns: _c, child: Container(width: 40, height: 40, color: const Color(0xFF5B5BD6))),
+      );
 }

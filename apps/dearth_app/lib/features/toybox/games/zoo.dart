@@ -260,7 +260,7 @@ class ZooGameState extends State<ZooGame> {
         return Stack(
           clipBehavior: Clip.none,
           children: [
-            const Positioned.fill(child: RepaintBoundary(child: CustomPaint(isComplex: true, painter: _GatePainter()))),
+            const Positioned.fill(child: RepaintBoundary(child: DStillPaint(painter: _GatePainter()))),
             // The queue, waiting their turn.
             for (final (i, a) in _queue.indexed)
               Positioned(

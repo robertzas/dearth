@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../core/sound.dart';
 import '../game_host.dart';
+import 'game_widgets.dart';
 
 /// Where the animals stand, as fractions of the meadow: six, or three.
 const List<Offset> _six = [Offset(0.16, 0.6), Offset(0.4, 0.68), Offset(0.64, 0.6), Offset(0.86, 0.7), Offset(0.27, 0.86), Offset(0.7, 0.87)];
@@ -147,7 +148,7 @@ class FarmGameState extends State<FarmGame> {
       return Stack(
         fit: StackFit.expand,
         children: [
-          const RepaintBoundary(child: CustomPaint(isComplex: true, painter: _FarmPainter())),
+          const RepaintBoundary(child: DStillPaint(painter: _FarmPainter())),
           for (final (i, a) in _round.animals.indexed)
             Positioned(
               left: spots[i].dx * box.maxWidth - size / 2,
@@ -288,11 +289,7 @@ class _GlowState extends State<_Glow> with TickerProviderStateMixin {
   Widget build(BuildContext context) => RepaintBoundary(
         child: ScaleTransition(
           scale: Tween<double>(begin: 0.9, end: 1.15).animate(_pulse),
-          child: Container(
-            width: widget.size * 1.1,
-            height: widget.size * 1.1,
-            decoration: const BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [Color(0xAAFFF2A8), Color(0x00FFF2A8)])),
-          ),
+          child: SizedBox.square(dimension: widget.size * 1.1, child: const DStillPaint(shareKey: HintGlowPainter, painter: HintGlowPainter())),
         ),
       );
 }
