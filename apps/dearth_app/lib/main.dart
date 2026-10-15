@@ -1,4 +1,5 @@
 import 'package:dearth_core/dearth_core.dart';
+import 'package:dearth_ui/dearth_ui.dart' show loadEmojiFont;
 import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
@@ -21,6 +22,7 @@ SemanticsHandle? _semantics;
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   installErrorHandling();
+  final emojiFont = loadEmojiFont(); // read alongside the database work below
   final env = AppEnv.fromPlatform();
   if (env.e2e) _semantics = SemanticsBinding.instance.ensureSemantics();
   ensureTimeZones();
@@ -65,6 +67,7 @@ Future<void> main() async {
       savedCalendarViewProvider.overrideWithValue(savedView),
     ],
   );
+  await emojiFont;
   runApp(UncontrolledProviderScope(container: container, child: const DearthApp()));
   assert(_semantics != null || !env.e2e);
 }

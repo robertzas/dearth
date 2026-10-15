@@ -46,7 +46,7 @@ class HourlyChart extends StatelessWidget {
 }
 
 /// Emoji need the color-emoji fallback (painters don't inherit DEmoji's).
-const _emojiStyle = TextStyle(fontFamilyFallback: ['Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji']);
+const _emojiStyle = TextStyle(fontFamilyFallback: DFonts.emojiFallback);
 
 class _HourlyPainter extends CustomPainter {
   _HourlyPainter({

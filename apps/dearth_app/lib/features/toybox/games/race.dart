@@ -307,7 +307,7 @@ class _TrackPainter extends CustomPainter {
         final rec = ui.PictureRecorder();
         final canvas = Canvas(rec);
         final tp = TextPainter(
-          text: TextSpan(text: emoji, style: TextStyle(fontSize: height * 0.8, height: 1.0, inherit: false, fontFamilyFallback: const ['Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji'])),
+          text: TextSpan(text: emoji, style: TextStyle(fontSize: height * 0.8, height: 1.0, inherit: false, fontFamilyFallback: DFonts.emojiFallback)),
           textDirection: TextDirection.ltr,
         )..layout();
         tp.paint(canvas, Offset.zero);

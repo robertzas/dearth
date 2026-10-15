@@ -367,7 +367,7 @@ final Map<(String, double), TextPainter> _stampCache = {};
 TextPainter _stampPainter(String emoji, double size) => _stampCache.putIfAbsent((emoji, size), () {
       if (_stampCache.length > 64) _stampCache.clear();
       return TextPainter(
-        text: TextSpan(text: emoji, style: TextStyle(fontSize: size, height: 1, inherit: false, fontFamilyFallback: const ['Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji'])),
+        text: TextSpan(text: emoji, style: TextStyle(fontSize: size, height: 1, inherit: false, fontFamilyFallback: DFonts.emojiFallback)),
         textDirection: TextDirection.ltr,
       )..layout();
     });

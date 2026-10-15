@@ -2,7 +2,24 @@ import 'dart:collection';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
+
+import '../tokens/typography.dart';
+
+/// Registers [DFonts.emoji], the emoji the system font may lack. Await it
+/// before the first frame: an emoji drawn before it loads is cached as an
+/// empty box ([EmojiImages]). Not on the web (Noto Color Emoji arrives from
+/// Google Fonts there) or Apple platforms (their emoji font keeps up with
+/// the OS).
+Future<void> loadEmojiFont() async {
+  if (kIsWeb || defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.macOS) return;
+  try {
+    await (FontLoader('packages/${DFonts.package}/${DFonts.emoji}')..addFont(rootBundle.load('packages/${DFonts.package}/assets/fonts/DearthEmoji.ttf'))).load();
+  } on Object {
+    // Without it the newest emoji are boxes, as before; never a failed start.
+  }
+}
 
 /// Renders an emoji glyph at a stable box size. Content icons (events,
 /// chores, meals, weather for kids) all go through this widget (SPEC
@@ -88,7 +105,7 @@ class EmojiImages {
 
   /// The text style a [size] box draws its emoji in (the box is a little
   /// bigger than the glyph, as it always was).
-  static TextStyle style(double size) => TextStyle(fontSize: size * 0.86, height: 1.12, inherit: false, fontFamilyFallback: const ['Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji']);
+  static TextStyle style(double size) => TextStyle(fontSize: size * 0.86, height: 1.12, inherit: false, fontFamilyFallback: DFonts.emojiFallback);
 
   /// Image sizes come in steps (8 px up to 128, then 16 px, at most 512), so
   /// near sizes share an image and a slow resize never makes dozens.

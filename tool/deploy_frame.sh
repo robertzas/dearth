@@ -19,6 +19,11 @@
 #     screensaver is off (Dearth has its own) and Wi-Fi stays on.
 #   • Dearth installed or updated for the device's CPU: the latest GitHub
 #     release, an APK you name, or one built here.
+#   • HeliBoard (a pinned, checksum-verified release; offline, no network
+#     permission) is the only keyboard: about a third of a landscape screen
+#     tall, no auto-correct or next-word guesses (the stock AOSP keyboard
+#     swapped typed words for dictionary ones), no toolbar (its settings key
+#     would let anyone reconfigure it).
 # Every step reads the device first and changes only what differs, so running
 # it again is safe. --check reports the differences and changes nothing.
 #
@@ -56,6 +61,7 @@
 # a root ADB shell (vendor frames have one); without it the settings are sent
 # on every run instead of compared.
 # Env: FREEKIOSK_TAG with FREEKIOSK_SHA256 pin another FreeKiosk release;
+#      HELIBOARD_TAG with HELIBOARD_SHA256 another HeliBoard release;
 #      DEARTH_REPO (default robertzas/dearth) is where releases come from.
 
 set -euo pipefail
@@ -63,6 +69,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 FREEKIOSK_TAG="${FREEKIOSK_TAG:-v2.0.0-beta.4}"
 FREEKIOSK_SHA256="${FREEKIOSK_SHA256:-5aa4e3b705cc711d9800eb9880ef8f8231e21f2e281980abca345d427f072194}"
+HELIBOARD_TAG="${HELIBOARD_TAG:-v4.2}"
+HELIBOARD_SHA256="${HELIBOARD_SHA256:-0697b897907466a58510e98bc02fbad7487d17a88816535387e2a4d303df9624}"
 DEARTH_REPO="${DEARTH_REPO:-robertzas/dearth}"
 APP=app.dearth
 FK=com.freekiosk
@@ -760,6 +768,107 @@ if [ -n "$volume" ]; then
   else
     sh_ media volume --stream 3 --set $((max * 2 / 3)) >/dev/null
     changed "Media volume $((max * 2 / 3))/$max (was muted)"
+  fi
+fi
+
+# ─────────────────────────────── Keyboard ──────────────────────────────────
+
+section "Keyboard"
+HB=helium314.keyboard
+HB_IME="$HB/.latin.LatinIME"
+HB_WANT="${HELIBOARD_TAG#v}"
+HB_HAVE=$(sh_ dumpsys package "$HB" | sed -n 's/^ *versionName=//p' | head -n 1)
+fetch_heliboard() {
+  local dir="$CACHE/heliboard/$HELIBOARD_TAG" file
+  file="$dir/heliboard.apk"
+  mkdir -p "$dir"
+  if [ ! -f "$file" ] || [ "$(sha256 "$file")" != "$HELIBOARD_SHA256" ]; then
+    # The "nouserlib" build: it can't load a gesture-typing library from storage.
+    curl -fsSL "https://github.com/Helium314/HeliBoard/releases/download/$HELIBOARD_TAG/HeliBoard_$HB_WANT-nouserlib.apk" -o "$file.part" ||
+      die "couldn't download HeliBoard $HELIBOARD_TAG"
+    mv "$file.part" "$file"
+  fi
+  [ "$(sha256 "$file")" = "$HELIBOARD_SHA256" ] || { rm -f "$file"; die "HeliBoard $HELIBOARD_TAG doesn't match its pinned SHA-256"; }
+  printf '%s' "$file"
+}
+if [ "$HB_HAVE" = "$HB_WANT" ]; then
+  ok "HeliBoard $HB_HAVE installed"
+elif [ $CHECK = 1 ]; then
+  if [ -n "$HB_HAVE" ]; then differs "HeliBoard $HB_HAVE is installed; this script sets up $HB_WANT"; else differs "HeliBoard isn't installed"; fi
+else
+  out=$(adb_ install -r "$(fetch_heliboard)" 2>&1 || true)
+  case "$out" in
+    *Success*) changed "HeliBoard ${HB_HAVE:+$HB_HAVE → }$HB_WANT installed"; HB_HAVE=$HB_WANT ;;
+    *DOWNGRADE*) problem "HeliBoard $HB_HAVE is newer than $HB_WANT; keeping it (pin it with HELIBOARD_TAG and HELIBOARD_SHA256)" ;;
+    *) problem "HeliBoard install failed: $out" ;;
+  esac
+fi
+if [ -n "$HB_HAVE" ]; then
+  if [ "$(sh_ settings get secure default_input_method)" = "$HB_IME" ] && [ "$(sh_ ime list -s)" = "$HB_IME" ]; then
+    ok "HeliBoard is the only keyboard"
+  elif [ $CHECK = 1 ]; then
+    differs "HeliBoard isn't the only keyboard (now: $(sh_ settings get secure default_input_method))"
+  else
+    sh_ ime enable "$HB_IME" >/dev/null
+    sh_ ime set "$HB_IME" >/dev/null
+    # Off the switcher, not uninstalled: Android falls back to it if HeliBoard goes.
+    for ime in $(sh_ ime list -s); do [ "$ime" = "$HB_IME" ] || sh_ ime disable "$ime" >/dev/null; done
+    if [ "$(sh_ settings get secure default_input_method)" = "$HB_IME" ]; then changed "HeliBoard is the only keyboard"; else problem "couldn't make HeliBoard the keyboard"; fi
+  fi
+  # Its settings live in a device-protected preferences file, written here
+  # (root shell) since the kiosk keeps its settings screen out of reach.
+  HB_PREFS="/data/user_de/0/$HB/shared_prefs/${HB}_preferences.xml"
+  if [ $ROOT_SHELL = 0 ]; then
+    note "HeliBoard's settings need a root shell: set them by hand (no auto-correct or next-word suggestions, height 80 %, toolbar: suggestions only)"
+  else
+    sh_ cat "$HB_PREFS" >"$WORK/hb_have.xml"
+    hb_diff=$(python3 -I - "$WORK/hb_have.xml" "$WORK/hb_want.xml" <<'EOF'
+import sys, xml.etree.ElementTree as ET
+# key: (type, value). The height key is landscape, not folded.
+WANT = {
+    'auto_correction': ('boolean', 'false'),
+    'next_word_prediction': ('boolean', 'false'),
+    'keyboard_height_scale_true_false': ('float', '0.8'),
+    'toolbar_mode': ('string', 'SUGGESTION_STRIP'),
+}
+text = open(sys.argv[1]).read().strip()
+root = ET.fromstring(text) if text.startswith('<') else ET.Element('map')
+diff = []
+for key, (kind, value) in WANT.items():
+    el = root.find(f"*[@name='{key}']")
+    have = None if el is None else (el.text if kind == 'string' else el.get('value'))
+    if el is not None and el.tag == kind and have == value:
+        continue
+    diff.append(key)
+    if el is not None:
+        root.remove(el)
+    el = ET.SubElement(root, kind, name=key)
+    if kind == 'string':
+        el.text = value
+    else:
+        el.set('value', value)
+open(sys.argv[2], 'w').write("<?xml version='1.0' encoding='utf-8' standalone='yes' ?>\n" + ET.tostring(root, encoding='unicode'))
+print(' '.join(diff))
+EOF
+)
+    if [ -z "$hb_diff" ]; then
+      ok "HeliBoard: no auto-correct or next-word guesses, 80 % height, no toolbar"
+    elif [ $CHECK = 1 ]; then
+      differs "HeliBoard settings differ: $hb_diff"
+    else
+      # Stopped while the file changes, or it writes its own copy back.
+      sh_ am force-stop "$HB" >/dev/null
+      adb_ push "$WORK/hb_want.xml" /data/local/tmp/hb_prefs.xml >/dev/null 2>&1
+      if [ -n "$(sh_ ls "$HB_PREFS")" ]; then
+        sh_ "cat /data/local/tmp/hb_prefs.xml > $HB_PREFS" >/dev/null # keeps the file's owner and label
+      else
+        dir=$(dirname "$HB_PREFS")
+        sh_ "mkdir -p $dir && cp /data/local/tmp/hb_prefs.xml $HB_PREFS && chown -R \$(stat -c %u:%g /data/user_de/0/$HB) $dir && chmod 771 $dir && chmod 660 $HB_PREFS && restorecon -R $dir" >/dev/null
+      fi
+      sh_ rm /data/local/tmp/hb_prefs.xml >/dev/null
+      sh_ cat "$HB_PREFS" >"$WORK/hb_now.xml"
+      if grep -q 'name="auto_correction" value="false"' "$WORK/hb_now.xml"; then changed "HeliBoard settings: $hb_diff"; else problem "couldn't write HeliBoard's settings"; fi
+    fi
   fi
 fi
 

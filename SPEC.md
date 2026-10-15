@@ -3044,7 +3044,7 @@ points, not limits.
 
 | Ages | Chores |
 |---|---|
-| 2–3 | Put toys in the bin · shoes in the basket · clothes in the hamper · help feed the pet · bring your plate to the counter · wipe spills with a cloth · water a plant (with help) · put books on the shelf |
+| 2–3 | Put toys in the bin · shoes in the basket · clothes in the hamper · help feed the pet · bring your plate to the counter · wipe spills with a cloth · water a plant (with help) · put books on the shelf · brush teeth (with help) |
 | 3–4 | Above, plus: set napkins and spoons · match socks · sort laundry by color · make bed (pull up blanket) · tidy art supplies · help unload utensils · fill the pet's water |
 | 4–5 | Above, plus: set the table · clear the table · feed the pet independently · dust low surfaces · help put groceries away · get dressed alone · pack daycare bag |
 | Routines (any age) | Brush teeth · potty · wash hands · pajamas · story · lights out · morning: dress, breakfast, shoes |

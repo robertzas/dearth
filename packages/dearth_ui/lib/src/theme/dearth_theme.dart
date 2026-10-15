@@ -137,6 +137,7 @@ ThemeData buildThemeData(DTheme t) {
     scaffoldBackgroundColor: c.surface,
     canvasColor: c.surface,
     fontFamily: DFonts.ui,
+    fontFamilyFallback: const [DFonts.emoji],
     package: DFonts.package,
     splashFactory: InkRipple.splashFactory,
     highlightColor: c.inkPrimary.withValues(alpha: 0.04),

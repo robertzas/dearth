@@ -78,4 +78,41 @@ void main() {
     await tester.tap(find.text('Week'));
     expect(chosen, 'b');
   });
+
+  testWidgets('a side sheet on a landscape wall ends above the on-screen keyboard', (tester) async {
+    tester.view.physicalSize = const Size(1920, 1080);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(host(Builder(
+      builder: (context) => DButton(
+        label: 'Open',
+        onPressed: () => showDSheet<void>(context, title: 'New chore', builder: (_) => const SizedBox(height: 2000, child: DTextField(hint: 'Voice'))),
+      ),
+    )));
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+    final scroll = find.ancestor(of: find.byType(DTextField), matching: find.byType(SingleChildScrollView));
+    expect(tester.getBottomLeft(scroll).dy, 1080);
+    // The frame keeps its window full size under the keyboard (immersive),
+    // so the keyboard arrives as a view inset.
+    tester.view.viewInsets = const FakeViewPadding(bottom: 400);
+    await tester.pumpAndSettle();
+    expect(tester.getBottomLeft(scroll).dy, lessThanOrEqualTo(680));
+  });
+
+  testWidgets('DTextField: no auto-correct, and a tap elsewhere puts the keyboard away', (tester) async {
+    final focus = FocusNode();
+    addTearDown(focus.dispose);
+    await tester.pumpWidget(host(Column(mainAxisSize: MainAxisSize.min, children: [
+      SizedBox(width: 400, child: DTextField(hint: 'Name', focusNode: focus)),
+      const SizedBox(width: 400, height: 200),
+    ])));
+    expect(tester.widget<TextField>(find.byType(TextField)).autocorrect, isFalse);
+    await tester.tap(find.byType(TextField));
+    await tester.pump();
+    expect(focus.hasFocus, isTrue);
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pump();
+    expect(focus.hasFocus, isFalse);
+  });
 }

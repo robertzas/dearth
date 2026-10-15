@@ -84,11 +84,16 @@ class _DSheetRoute<T> extends PopupRoute<T> {
         child: builder(context, side),
       ),
     );
+    // Both shapes end above the on-screen keyboard. A side sheet that kept
+    // the full height left the keyboard over its lower half (on the frame,
+    // over the very field being typed in), and its scroll view couldn't
+    // bring that field above it.
+    final keyboard = mq.viewInsets.bottom;
     return Align(
-      alignment: side ? Alignment.centerRight : Alignment.bottomCenter,
+      alignment: side ? Alignment.topRight : Alignment.bottomCenter,
       child: Padding(
-        padding: EdgeInsets.only(bottom: side ? 0 : mq.viewInsets.bottom),
-        child: side ? SizedBox(height: mq.size.height, child: sheet) : sheet,
+        padding: EdgeInsets.only(bottom: keyboard),
+        child: side ? SizedBox(height: mq.size.height - keyboard, child: sheet) : sheet,
       ),
     );
   }
@@ -694,6 +699,14 @@ class DTextField extends StatelessWidget {
       onChanged: onChanged,
       onSubmitted: onSubmitted,
       textInputAction: textInputAction,
+      // Keyboards replace the typed word with a dictionary one at each
+      // space when asked to correct: the frame's (AOSP) keyboard turned
+      // names and quick-add phrases into other words. Its suggestions
+      // stay, to tap when wanted.
+      autocorrect: false,
+      // A tap anywhere else puts the keyboard away. Android does it only
+      // for a mouse, and walls hide the system back button that would.
+      onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
       style: big ? t.text.title : t.text.body,
       decoration: InputDecoration(
         hintText: hint,

@@ -166,6 +166,7 @@ const List<ChoreTemplate> kChoreLibrary = [
   ChoreTemplate('Help feed the pet', '🐶', 2, "Let's feed our furry friend!", window: 'morning'),
   ChoreTemplate('Plate to the counter', '🍽️', 2, 'All done eating? Bring your plate to the counter!'),
   ChoreTemplate('Books on the shelf', '📚', 2, 'Books go back home on the shelf!'),
+  ChoreTemplate('Brush your teeth', '🪥', 2, 'Brush brush brush those teeth!'),
   ChoreTemplate('Wipe up spills', '🧽', 2.5, 'Uh oh, spill! Can you wipe it up?'),
   ChoreTemplate('Water a plant', '🪴', 2.5, 'The plants are thirsty!', rrule: 'FREQ=WEEKLY;BYDAY=MO,TH'),
   ChoreTemplate('Set the napkins', '🧻', 3, 'Can you put a napkin at every seat?', window: 'evening'),

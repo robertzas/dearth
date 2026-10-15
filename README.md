@@ -423,6 +423,12 @@ It sets up:
   - Android's own screensaver is off (Dearth has its own).
   - Wi-Fi stays on, and Dearth and FreeKiosk are exempt from battery
     optimization.
+- **HeliBoard** (a pinned release, checked against its SHA-256; offline,
+  with no network permission) as the only keyboard, about a third of the
+  screen tall in landscape, with auto-correct and next-word guesses off
+  and no toolbar. The stock keyboard replaced typed words with dictionary
+  ones and covered half the screen. Its settings need the frame's root
+  shell; without one the script says what to set by hand.
 - **Dearth**, built for the device's CPU. By default it's the latest
   release; `--apk FILE` installs a particular build, and `--build` builds
   one on your computer.

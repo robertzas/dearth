@@ -6,6 +6,17 @@ abstract final class DFonts {
   static const package = 'dearth_ui';
   static const ui = 'PlusJakartaSans';
   static const kid = 'Fredoka';
+
+  /// Emoji newer than the system emoji font has (Android 10's stops at
+  /// Emoji 12, so 🪥, 🪴 and 🛝 were empty boxes on the kitchen frame).
+  /// Loaded by `loadEmojiFont`; `tool/fonts/make_emoji_font.sh` builds it.
+  static const emoji = 'DearthEmoji';
+
+  /// The fallbacks of a style that draws emoji without `package:` (a style
+  /// with it names [emoji] alone: Flutter prefixes every fallback with the
+  /// package). [emoji] comes last: where a color emoji font is installed
+  /// by one of these names, it keeps drawing what it has.
+  static const emojiFallback = ['Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', 'packages/$package/$emoji'];
 }
 
 /// The type scale (SPEC §11.3). Sizes are logical px at uiScale 1.0 on a
@@ -42,6 +53,7 @@ class DType {
         TextStyle(
           fontFamily: family,
           package: DFonts.package,
+          fontFamilyFallback: const [DFonts.emoji],
           fontSize: (size * scale).roundToDouble(),
           fontWeight: w,
           height: height,

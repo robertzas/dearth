@@ -19,6 +19,10 @@ dev_dependencies:
   lints: ^6.1.0
 
 flutter:
+  assets:
+    # Loaded by loadEmojiFont() rather than listed under fonts: so the web
+    # build doesn't download it.
+    - assets/fonts/DearthEmoji.ttf
   fonts:
     - family: PlusJakartaSans
       fonts:
