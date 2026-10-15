@@ -424,8 +424,12 @@ jobs:
       # Each architecture builds natively (the Dart toolchain is slow and
       # fragile under QEMU) and is pushed by digest; docker-manifest then
       # publishes both under the release tags.
+      # The base images' registry limits anonymous pulls by address, and
+      # runners share addresses: a 429 failed both tries of one run
+      # (2026-10-14). One more try after a pause, then the job fails.
       - name: Build
         id: build
+        continue-on-error: true
         uses: docker/build-push-action@v7
         env:
           # The build record artifact isn't a release file and breaks
@@ -438,11 +442,27 @@ jobs:
           outputs: type=image,name=${{ steps.img.outputs.name }},push-by-digest=true,name-canonical=true,push=${{ github.event_name == 'push' }}
           cache-from: type=gha,scope=hub-${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=hub-${{ matrix.arch }}
+      - name: Wait before building again
+        if: steps.build.outcome == 'failure'
+        run: sleep 90
+      - name: Build (again)
+        id: build-again
+        if: steps.build.outcome == 'failure'
+        uses: docker/build-push-action@v7
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: false
+        with:
+          context: .
+          platforms: linux/${{ matrix.arch }}
+          build-args: VERSION=${{ steps.v.outputs.full }}
+          outputs: type=image,name=${{ steps.img.outputs.name }},push-by-digest=true,name-canonical=true,push=${{ github.event_name == 'push' }}
+          cache-from: type=gha,scope=hub-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=hub-${{ matrix.arch }}
       - name: Export digest
         if: github.event_name == 'push'
         run: |
           mkdir -p "$RUNNER_TEMP/digests"
-          digest="${{ steps.build.outputs.digest }}"
+          digest="${{ steps.build.outputs.digest || steps.build-again.outputs.digest }}"
           touch "$RUNNER_TEMP/digests/${digest#sha256:}"
       - uses: actions/upload-artifact@v7
         if: github.event_name == 'push'
