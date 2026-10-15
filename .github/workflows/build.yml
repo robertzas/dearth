@@ -424,9 +424,9 @@ jobs:
       # Each architecture builds natively (the Dart toolchain is slow and
       # fragile under QEMU) and is pushed by digest; docker-manifest then
       # publishes both under the release tags.
-      # The base images' registry limits anonymous pulls by address, and
-      # runners share addresses: a 429 failed both tries of one run
-      # (2026-10-14). One more try after a pause, then the job fails.
+      # Base-image registries limit anonymous pulls by address, and runners
+      # share addresses (429s on Docker Hub, then on public.ecr.aws: see the
+      # Dockerfile). One more try after a pause, then the job fails.
       - name: Build
         id: build
         continue-on-error: true

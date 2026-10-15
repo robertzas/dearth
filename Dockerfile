@@ -3,9 +3,11 @@
 #   tool/build_all.sh --hub-image        # builds dist/web, then this image
 #   docker build -t dearth-hub .         # uses whatever is in dist/web (may be empty → API only)
 ARG DART_VERSION=3.13.5
-# Docker's official images, pulled from AWS's public copy: CI runners share
-# addresses, and Docker Hub's anonymous pull limit failed builds (429).
-ARG REGISTRY=public.ecr.aws/docker/library
+# Docker's official images, pulled from Google's mirror of them: CI runners
+# share addresses, and anonymous pull limits failed builds with 429s on
+# Docker Hub (2026-10-09) and then on AWS's copy (public.ecr.aws, every
+# amd64 try on 2026-10-14).
+ARG REGISTRY=mirror.gcr.io/library
 
 # ── 1. Hub build (pure Dart workspace subset; no Flutter SDK needed) ─────────
 FROM ${REGISTRY}/dart:${DART_VERSION} AS hub-build
