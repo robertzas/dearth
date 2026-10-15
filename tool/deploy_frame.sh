@@ -815,6 +815,20 @@ if [ -n "$HB_HAVE" ]; then
     for ime in $(sh_ ime list -s); do [ "$ime" = "$HB_IME" ] || sh_ ime disable "$ime" >/dev/null; done
     if [ "$(sh_ settings get secure default_input_method)" = "$HB_IME" ]; then changed "HeliBoard is the only keyboard"; else problem "couldn't make HeliBoard the keyboard"; fi
   fi
+  # Allwinner ROMs (the JT215M) run a background manager that silently won't
+  # start a service of an app off its whitelist, so the keyboard never
+  # connects. Its user whitelist lives in memory: Dearth sets it again at
+  # every launch (keyboard_allow.dart); this sets it now.
+  if [[ "$(sh_ service list)" == *"[android.aw.IBackgroundManager]"* ]]; then
+    if [[ "$(sh_ dumpsys background | grep -A1 'User Whitelist')" == *"$HB"* ]]; then
+      ok "The ROM's background manager lets HeliBoard run"
+    elif [ $CHECK = 1 ]; then
+      differs "The ROM's background manager blocks HeliBoard (Dearth allows it when it starts)"
+    else
+      sh_ service call background 4 i32 1 s16 "$HB" >/dev/null
+      if [[ "$(sh_ dumpsys background | grep -A1 'User Whitelist')" == *"$HB"* ]]; then changed "The ROM's background manager lets HeliBoard run"; else problem "couldn't whitelist HeliBoard in the ROM's background manager"; fi
+    fi
+  fi
   # Its settings live in a device-protected preferences file, written here
   # (root shell) since the kiosk keeps its settings screen out of reach.
   HB_PREFS="/data/user_de/0/$HB/shared_prefs/${HB}_preferences.xml"

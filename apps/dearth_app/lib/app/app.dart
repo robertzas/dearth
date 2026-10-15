@@ -14,6 +14,7 @@ import '../core/data/household.dart';
 import '../core/env.dart';
 import '../core/platform/frame_tool.dart';
 import '../core/platform/freekiosk.dart';
+import '../core/platform/keyboard_allow.dart';
 import '../core/platform/platform.dart';
 import '../core/providers.dart';
 import '../core/sync/sync_client.dart';
@@ -140,6 +141,8 @@ class _AppFrameState extends ConsumerState<AppFrame> with WidgetsBindingObserver
     ref.listen(frameToolProvider, (_, _) {});
     // New releases from GitHub, on Android (SPEC §15.3).
     ref.listen(appUpdaterProvider, (_, _) {});
+    // Allwinner frames block a keyboard their ROM doesn't know until told.
+    ref.listen(keyboardAllowProvider, (_, _) {});
     return Theme(
       data: _theme!,
       child: _Effects(
