@@ -186,14 +186,15 @@ smooth there (AGENTS rule 8, SPEC §12):
   and every frame is rasterized in full: Number Tracing ran at 57 fps,
   every frame over budget). Motion from `dt` must use the time since the
   last *drawn* tick. Respect `policy.maxParticles`.
-- **Anything that scales, turns or flips is an image.** On the frame's
-  GPU, text and concave paths under a changing transform are rebuilt and
-  uploaded every frame: twelve pulsing emoji drawn as text measured 7 fps
-  (184 ms raster); the same from images, 57 fps (6 ms). `DEmoji` draws
-  from cached images already (and `tint:` makes a shadow without a
-  layer); wrap painted pieces that move in `Snapshot` (`game_widgets.dart`).
-  Static full-screen painters get `CustomPaint(isComplex: true)` so the
-  raster cache keeps them.
+- **Emoji that scale, turn or flip are drawn from images.** On the frame's
+  GPU, an emoji drawn as text under a changing transform is decoded and
+  uploaded again every frame: twelve pulsing emoji measured 7 fps (184 ms
+  raster) as text, 57 fps (6 ms) from images. `DEmoji` does this already
+  (and `tint:` makes a shadow without a layer). Don't snapshot painted
+  pieces into images yourself (`SnapshotWidget`): each snapshot is an
+  offscreen pass, and Shape Sorter's slow frames doubled when its pieces
+  were snapshotted. Static full-screen painters get
+  `CustomPaint(isComplex: true)` so the raster cache keeps them.
 - Measure on the frame: `tool/perf_gate.sh <ip> --only game.<id>`
   (or `games` for all, `probes` for the technique probes) prints each
   game's frame times; it mutes the frame while it plays.

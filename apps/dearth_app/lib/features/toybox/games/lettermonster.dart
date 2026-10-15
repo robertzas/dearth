@@ -336,7 +336,7 @@ class LetterBiscuit extends StatelessWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            const Positioned.fill(child: Snapshot(child: CustomPaint(painter: _BiscuitPainter()))),
+            const Positioned.fill(child: RepaintBoundary(child: CustomPaint(painter: _BiscuitPainter()))),
             GlyphView(letter, height: size * 0.62, color: const Color(0xFF5B3418), weight: 1.6, frameTop: 0, frameBottom: 14),
           ],
         ),

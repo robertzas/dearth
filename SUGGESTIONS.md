@@ -1,2 +1,71 @@
-- ✅ share the cupcakes push and drag doesn't work well — 0.1.103: a press that slides still gives, a drag starts anywhere on a plate, its monster or the tray, one finger at a time, the plate it would land on glows (on the frame now)
-- ✅ hub should auto update just like the android app — built in 0.1.97 (Settings → Updates → Dearth Hub: When I tap / Nightly / Right away); your Hub still reports 0.1.0 until its compose.yml and the dearth_update_token secret are updated once (README → Updating the Hub)
+# SUGGESTIONS
+
+What's still open from the full-tree review of 2026-10-11, cleaned up on
+2026-10-14: everything fixed or found not accurate is gone (what was done,
+and why the rest was dropped, is in PROGRESS.md's 2026-10-11 log). 🔴 high ·
+🟡 medium · ⚪ low.
+
+## Performance
+
+1. 🟡 **Interval rules iterate from DTSTART on every expansion** —
+   `packages/dearth_core/lib/src/calendar/recurrence.dart`. The rrule
+   package's fast-forward only applies to `interval == 1 && count == null &&
+   frequency ≤ daily`, so a biweekly event walks years of occurrences per
+   expansion, on the UI isolate (the shared rule cache from 2026-10-11 saves
+   parsing, not this). **Fix:** for interval rules, seed iteration near the
+   window by stepping whole periods; memoize per (row version, window).
+
+2. ⚪ **Countdowns expand recurrence over a 400-day horizon** —
+   `apps/dearth_app/lib/core/data/calendar.dart` (`today.addDays(400)`), and
+   keep only the first in-window occurrence; Home's notes card depends on it.
+   Data-change-only cost. **Fix:** expand lazily per master until the first
+   occurrence, or memoize per (event id, horizon).
+
+## Hub
+
+3. 🟡 **WebSocket fan-out has no backpressure** —
+   `hub/dearth_hub/lib/src/connections.dart`: `DeviceSession.send` is
+   fire-and-forget and a catching-up session's `_buffer` grows without bound.
+   (Oversize pushes are refused now, and the 25 s ping closes dead sockets.)
+   **Fix:** bound per-session buffered bytes and close on overflow; the
+   device re-bootstraps.
+
+## Structure (maintenance, your call)
+
+4. ⚪ **`admin_routes.dart` (601 LOC) mixes pairing/devices, updates,
+   backup, secrets, ICS and photo-source checks, both OAuth flows and
+   webhooks.** Split into device/oauth/photo/update route files behind one
+   `requireAdmin` wrapper.
+
+5. ⚪ **`kids_section.dart` (853 LOC) holds four inline sheet editors.** Move
+   them beside `kids_ops.dart`, as calendar's `event_ops.dart` does.
+
+## CI
+
+6. ⚪ **Old releases pile up** (a release per push is by design: it feeds
+   the frame's updates). A retention step pruning releases older than N
+   weeks would keep the page usable.
+
+## Testing
+
+7. 🟡 **TimeGrid, MonthView and AgendaView have no widget tests** — lane
+   partitioning (`peopleColumns`), drag/resize math, day rollover on drop,
+   and month/agenda windowing are the riskiest UI with no direct tests.
+
+8. ⚪ **`dearth_ui` widget tests**: the toast queue, PIN-pad lockout,
+   segmented and stepper controls.
+
+9. 🟡 **E2E journeys for surfaces without one**: photo management
+   (FR-PHO-01..09: favorite, hide, sources), notes, rewards and the reward
+   jar, shopping list consolidation. All reachable in demo mode; one
+   happy-path journey each to start. (Weather and the screensaver have
+   theirs.)
+
+## Decided against (so they aren't suggested again)
+
+- Purging tombstones: devices keep theirs, and a long-offline outbox could
+  bring a purged row back.
+- Switching `DPressable` press feedback off inside scrollables: the press
+  timeout already spares flings.
+- CI `concurrency:` instead of the supersede job: the owner chose the job
+  (2026-10-05).

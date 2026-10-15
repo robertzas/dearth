@@ -275,7 +275,7 @@ class BeadGameState extends State<BeadGame> with TickerProviderStateMixin {
                   excludeSemantics: true,
                   onTap: _ring,
                   borderRadius: BorderRadius.circular(dd / 2),
-                  child: Hop(count: _bellHops, child: SizedBox.square(dimension: dd, child: const Snapshot(child: CustomPaint(painter: BellPainter(), size: Size.infinite)))),
+                  child: Hop(count: _bellHops, child: SizedBox.square(dimension: dd, child: const RepaintBoundary(child: CustomPaint(painter: BellPainter(), size: Size.infinite)))),
                 );
               }
               final rack = Column(

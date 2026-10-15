@@ -127,18 +127,28 @@ class PlayArea extends StatelessWidget {
   }
 }
 
-/// Draws [child] once into an image and shows the image (SPEC §12.2). For
-/// pieces that grow, turn or flip: under a changing transform the frame's
-/// GPU builds concave paths and text again on every frame (Shape Sorter's
-/// pieces and Memory Match's cards cost it 40–100 ms a frame), while an
-/// image only has to be sampled. It's taken again when [child] repaints.
-class Snapshot extends StatelessWidget {
-  const Snapshot({super.key, required this.child});
-  final Widget child;
-
-  static final SnapshotController _on = SnapshotController(allowSnapshotting: true);
+/// A number and its dots, in rows of five like a ten-frame: an answer
+/// tile's face (Drum Count, Peekaboo Pals).
+class NumberDots extends StatelessWidget {
+  const NumberDots({super.key, required this.n, required this.size});
+  final int n;
+  final double size;
 
   @override
-  Widget build(BuildContext context) => SnapshotWidget(controller: _on, mode: SnapshotMode.permissive, child: child);
+  Widget build(BuildContext context) {
+    final t = DTheme.of(context);
+    Widget row(int k) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [for (var i = 0; i < k; i++) Container(width: size * 0.1, height: size * 0.1, margin: EdgeInsets.all(size * 0.012), decoration: const BoxDecoration(color: Color(0xFFE86A92), shape: BoxShape.circle))],
+        );
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text('$n', style: t.text.kidDisplay.copyWith(fontSize: size * 0.42, height: 1, color: const Color(0xFF2B2440))),
+        SizedBox(height: size * 0.04),
+        row(math.min(n, 5)),
+        if (n > 5) row(n - 5),
+      ],
+    );
+  }
 }
-

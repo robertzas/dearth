@@ -104,6 +104,13 @@ const List<GameInfo> kExpansionGames = [
   GameInfo('race', 'Animal Race', '🏁', minMonths: 30, skills: ['First, second, third', 'Last', 'Putting in order'], levels: 4, added: '2026-10-10'),
   GameInfo('beads', 'Bead Slider', '🔴', minMonths: 30, skills: ['Fives and tens', 'Counting to twenty', 'Seeing seven as five and two'], levels: 4, added: '2026-10-10'),
   GameInfo('share', 'Fair Share', '🧁', minMonths: 30, skills: ['Sharing equally', 'Same and different', 'Left over'], levels: 4, added: '2026-10-10'),
+  // Four number games for fun (added 2026-10-13): a board game, a tower to
+  // build, a drum to count by ear, and hide-and-seek (minMonths 30: Ava's
+  // age, so she sees them all).
+  GameInfo('dice', 'Dice Dash', '🎲', minMonths: 30, skills: ['Dice patterns', 'Counting on', 'Adding'], levels: 4, added: '2026-10-13'),
+  GameInfo('tower', 'Block Tower', '🧱', minMonths: 30, skills: ['Counting to a number', 'Taller and shorter', 'One more, one less'], levels: 4, added: '2026-10-13'),
+  GameInfo('drums', 'Drum Count', '🐻', minMonths: 30, skills: ['Counting sounds', 'Counting actions', 'Listening'], levels: 4, added: '2026-10-13'),
+  GameInfo('peekaboo', 'Peekaboo Pals', '🙈', minMonths: 30, skills: ['Parts of a number', 'The missing part', 'Counting'], levels: 4, added: '2026-10-13'),
 ];
 
 GameInfo? gameById(String id) => kGames.where((g) => g.id == id).firstOrNull;

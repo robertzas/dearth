@@ -488,7 +488,7 @@ class ShareGameState extends State<ShareGame> with TickerProviderStateMixin {
                         excludeSemantics: true,
                         onTap: _ring,
                         borderRadius: BorderRadius.circular(l.bell.width / 2),
-                        child: Hop(count: _bellHops, child: const Snapshot(child: CustomPaint(painter: BellPainter(), size: Size.infinite))),
+                        child: Hop(count: _bellHops, child: const RepaintBoundary(child: CustomPaint(painter: BellPainter(), size: Size.infinite))),
                       ),
                     ),
                     for (final e in _flights.entries) _flight(e.key, e.value, l.cupcake),

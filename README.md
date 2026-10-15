@@ -116,7 +116,11 @@ back.
   and coast to a stop in order; she answers "who came second?", ribbons all five at the top), Bead Slider (a counting rack
   of red and white beads; a tap slides beads across the gap and the bell checks — "Five and two make seven!"; at the top she
   reads the rack) and Fair Share (two or three monsters with empty plates and a tray of cupcakes; a tap on a plate gives it one, a drag
-  moves one, and the bell checks everyone has the same — "Three each! Fair and square!"). The letter, word
+  moves one, and the bell checks everyone has the same — "Three each! Fair and square!"), Dice Dash (a board game to
+  a birthday cake: roll the big die and hop one counted square per dot, with ladders and slides and no one to lose to),
+  Block Tower (build a tower to a number, block by counted block; the giraffe climbs it and it comes crashing down),
+  Drum Count (a bear drums and she counts the beats, by ear at the top, or plays them herself) and Peekaboo Pals
+  (friends hide behind a bush: how many are hiding?). The letter, word
   and number games talk: every line is a clip bundled with the app, so they
   work on a display with no text-to-speech. Every game is on for every kid, the ones that suit their age first, and every game
   adapts: three wins in a row go up a level, three misses ease off, and

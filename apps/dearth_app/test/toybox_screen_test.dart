@@ -6,6 +6,7 @@ import 'package:dearth_app/features/toybox/toybox_data.dart';
 import 'package:dearth_app/features/toybox/toybox_screen.dart';
 import 'package:dearth_core/dearth_core.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'support/app_harness.dart';
 
@@ -23,6 +24,18 @@ void main() {
 
   Future<void> toybox(AppHarness h) async {
     h.container.read(routerProvider).go('/toybox');
+    await h.settle();
+  }
+
+  /// Opens [game]'s tile, scrolling the launcher's lazy grid to it first
+  /// (newer games lead, so an older one can be below the fold).
+  Future<void> openTile(AppHarness h, String game) async {
+    final tester = h.tester;
+    final tile = byId('toybox.game.$game');
+    await tester.dragUntilVisible(tile, find.descendant(of: find.byType(GridView), matching: find.byType(Scrollable)).first, const Offset(0, -180), maxIteration: 60);
+    await tester.ensureVisible(tile);
+    await h.settle();
+    await tester.tap(tile);
     await h.settle();
   }
 
@@ -107,8 +120,7 @@ void main() {
     final sound = RecordingSound();
     final h = await AppHarness.demo(tester, sound: sound);
     await toybox(h);
-    await tester.tap(byId('toybox.game.bubbles'));
-    await h.settle();
+    await openTile(h, 'bubbles');
     final game = tester.state<BubbleGameState>(find.byType(BubbleGame));
     var popped = 0;
     for (var guard = 0; popped < 12 && guard < 200; guard++) {
@@ -135,8 +147,7 @@ void main() {
     await h.write((w) => [settingOp(w, SettingKeys.toybox, const ToyboxSettings(budgetMinutes: 15).toJson())]);
     await toybox(h);
     expect(byId('toybox.timeleft'), findsOneWidget);
-    await tester.tap(byId('toybox.game.farm'));
-    await h.settle();
+    await openTile(h, 'farm');
     Future<void> played(String id, int minutes) async {
       final now = h.container.read(householdTimeProvider).nowMs();
       await h.write((w) => [w.op('game_events', id, {'profile_id': 'p-ava', 'game': 'memory', 'duration_ms': minutes * 60000, 'at_ms': now, 'result': 'win'}, kind: OpKind.insertOnly)]);

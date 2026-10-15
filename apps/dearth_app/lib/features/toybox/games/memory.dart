@@ -7,7 +7,6 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../core/sound.dart';
 import '../game_host.dart';
-import 'game_widgets.dart';
 
 const Color _hue = Color(0xFF7067E8);
 const Color _matchedRing = Color(0xFF4CC46A);
@@ -231,7 +230,7 @@ class _Card extends StatelessWidget {
             // no turn in it) sends everything under it down the GPU's slow
             // path on every frame, and a board of them cost the kitchen
             // frame 100–400 ms a frame.
-            final side = SizedBox.fromSize(size: size, child: Snapshot(child: showFace ? _Face(face: face, matched: matched, radius: radius) : _Back(radius: radius)));
+            final side = SizedBox.fromSize(size: size, child: RepaintBoundary(child: showFace ? _Face(face: face, matched: matched, radius: radius) : _Back(radius: radius)));
             if (k == 0 || k == 1) return side;
             final m = Matrix4.identity()
               ..setEntry(3, 2, 0.001)

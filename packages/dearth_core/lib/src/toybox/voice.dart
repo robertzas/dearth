@@ -23,6 +23,7 @@ import 'sight.dart';
 import 'spell.dart';
 import 'storytime.dart';
 import 'tally.dart';
+import 'tower.dart';
 import 'voice_lengths.g.dart';
 import 'whosthat.dart';
 import 'words.dart';
@@ -307,8 +308,62 @@ const Map<String, String> kCrayonWords = {
 /// The word clip for a picture shown as [emoji], or null.
 String? emojiWordClip(String emoji) => wordForEmoji(emoji)?.clip;
 
+// The fourth set (2026-10-13): Dice Dash, Block Tower, Drum Count and
+// Peekaboo Pals.
+
+/// "Four! Hop four times!"
+String diceHopClip(int n) => 'dice_hop_$n';
+
+/// "Six! Where will you land?"
+String diceLandClip(int n) => 'dice_land_$n';
+
+/// "Three and two make five! Hop five times!"
+String diceTwoClip(int a, int b) => 'dice_two_${a}_$b';
+
+/// "Build a tower five blocks tall!"
+String towerBuildClip(int n) => 'tower_build_$n';
+
+/// "Five blocks tall! Up you go!"
+String towerYesClip(int n) => 'tower_yes_$n';
+
+/// "Play four beats on the drum!"
+String drumPlayClip(int n) => 'drum_play_$n';
+
+/// "Four beats!"
+String drumYesClip(int n) => 'drum_yes_$n';
+
+/// "That was six beats." (what she played)
+String drumWasClip(int n) => 'drum_was_$n';
+
+/// "Five friends are playing!"
+String peekPlayClip(int n) => 'peek_play_$n';
+
+/// "There are five friends. How many are hiding?"
+String peekSignClip(int n) => 'peek_sign_$n';
+
+/// "Three were hiding!"
+String peekYesClip(int n) => 'peek_yes_$n';
+
 /// Lines that aren't about one letter or word.
 abstract final class VoiceLine {
+  static const diceRoll = 'dice_roll';
+  static const diceAgain = 'dice_again';
+  static const diceLadder = 'dice_ladder';
+  static const diceSlide = 'dice_slide';
+  static const diceCake = 'dice_cake';
+  static const towerMatch = 'tower_match';
+  static const towerMore = 'tower_more';
+  static const towerLess = 'tower_less';
+  static const towerShort = 'tower_short';
+  static const towerTall = 'tower_tall';
+  static const towerCrash = 'tower_crash';
+  static const drumAlong = 'drum_along';
+  static const drumWatch = 'drum_watch';
+  static const drumHidden = 'drum_hidden';
+  static const drumAsk = 'drum_ask';
+  static const peekHide = 'peek_hide';
+  static const peekAsk = 'peek_ask';
+  static const peekBoo = 'peek_boo';
   static const countingStart = 'counting_start';
   static const countingAsk = 'counting_ask';
   static const monsterYum = 'monster_yum';
@@ -796,5 +851,56 @@ Map<String, String> _lines() {
   lines[VoiceLine.musicEcho] = 'Listen, then play it back!';
   lines[VoiceLine.musicTurn] = 'Your turn!';
   lines[VoiceLine.musicYes] = 'You played it!';
+  // The fourth set.
+  lines[VoiceLine.diceRoll] = 'Tap the dice to roll it!';
+  lines[VoiceLine.diceAgain] = 'Roll again!';
+  lines[VoiceLine.diceLadder] = 'A ladder! Up, up, up!';
+  lines[VoiceLine.diceSlide] = 'A slide! Wheee!';
+  lines[VoiceLine.diceCake] = 'You made it to the cake! Yum!';
+  for (var n = 1; n <= 6; n++) {
+    lines[diceHopClip(n)] = '${_cap(numberWord(n))}! Hop ${numberWord(n)} ${n == 1 ? 'time' : 'times'}!';
+    lines[diceLandClip(n)] = '${_cap(numberWord(n))}! Where will you land?';
+  }
+  for (var a = 1; a <= 3; a++) {
+    for (var b = 1; b <= 3; b++) {
+      lines[diceTwoClip(a, b)] = '${_cap(numberWord(a))} and ${numberWord(b)} make ${numberWord(a + b)}! Hop ${numberWord(a + b)} times!';
+    }
+  }
+  for (var n = 1; n <= kTowerMax; n++) {
+    final tall = '${numberWord(n)} block${n == 1 ? '' : 's'} tall';
+    lines[towerBuildClip(n)] = 'Build a tower $tall!';
+    lines[towerYesClip(n)] = '${_cap(tall)}! Up you go, giraffe!';
+  }
+  lines[VoiceLine.towerMatch] = 'Make your tower as tall as the red one!';
+  lines[VoiceLine.towerMore] = 'Make your tower one block taller than the red one!';
+  lines[VoiceLine.towerLess] = 'Make your tower one block shorter than the red one!';
+  lines[VoiceLine.towerShort] = 'Not tall enough yet! More blocks, please.';
+  lines[VoiceLine.towerTall] = 'Too tall! Tap the top block to take it off.';
+  lines[VoiceLine.towerCrash] = 'Uh oh! Crash!';
+  lines[VoiceLine.drumAlong] = "Let's count the beats together!";
+  lines[VoiceLine.drumWatch] = 'Watch the drum, and count the beats!';
+  lines[VoiceLine.drumHidden] = 'Shh! Listen, and count the beats!';
+  lines[VoiceLine.drumAsk] = 'How many beats?';
+  for (var n = 1; n <= 5; n++) {
+    lines[drumPlayClip(n)] = 'Play ${numberWord(n)} ${n == 1 ? 'beat' : 'beats'} on the drum!';
+  }
+  for (var n = 1; n <= 6; n++) {
+    lines[drumYesClip(n)] = '${_cap(numberWord(n))} ${n == 1 ? 'beat' : 'beats'}!';
+  }
+  for (var n = 1; n <= 9; n++) {
+    lines[drumWasClip(n)] = 'That was ${numberWord(n)} ${n == 1 ? 'beat' : 'beats'}.';
+  }
+  lines[VoiceLine.peekHide] = 'Hide and seek! Some friends are hiding!';
+  lines[VoiceLine.peekAsk] = 'How many are hiding?';
+  lines[VoiceLine.peekBoo] = 'Peekaboo!';
+  for (var n = 2; n <= 10; n++) {
+    lines[peekPlayClip(n)] = '${_cap(numberWord(n))} friends are playing!';
+  }
+  for (var n = 3; n <= 8; n++) {
+    lines[peekSignClip(n)] = 'There are ${numberWord(n)} friends. How many are hiding?';
+  }
+  for (var n = 1; n <= 10; n++) {
+    lines[peekYesClip(n)] = n == 1 ? 'One was hiding!' : '${_cap(numberWord(n))} were hiding!';
+  }
   return lines.map((id, line) => MapEntry(id, _americanize(line)));
 }

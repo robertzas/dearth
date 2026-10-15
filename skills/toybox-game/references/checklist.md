@@ -58,7 +58,7 @@ without it.
 - [ ] Moving parts sit in `RepaintBoundary`s and repaint from a
       `ValueNotifier`, not a board-wide `setState`.
 - [ ] Continuous motion runs on an `AmbientTicker` (30 fps on T1); what
-      scales or turns is an image (`DEmoji`, `Snapshot`); particles respect
+      scales or turns is a `DEmoji` (an image), never emoji text; particles respect
       `policy.maxParticles`.
 - [ ] Geometry and unioned paths are built once per size, not per frame.
 - [ ] Every `Timer`, `Ticker` and controller is cancelled or disposed.

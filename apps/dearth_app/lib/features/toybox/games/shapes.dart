@@ -8,7 +8,6 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../core/sound.dart';
 import '../game_host.dart';
-import 'game_widgets.dart';
 import 'voice_widgets.dart';
 
 /// Each shape's color: bright and distinct, like painted wooden toys.
@@ -309,7 +308,7 @@ class ShapeGameState extends State<ShapeGame> with RoundVoice {
                   duration: const Duration(milliseconds: 160),
                   child: _Hop(
                     hops: _bounces[s] ?? 0,
-                    child: Snapshot(child: CustomPaint(size: Size.square(l.size), painter: _PiecePainter(s, lifted: lifted))),
+                    child: RepaintBoundary(child: CustomPaint(size: Size.square(l.size), painter: _PiecePainter(s, lifted: lifted))),
                   ),
                 ),
               ),
@@ -360,7 +359,7 @@ class ToyShapeView extends StatelessWidget {
   final Color? color;
 
   @override
-  Widget build(BuildContext context) => Snapshot(child: CustomPaint(size: Size.square(size), painter: _PiecePainter(shape, lifted: false, color: color)));
+  Widget build(BuildContext context) => RepaintBoundary(child: CustomPaint(size: Size.square(size), painter: _PiecePainter(shape, lifted: false, color: color)));
 }
 
 /// A painted wooden shape: a soft top light and a darker rim.

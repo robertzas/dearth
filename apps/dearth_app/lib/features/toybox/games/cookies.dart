@@ -289,7 +289,7 @@ class CookieGameState extends State<CookieGame> with TickerProviderStateMixin {
                       excludeSemantics: true,
                       onTap: _tapJar,
                       borderRadius: BorderRadius.circular(l.jar.width * 0.2),
-                      child: Hop(count: _jarHops, child: Wiggle(count: _jarWiggles, child: const Snapshot(child: CustomPaint(painter: _JarPainter(), size: Size.infinite)))),
+                      child: Hop(count: _jarHops, child: Wiggle(count: _jarWiggles, child: const RepaintBoundary(child: CustomPaint(painter: _JarPainter(), size: Size.infinite)))),
                     ),
                   ),
                   Positioned.fromRect(
@@ -300,7 +300,7 @@ class CookieGameState extends State<CookieGame> with TickerProviderStateMixin {
                       excludeSemantics: true,
                       onTap: _ring,
                       borderRadius: BorderRadius.circular(l.bell.width / 2),
-                      child: Hop(count: _bellHops, child: const Snapshot(child: CustomPaint(painter: BellPainter(), size: Size.infinite))),
+                      child: Hop(count: _bellHops, child: const RepaintBoundary(child: CustomPaint(painter: BellPainter(), size: Size.infinite))),
                     ),
                   ),
                   for (final e in _returning.entries) _flying(e.key, from: l.spot(e.value), to: l.jar.center, size: l.cookie, shrink: true),

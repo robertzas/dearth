@@ -78,6 +78,10 @@ const Map<String, Color> kGameHues = {
   'race': Color(0xFF41D87B),
   'beads': Color(0xFFD8D841),
   'share': Color(0xFFD841BA),
+  'dice': Color(0xFF0FA3B1),
+  'tower': Color(0xFFE76F51),
+  'drums': Color(0xFF8E5572),
+  'peekaboo': Color(0xFF52B788),
 };
 
 /// The Toybox (SPEC §10.8, FR-TOY-01): big picture tiles of the games that

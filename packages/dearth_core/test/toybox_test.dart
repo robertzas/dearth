@@ -64,7 +64,8 @@ void main() {
 
     test('FR-TOY-01: the launcher puts new games she hasn\'t tried first, then her favorites, then the rest in age order', () {
       final games = gamesFor(30);
-      final newest = [for (final g in kGames) if (g.added == '2026-10-10') g.id];
+      // Newest first: the fourth set, then the third.
+      final newest = [for (final g in kGames) if (g.added == '2026-10-13') g.id, for (final g in kGames) if (g.added == '2026-10-10') g.id];
       final added = [for (final g in kGames) if (g.added == '2026-10-08') g.id];
       expect(added, ['cookies', 'lettermonster', 'busstop', 'wordpop', 'rocket', 'train', 'fishing', 'lettercreature']);
       expect(newest, isNotEmpty, reason: 'the number set being built');
@@ -84,7 +85,7 @@ void main() {
       final tried = launcherOrder(games, tried: {'cookies'}, recentRounds: {...rounds, 'cookies': 40}, today: '2026-10-10').map((g) => g.id).toList();
       expect(tried.indexOf('cookies'), newest.length + 7, reason: 'after the still-new games, the top favorite');
       // A month on, nothing is new any more.
-      final later = launcherOrder(games, tried: const {}, recentRounds: const {}, today: '2026-11-09').map((g) => g.id).toList();
+      final later = launcherOrder(games, tried: const {}, recentRounds: const {}, today: '2026-11-14').map((g) => g.id).toList();
       expect(later, games.map((g) => g.id).toList());
       // Fewer than three rounds is not a favorite; a game switched off stays off.
       final off = launcherOrder(gamesFor(30, off: {'numbers'}), tried: const {}, recentRounds: const {'numbers': 34, 'farm': 2}, today: '2026-12-01').map((g) => g.id).toList();
@@ -300,6 +301,7 @@ void main() {
         for (final w in DressWeather.values) w.emoji,
         for (final i in DressItem.values) i.emoji,
         for (final r in kRacers) r.$1,
+        ...kPeekabooFriends,
       ];
       expect([for (final p in pictures) if (!draws(p)) p], isEmpty);
     });

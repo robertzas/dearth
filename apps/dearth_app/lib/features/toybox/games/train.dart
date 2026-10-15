@@ -223,7 +223,7 @@ class TrainGameState extends State<TrainGame> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        SizedBox(width: l.unit * 1.3, height: l.unit * 1.15, child: const Snapshot(child: CustomPaint(painter: _EnginePainter()))),
+                        SizedBox(width: l.unit * 1.3, height: l.unit * 1.15, child: const RepaintBoundary(child: CustomPaint(painter: _EnginePainter()))),
                         for (var i = 0; i < r.letters.length; i++) _car(i, l),
                       ],
                     ),

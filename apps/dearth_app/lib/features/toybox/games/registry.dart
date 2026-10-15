@@ -11,9 +11,11 @@ import 'cookies.dart';
 import 'counting.dart';
 import 'creature.dart';
 import 'creaturecount.dart';
+import 'dice.dart';
 import 'differences.dart';
 import 'dots.dart';
 import 'dressup.dart';
+import 'drums.dart';
 import 'farm.dart';
 import 'fingers.dart';
 import 'fishing.dart';
@@ -33,6 +35,7 @@ import 'music.dart';
 import 'oddone.dart';
 import 'paint.dart';
 import 'patterns.dart';
+import 'peekaboo.dart';
 import 'race.dart';
 import 'rhymes.dart';
 import 'rocket.dart';
@@ -48,6 +51,7 @@ import 'stories.dart';
 import 'storytime.dart';
 import 'sudoku.dart';
 import 'tally.dart';
+import 'tower.dart';
 import 'tracing.dart';
 import 'train.dart';
 import 'whosthat.dart';
@@ -112,4 +116,8 @@ final Map<String, GameBuilder> kGameBuilders = {
   'race': RaceGame.new,
   'beads': BeadGame.new,
   'share': ShareGame.new,
+  'dice': DiceGame.new,
+  'tower': TowerGame.new,
+  'drums': DrumsGame.new,
+  'peekaboo': PeekabooGame.new,
 };

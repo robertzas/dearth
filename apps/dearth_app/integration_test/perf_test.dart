@@ -16,6 +16,7 @@ import 'package:dearth_app/features/calendar/calendar_screen.dart';
 import 'package:dearth_app/features/calendar/calendar_state.dart';
 import 'package:dearth_app/features/toybox/game_host.dart';
 import 'package:dearth_app/features/toybox/games/registry.dart';
+import 'package:dearth_app/features/toybox/toybox_data.dart';
 import 'package:dearth_app/features/toybox/toybox_screen.dart';
 import 'package:dearth_core/dearth_core.dart';
 import 'package:dearth_integrations/dearth_integrations.dart' show DemoIds;
@@ -237,6 +238,25 @@ Future<void> _run(WidgetTester tester, {required int soakMinutes}) async {
           await _wait(const Duration(milliseconds: 350));
         }
       }, name: 'game.$id');
+    }
+  }
+
+  // Diagnosis (opt-in): `quiet.<id>` plays like `game.<id>` with the
+  // Toybox muted (is it the sound?), `idle.<id>` opens it and touches
+  // nothing for ten seconds (is it the screen itself?).
+  for (final id in kGameBuilders.keys) {
+    if (_only.contains('idle.$id')) await inGame(id, () => _wait(const Duration(seconds: 10)), name: 'idle.$id');
+    if (_only.contains('quiet.$id')) {
+      final w = c.read(writerProvider);
+      await w.commit([settingOp(w, SettingKeys.toybox, const ToyboxSettings(volume: 0).toJson())]);
+      await inGame(id, () async {
+        await _wait(const Duration(seconds: 3));
+        for (var i = 0; i < 24; i++) {
+          await tester.tapAt(Offset(size.width * (0.12 + 0.8 * rng.nextDouble()), size.height * (0.2 + 0.75 * rng.nextDouble())));
+          await _wait(const Duration(milliseconds: 350));
+        }
+      }, name: 'quiet.$id');
+      await w.commit([settingOp(w, SettingKeys.toybox, const ToyboxSettings().toJson())]);
     }
   }
 

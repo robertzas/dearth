@@ -321,6 +321,21 @@ void main() {
         VoiceLine.bubblesStart,
         for (final c in const ['blue', 'red', 'yellow', 'green', 'purple']) bubblesCallClip(c),
         VoiceLine.musicEcho, VoiceLine.musicTurn, VoiceLine.musicYes,
+        // The fourth set (2026-10-13).
+        VoiceLine.diceRoll, VoiceLine.diceAgain, VoiceLine.diceLadder, VoiceLine.diceSlide, VoiceLine.diceCake,
+        for (var n = 1; n <= 6; n++) ...[diceHopClip(n), diceLandClip(n)],
+        for (var a = 1; a <= 3; a++)
+          for (var b = 1; b <= 3; b++) diceTwoClip(a, b),
+        for (var n = 1; n <= kTowerMax; n++) ...[towerBuildClip(n), towerYesClip(n)],
+        VoiceLine.towerMatch, VoiceLine.towerMore, VoiceLine.towerLess, VoiceLine.towerShort, VoiceLine.towerTall, VoiceLine.towerCrash,
+        VoiceLine.drumAlong, VoiceLine.drumWatch, VoiceLine.drumHidden, VoiceLine.drumAsk,
+        for (var n = 1; n <= 5; n++) drumPlayClip(n),
+        for (var n = 1; n <= 6; n++) drumYesClip(n),
+        for (var n = 1; n <= 9; n++) drumWasClip(n),
+        VoiceLine.peekHide, VoiceLine.peekAsk, VoiceLine.peekBoo,
+        for (var n = 2; n <= 10; n++) peekPlayClip(n),
+        for (var n = 3; n <= 8; n++) peekSignClip(n),
+        for (var n = 1; n <= 10; n++) peekYesClip(n),
       ];
       expect(asked.where((a) => !ids.contains(a)), isEmpty);
       expect(ids.difference(asked.toSet()), isEmpty, reason: 'no line nothing says');
