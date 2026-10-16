@@ -5,7 +5,7 @@ import 'package:dearth_hub/src/storage.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:test/test.dart';
 
-/// The unauthenticated edges (SUGGESTIONS Hub §3).
+/// The unauthenticated edges (from the 2026-10-11 review, fixed).
 void main() {
   test('a caller is limited within the window and free again after it', () {
     var now = 0;

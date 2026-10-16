@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:test/test.dart';
 
-/// URLs a device names reach only the public internet (SUGGESTIONS Hub §2).
+/// URLs a device names reach only the public internet (from the 2026-10-11 review, fixed).
 void main() {
   test('private, loopback and link-local addresses are not public', () {
     for (final a in ['127.0.0.1', '10.1.2.3', '172.16.0.1', '172.31.255.1', '192.168.1.10', '169.254.169.254', '100.64.0.1', '0.0.0.0', '::1', '::', 'fe80::1', 'fd00::1', '::ffff:192.168.1.1']) {

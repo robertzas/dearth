@@ -8,11 +8,9 @@
 
 | | |
 |---|---|
-| **Status** | Draft 0.1 for review |
-| **Date** | 2026-10-02 |
+| **Status** | Living contract: change it in the same commit as the behavior. Build status lives in `PROGRESS.md`. |
 | **Owner** | Robert Z |
-| **Edition** | Native Flutter app + optional self-hosted Hub |
-| **Supersedes** | `../dearth_webapp/SPEC.md` (web edition) and `../dearth_flutter` (standalone edition) as the product contract. Both remain reference implementations; see §4 for what we keep from each. |
+| **Edition** | Native Flutter app + optional self-hosted Hub (supersedes `../dearth_webapp` and `../dearth_flutter`) |
 
 **How to read this document.** Requirements carry stable IDs (`FR-CAL-07`)
 for use in code comments, tests, issues and PRs. Every requirement carries a
@@ -28,7 +26,6 @@ re-measure before relying on them for new decisions.
 1. [Vision & product pillars](#1-vision--product-pillars)
 2. [Reference household & devices](#2-reference-household--devices)
 3. [Goals, non-goals & success metrics](#3-goals-non-goals--success-metrics)
-4. [Lessons from previous attempts](#4-lessons-from-previous-attempts)
 5. [Competitive parity (Skylight, Hearth)](#5-competitive-parity-skylight-hearth)
 6. [Target hardware & performance envelope](#6-target-hardware--performance-envelope)
 7. [System architecture](#7-system-architecture)
@@ -134,14 +131,13 @@ photos (local or shared-link), recipes, chores and the toybox (§7.2).
 
 ### 3.3 Success metrics (measured on the JT215M unless noted)
 
+Frame-time, jank, cold-start, memory and CPU budgets live in §12.1; the
+whole-product metrics are:
+
 | Metric | Target |
 |---|---|
-| Frame time, standard interactions (scroll, navigate, open sheets) | p95 ≤ 17.9 ms (56 Hz budget), no frame > 50 ms during navigation |
 | Screensaver crossfade between 1080p photos | 0 dropped frames, p99 ≤ 17.9 ms |
-| Cold start → interactive Home | ≤ 3.5 s |
 | Resume from background | ≤ 300 ms |
-| Memory (PSS), kitchen role, 24 h uptime | < 10 % growth over 7 days; never killed by Android's low-memory killer (no fixed ceiling: 2 GB is enough, leaks are what hurt) |
-| CPU, idle Home (no animation) / screensaver | ≤ 3 % / ≤ 12 % of total CPU |
 | Change on phone → visible on LAN displays | p95 ≤ 1 s |
 | Google Calendar change → visible on display | ≤ 15 s with push channels; ≤ 10 min fallback |
 | Unattended kiosk uptime without app restart | ≥ 30 days |
@@ -149,64 +145,13 @@ photos (local or shared-link), recipes, chores and the toybox (§7.2).
 
 ---
 
-## 4. Lessons from previous attempts
-
-Two earlier editions exist: `../dearth_webapp` (Bun + Svelte web app in
-FreeKiosk's WebView) and `../dearth_flutter` (standalone Flutter, Hive
-storage, no server). What we learned from each:
-
-| # | What happened | Evidence | Decision for this edition |
-|---|---|---|---|
-| L1 | The web UI was slow or broken on the frame. | Stock WebView (Chromium 74) showed a blank page; Chromium 101 broke Tailwind 4 colors; even Chromium 124's V8 is slow on Cortex-A53. FreeKiosk + WebView used **318 MB PSS** (measured 2026-10-02). | **Native Flutter AOT app.** WebView is used only to embed the YouTube player. |
-| L2 | Amazon Photos sign-in automation kept breaking. | Cookie paste, HTML form scraping and headless Chromium each failed against Amazon's anti-bot, passkey and 2FA flows. | **Never store Amazon credentials.** Use an anonymous **shared-album link** (§13.5.1); Immich, Google Photos Picker and folders are the official paths. |
-| L3 | The standalone Flutter edition had no multi-device story. | Each device synced Google on its own. Hive is a key-value store with no relational queries. | **Hub + local-first relational replicas** (drift/SQLite on every device), with **one integration engine on the Hub**. |
-| L4 | Google sign-in can't work on the frame. | `google_sign_in` needs Google Play Services, which the frame lacks. Google's device-code flow does not allow Calendar scopes. | **OAuth runs on the Hub** through the family's HTTPS domain. Displays never hold Google tokens. |
-| L5 | Google Keep sync was unreliable to set up. | The Keep API is gated to Workspace accounts. | No Keep dependency. Local lists, with optional Home Assistant to-do and Google Tasks mirrors. |
-| L6 | Keeping every tab alive cost too much memory. | `IndexedStack` held all 10 screens and their tickers alive. | Explicit keep-alive budget (§12.6); `TickerMode` off for offstage routes. |
-| L7 | Spec-first development with FR IDs and tests worked well. | Two editions built quickly from one spec. | Keep it. FR IDs are referenced from tests. |
-
-**Reusable assets** to port rather than reinvent:
-
-- Google Calendar sync semantics: syncTokens, etag conflict policy, outbox (old SPEC §11.2).
-- The recipe normalization, consolidation and reuse-scoring algorithms
-  (`../dearth_webapp/MEALS.md`).
-- The quick-add parser and NOAA solar math, with their test vectors.
-- The FreeKiosk provisioning script and device quirks
-  (`../dearth_webapp/skills/freekiosk/SKILL.md`, to be ported into this repo).
-- The Toybox concepts and synthesized-sound approach.
-
----
-
 ## 5. Competitive parity (Skylight, Hearth)
 
-Vendor features were captured from vendor sites and reviews (Sept/Oct 2026).
-Skylight gates several features behind *Calendar Plus* (about $79/yr) and
-Hearth behind its *Family Membership*. Dearth has no subscription.
-
-| Capability | Skylight | Hearth | Dearth (milestone) |
-|---|---|---|---|
-| Calendar sync | Google, Apple, Outlook, Yahoo, Cozi, Readdle | Google, iCal, Outlook | Google two-way **[M1]**; ICS subscribe **[M1]**; CalDAV/iCloud and Microsoft 365 **[M5]** |
-| Views | Day, week, month | Daily (24 h), weekly, monthly | Day, 3-day, week, month, agenda, **per-person columns**, kid picture-timeline **[M1–M3]** |
-| Color-coded profiles | ✓ | ✓ (incl. pets, caregivers) | ✓ incl. pets, caregivers, guests **[M1]** |
-| Countdowns | ✓ | — | ✓ incl. kid "sleeps until" **[M1]** |
-| Weather at event time/location | ✓ | Weather widget | ✓ **[M2]** plus full weather dashboard **[M1]** |
-| Lists / grocery | ✓ | ✓ (board and checklist) | ✓ plus meal-plan-generated shopping list **[M2]** |
-| To-dos / chores | ✓ | ✓ (Anyone pool, celebrations) | ✓ incl. toddler picture-and-voice chart **[M3]** |
-| Stars & rewards | Plus | Membership | ✓ stars, stickers, reward jar, family goals **[M3]** |
-| Routines & streaks | Task lists | ✓ | ✓ visual routines, timers, First–Then **[M3]** |
-| Meal planning & recipes | Plus (AI suggestions) | Membership (recipes on display) | ✓ multi-source recipe finder, scaling, plan-aware suggestions, cook mode **[M2]** |
-| AI import (email, photo, PDF → events) | Plus ("Magic Import") | Membership ("Hearth Helper") | Pluggable, deferred **[M5]** |
-| Photo screensaver | Plus | Privacy-mode photos | ✓ Amazon shared album, Google Photos, Immich, NAS **[M1–M3]** |
-| Feelings check-in | — | ✓ | ✓ (ages 3+) **[M3]** |
-| Character animations | Plus (Disney) | Celebrations | Original "buddy" characters, celebration catalog **[M3]** |
-| Multi-device sync | ✓ | — | ✓ with per-device roles **[M1]** |
-| Companion app | ✓ | ✓ | Android app + iPhone PWA **[M1–M2]** |
-| Parental lock | ✓ | ✓ | Grown-up mode, toddler lock **[M1]** |
-| **Toddler Toybox** | — | — | ✓ creative and thinking games for ages 2–5 **[M3]** |
-| **Music for kids** | — | — | ✓ curated tiles: files, YouTube, Spotify, Amazon via HA **[M3–M4]** |
-| **Smart home** | — | — | ✓ Home Assistant panel, doorbell pop-up, presence wake **[M4]** |
-| **Multi-room roles** | — | — | ✓ kitchen, kid room (OK-to-wake), entry **[M4]** |
-| **Privacy / ownership** | Vendor cloud | Vendor cloud | Self-hosted, offline-capable, exportable **[M1]** |
+The bar (G1) is Skylight's and Hearth's core family experience (calendar
+sync and views, profiles, lists, chores and rewards, meal planning, photo
+screensaver, companion app, parental lock) with no subscription, plus what
+neither has: the Toybox, kids' music, Home Assistant, per-room roles and
+self-hosting. Each requirement's milestone tag says when it lands.
 
 ---
 
@@ -216,7 +161,7 @@ Hearth behind its *Family Membership*. Dearth has no subscription.
 
 | Property | Value | Consequence |
 |---|---|---|
-| Model | Joyhong JT215M-H01, Allwinner `sun50iw10p1` (A133-class), board `ceres` | Vendor quirks documented in `../dearth_webapp/skills/freekiosk/SKILL.md` |
+| Model | Joyhong JT215M-H01, Allwinner `sun50iw10p1` (A133-class), board `ceres` | Vendor quirks: `tool/deploy_frame.sh` handles them; the working facts are in `AGENTS.md` → The kitchen frame |
 | CPU | 4× Cortex-A53 @ 1.51 GHz, `schedutil` | Little cores only. Keep UI-isolate work small; push parsing to isolates. |
 | ABI | **32-bit only:** `armeabi-v7a`, `zygote32`, no 64-bit ABI list | Build `android-arm`. Every native dependency MUST ship armeabi-v7a. |
 | RAM | 2 GB total, ~1.0 GB free; **`ro.config.low_ram=true`**; Java heap limit 128 MB | Aggressive low-memory killer. Strict image-cache and keep-alive budgets. |
@@ -311,28 +256,15 @@ Settings → Device → Advanced.
 
 ### 7.3 Repository layout (Dart pub workspace)
 
-```
-dearth/
-├── SPEC.md                    ← this document
-├── AGENTS.md                  ← conventions for humans and coding agents (M0)
-├── apps/
-│   └── dearth_app/            ← Flutter app: android, ios, web, linux, macos, windows
-├── hub/
-│   └── dearth_hub/            ← Dart server (shelf), Dockerfile, compose files
-├── packages/
-│   ├── dearth_core/           ← pure Dart: domain model, drift schema, sync protocol,
-│   │                            HLC, recurrence, schedules, units, ingredient parsing,
-│   │                            recipe scoring, quick-add parser, solar math
-│   ├── dearth_integrations/   ← pure Dart provider adapters (used by Hub and Solo mode)
-│   └── dearth_ui/             ← design system: tokens, components, icons, motion,
-│                                widget gallery app for visual review
-├── tool/                      ← deploy_frame.sh, perf_gate.sh, release.sh
-└── docs/                      ← setup guides (Google, WU, Amazon link, HA, FreeKiosk)
-```
+`AGENTS.md` → Layout keeps the current map: `apps/dearth_app` (every
+platform), `hub/dearth_hub`, `packages/dearth_core` (pure Dart: schema,
+sync, domain), `packages/dearth_integrations` (provider adapters, used by
+the Hub and Solo mode), `packages/dearth_ui` (design system), `e2e/`,
+`tool/`, `skills/`.
 
 ### 7.4 Technology stack
 
-Versions are as of 2026-10-02; pin exact versions in lockfiles.
+Exact versions are in the lockfiles. Rows marked *planned* aren't in the code yet.
 
 | Concern | Choice | Rationale / rejected alternatives |
 |---|---|---|
@@ -340,18 +272,18 @@ Versions are as of 2026-10-02; pin exact versions in lockfiles.
 | State | **Riverpod 3.4** (`select`-based fine-grained rebuilds) | Mature and testable. The previous edition already used it. Signals is a viable alternative but less proven for this team. |
 | Routing | **go_router 18** with `StatefulShellRoute` | Deep links (web URLs), per-tab stacks, explicit keep-alive control |
 | Local DB | **drift 2.35** + **sqlite3 3.x** (FFI on native; WASM + OPFS on web) | Relational, reactive `watch()` streams, migrations, background isolate. Rejected: Hive (no queries), Isar (maintenance risk), ObjectBox (licensing and armv7). |
-| Hub DB | drift on SQLite (default) or **Postgres** (via `drift_postgres`, verify in M0; fallback: `postgres` 3.5 behind a storage adapter) | Same schema definitions on client and Hub. Owner's Postgres is optional, never required. |
+| Hub DB | drift on SQLite. **Postgres** (`DEARTH_DB_URL`) is *planned*: `SyncStore` needs dialect-aware SQL first (`?` vs `$n` placeholders) | Same schema definitions on client and Hub. Owner's Postgres is optional, never required. |
 | Sync | **Custom field-level LWW with Hybrid Logical Clocks** (§8.4) | Rejected: PowerSync (needs Postgres logical replication plus extra services), ElectricSQL (read-path only), Firebase/Supabase (cloud or heavy), Dart CRDT libraries (`crdt_sync` unmaintained since 2024). Data volume is small; the protocol stays small. |
 | Hub HTTP | **shelf 1.4** + shelf_router + web_socket_channel | Stable and minimal. Rejected: Serverpod (Postgres-first, its own codegen and protocol), dart_frog (adds little here). |
-| Serialization | drift-generated row classes + `json_serializable` for API DTOs | Keep codegen to drift_dev + json_serializable (+ optional riverpod_generator) |
+| Serialization | drift-generated row classes; hand-written `toJson`/`fromJson` for API DTOs | Codegen is drift_dev only |
 | Images | Hub-rendered derivatives (**libvips** in the Hub image) + device blob cache + `ResizeImage` | Decoding originals on a Cortex-A53 is the main jank and memory risk. Rejected: `cached_network_image` (no control over sizing or offline guarantees). |
-| Audio | **just_audio** (music, ExoPlayer) + **flutter_soloud** (low-latency game sound effects; verify armv7 in M0) | Toddler instruments need low latency; music needs streaming and gapless playback |
-| Embedded web | `webview_flutter` 4.14 + `youtube_player_iframe` 6 | YouTube only (§13.7) |
+| Audio | **flutter_soloud** (sound effects and voice clips, low latency; WebAudio on the web) + **just_audio** (*planned*, with the Music box: streaming, gapless) | Toddler instruments need low latency; music needs streaming and gapless playback |
+| Embedded web | `webview_flutter` + `youtube_player_iframe` (*planned*, with the Music box) | YouTube only (§13.7) |
 | Animation | Implicit/explicit animations + `CustomPainter` + sprite sheets. Rive only if it passes the T1 benchmark. **No Lottie on T1.** | Predictable cost on Impeller-GLES |
 | Charts | Custom painters (weather, progress) | Exact design control, cached pictures, no heavy chart library |
 | Calendar views | **Custom** time-grid, month and agenda renderers | Performance and design control. Rejected: Syncfusion (license, weight), kalender/table_calendar (styling limits). |
-| Icons & illustration | Material Symbols Rounded (variable font) + **Microsoft Fluent Emoji** (MIT) pre-rasterized + `vector_graphics` precompiled SVG | Rich, friendly, cheap to draw |
-| Testing | flutter_test, `alchemist` goldens, integration_test, **patrol** (on-device), `package:test` on the Hub | §16 |
+| Icons & illustration | Material icons + system emoji (with the bundled `DearthEmoji` fallback, §11.3), drawn once into images by `DEmoji`; scenes and game art painted in code. Fluent Emoji and `vector_graphics` are *planned* | Rich, friendly, cheap to draw |
+| Testing | flutter_test, `package:test`, Playwright on the web build, integration_test (the perf gate). Goldens (`alchemist`) and on-device `patrol` are *planned* | §16 |
 | Hub packaging | `dart compile exe` → slim Debian image with libvips; multi-arch (amd64, arm64); Compose with optional Postgres profile | Small, fast-starting, ARM-friendly (Raspberry Pi) |
 
 ### 7.5 Architecture decisions (ADR summary)
@@ -480,7 +412,7 @@ node converges to the same state regardless of arrival order.
 #### 8.4.4 Special cases
 | Case | Rule |
 |---|---|
-| Append-only tables (`ledger_entry`, `game_progress`, `audit_log`, `feeling_entry`) | `insert_only` ops. The Hub rejects updates to these tables. No conflicts possible. |
+| Append-only tables (`ledger_entry`, `game_progress`, `audit_log`, `feeling_entry`) | `insert_only` ops. The Hub rejects updates to these tables. No conflicts possible; concurrent inserts of the same deterministic id converge first-writer-wins (lowest HLC). |
 | Natural-key rows (chore instances, derived shopping items) | Deterministic v5 IDs; concurrent creation merges field-wise |
 | Approvals and grants (approve chore, redeem reward, adjust stars) | Gated ops: must carry an actor with an adult role and come from a device whose role allows it. The Hub verifies, and the ledger entry is written **by the Hub** as a consequence, so balances can't be forged by a kid-room device. |
 | Integration-owned fields (Google `etag`, `remote_id`, sync metadata) | Written only by the Hub node. The Hub rejects device writes to them. |
@@ -524,6 +456,10 @@ and clock skew. They assert identical materialized state, no lost
 | `profile:<id>` | Private lists and notes of one profile | That profile's personal devices only |
 | `kid_safe` | Subset for kid-room devices: kid profiles, routines, music tiles, toybox, kid-visible events | Kid-room role (never receives `adult` or other profiles' private scopes) |
 
+v1 implements these scopes at **table granularity** (a device gets whole
+tables or none); row-level rules (private lists, per-calendar visible
+roles) are a known follow-up.
+
 ### 8.6 Ephemeral (non-op-log) channels
 Some data streams through the WebSocket without entering `op_log`: Home
 Assistant entity states, live timer ticks (devices compute these locally
@@ -547,7 +483,7 @@ results. Recipe results are fetched on demand and persisted only when saved.
   a fresh Hub's boot-time defaults would otherwise be newer than the
   family's real settings. Tombstones come along; `devices` rows don't
   (each Hub registers its own). Integration secrets stay behind.
-- Restore drill documented in `docs/backup.md` and tested in CI.
+- The backup/restore drill is covered by the Hub's tests in CI.
 
 ---
 
@@ -557,10 +493,11 @@ results. Recipe results are fetched on demand and persisted only when saved.
 - One household per Hub (v1).
 - Profiles: `adult`, `child`, `caregiver`, `guest`, `pet`. Pets can have care
   tasks but no stars.
-- Adults have a **PIN** (4–6 digits). The Hub stores an Argon2id hash, with parameters tuned
-  so one verification takes ≤ 300 ms on T1. The hash syncs to shared displays
-  so they can verify offline, with rate-limited attempts (30 s lockout after
-  5 failures).
+- Adults have a **PIN** (4–6 digits). The Hub stores a PBKDF2-HMAC-SHA256
+  hash (Argon2id isn't available everywhere, e.g. the web), with parameters
+  tuned so one verification takes ≤ 300 ms on T1. The hash syncs to shared
+  displays so they can verify offline, with rate-limited attempts (30 s
+  lockout after 5 failures).
 - Kids have a **stage** (`little` 2–3, `preschool` 3–4, `prek` 4–5) that
   tunes their UI and reward mechanics (§10.7). Dearth suggests a stage
   change around birthdays.
@@ -718,8 +655,9 @@ portrait to Agenda)
 - **FR-CAL-14 [M2]** Long-press and drag to move an event, drag the bottom
   edge to resize (grown-up mode), with 15-minute snapping and haptic and
   visual feedback.
-- **FR-CAL-15 [M1]** **Auto-icons:** a keyword map (Appendix F) gives events
-  an emoji or icon ("swim" → 🏊, "dentist" → 🦷, "birthday" → 🎂). Users can
+- **FR-CAL-15 [M1]** **Auto-icons:** a bundled keyword map (~300 English
+  words: "swim" → 🏊, "dentist" → 🦷, "birthday" → 🎂) gives events an
+  emoji or icon. Users can
   override per event, and a learned override applies to future events with
   the same title.
 
@@ -1645,7 +1583,11 @@ The phone class uses a 0.72× type ramp.
   for the active state) for UI.
 - **Fluent Emoji** (MIT; 3D style) for content: event icons, chores, meals,
   weather "for kids", rewards. Pre-rasterized at 96/192/384 px and selected
-  per size.
+  per size. *Not built yet:* today content emoji come from the system font,
+  with `DearthEmoji.ttf` (`tool/fonts/make_emoji_font.sh`: the Noto emoji
+  Android 10's font lacks) last in every fallback list, and `DEmoji` draws
+  each one once into an image at its on-screen size (emoji drawn as text
+  under a changing transform are re-uploaded every frame on the frame).
 - Empty-state illustrations and kid scenes in one consistent style,
   precompiled with `vector_graphics`.
 
@@ -1695,166 +1637,6 @@ Rules:
 - ★ **Seasonal accents** (opt-in, subtle): leaves in fall, snow in December,
   hearts in February. On T1 these are static or use ≤ 20 particles at
   20 fps.
-
-### 11.7 Screen blueprints
-
-These are wireframes for structure and hierarchy, not visual design. Hi-fi
-mockups for each are an M0 deliverable.
-
-**Kitchen Home — landscape (Wall-L)**
-```
-┌────┬──────────────────────────────────────────────────────────────────────────────┐
-│ ⌂  │ Friday, October 2                    7:42                ☀ 63°  H71 L45  ☂ 10% │
-│Home│                                       PM                  ⚠ none   ● synced   │
-│ 📅 ├──────────────────────────┬─────────────────────────────┬───────────────────────┤
-│Cal │ TODAY                     │ UP NEXT                      │ TONIGHT               │
-│ 🍽 │ 8:00  🏫 Daycare   ●Ava   │ 🏊 Swim lesson    in 45 min  │ ┌───────────────────┐ │
-│Meal│ 9:30  🦷 Dentist   ●Mom   │ 5:30–6:15 · ●Ava ●Mom        │ │   [taco photo]    │ │
-│ ✓  │ 5:30  🏊 Swim      ●Ava●M │──────────────────────────────│ └───────────────────┘ │
-│List│ ─────── now ───────────── │ THIS WEEK                     │ Chicken tacos · 30 m │
-│ ⭐ │ 7:30  🛁 Bath & story ●Ava│  Fri  Sat  Sun  Mon  Tue  Wed │ Tomorrow: pasta night │
-│Kids│                           │  ☀71  ⛅68 🌧55 ☀60 ☀64 ⛅61 ├───────────────────────┤
-│ 🧸 │ TOMORROW                  │  ●●   ●    ●●●  ●    ●●   ●  │ AVA          🌼 garden │
-│Toys│ 10:00 🥕 Farmers market   │──────────────────────────────│ [🦷✓][👕✓][🧸 ][🥣 ]   │
-│ 🎵 │ 2:00  🎂 Leo's party      │ NOTES                         │ Sticker jar ●●●●○○    │
-│Musc│                           │ 📝 "Grandma visits Sat!"      ├───────────────────────┤
-│ 🖼 │                           │ ⏳ 🎃 Halloween in 29 days    │ 🛒 Shopping · 12 items │
-│ ⚙  │                           │                               │ [family photo tile]   │
-└────┴──────────────────────────┴─────────────────────────────┴───────────────────────┘
-```
-
-**Kitchen Home — portrait (Wall-P)**
-```
-┌────────────────────────────────────────────┐
-│ Friday, October 2            ☀ 63°  H71 L45 │
-│                  7:42 PM                    │
-├────────────────────────────────────────────┤
-│ UP NEXT  🏊 Swim lesson · in 45 min  ●A ●M │
-├────────────────────────────────────────────┤
-│ TODAY                         TOMORROW      │
-│ 8:00  🏫 Daycare  ●Ava        10:00 🥕 Mkt  │
-│ 9:30  🦷 Dentist  ●Mom        2:00  🎂 Leo  │
-│ 5:30  🏊 Swim     ●Ava ●Mom                 │
-├──────────────────────┬─────────────────────┤
-│ TONIGHT [taco photo] │ AVA  [🦷✓][👕✓][🧸] │
-│ Chicken tacos · 30 m │ Sticker jar ●●●●○○  │
-├──────────────────────┴─────────────────────┤
-│ THIS WEEK  ☀71 ⛅68 🌧55 ☀60 ☀64 ⛅61 ☀66  │
-├────────────────────────────────────────────┤
-│ 📝 Grandma visits Sat!   ⏳ Halloween 29d   │
-│ [ family photo tile ................... ]   │
-├────────────────────────────────────────────┤
-│  ⌂ Home   📅 Cal   🍽 Meals   ⭐ Kids   ⋯   │
-└────────────────────────────────────────────┘
-```
-
-**Calendar — week (Wall-L)**
-```
-┌────┬─────────────────────────────────────────────────────────────────────────┐
-│nav │ ◀  Sep 28 – Oct 4, 2026  ▶   Day 3-Day [Week] Month Agenda People   ＋  │
-│    │ (All) (●Mom) (●Dad) (●Ava)                         quick add: "…"      │
-│    │        Sun 28    Mon 29    Tue 30    Wed 1     Thu 2     Fri 3   Sat 4 │
-│    │        ☀70/44   ⛅66/41   🌧55/40   ☀60/38   ☀64/40   ☀71/45  ⛅68/43 │
-│    │ all-day [🎂 Grandpa's birthday ──────]                                  │
-│    │  8 AM  [🏫 Daycare●A]  [🏫 Daycare●A] [🏫 Daycare●A] ...                │
-│    │  9 AM            [🦷 Dentist ●M]                                        │
-│    │ ...                                                                     │
-│    │  5 PM                                        [🏊 Swim ●A●M]             │
-│    │ ──────────────────────────────── now 7:42 ─────────────────             │
-└────┴─────────────────────────────────────────────────────────────────────────┘
-```
-
-**Recipe detail + plan-aware suggestions (Wall-L, side sheet over Discover)**
-```
-┌─────────────── Discover ───────────────┬──────────── Chicken Tacos ─────────────┐
-│ [Search…]  Popular · Surprise · Quick… │ [hero photo]                  ★ 😋😋🙂 │
-│ PAIRS WITH YOUR PLAN                   │ 30 min · Mexican · TheMealDB           │
-│ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐   │ Servings  [ − ]  6  [ + ]   US | metric │
-│ │photo │ │photo │ │photo │ │photo │   │ ☐ 1½ lb chicken thighs                 │
-│ │Black │ │Burrito│ │Lime  │ │ …    │   │ ☐ 1 bunch cilantro ← also in Burrito  │
-│ │bean  │ │bowls │ │rice  │ │      │   │ ☐ 3 limes          ← also in Lime rice │
-│ │soup  │ │      │ │      │ │      │   │ …                                      │
-│ │uses 4│ │uses 5│ │uses 3│ │      │   │ [ Add to plan ▾ ] [ Add to list ] [♥]  │
-│ │+2 new│ │+1 new│ │+2 new│ │      │   │ [ Cook mode ▶ ]                        │
-│ └──────┘ └──────┘ └──────┘ └──────┘   │                                        │
-└────────────────────────────────────────┴────────────────────────────────────────┘
-```
-
-**Kid chart — Little stage (Wall-L)**
-```
-┌───────────────────────────────────────────────────────────────────────────┐
-│  ☀ Good morning, Ava!                🐰 (buddy)           🫙 ●●●●○○        │
-│                                                                           │
-│   ┌──────────────┐   ┌──────────────┐   ┌──────────────┐                  │
-│   │   [photo of  │   │   [photo of  │   │   [photo of  │                  │
-│   │  toothbrush] │   │   clothes]   │   │   cereal]    │                  │
-│   │      🦷      │   │      👕      │   │      🥣      │                  │
-│   │   ✓ Done!    │   │   🔊 tap     │   │   🔊 tap     │                  │
-│   └──────────────┘   └──────────────┘   └──────────────┘                  │
-│                                                                           │
-│   🐰 ●━━━━━━●━━━━━━○━━━━━━○  🌞   (bunny hops along the path)              │
-│                                                          ◔ grown-ups      │
-└───────────────────────────────────────────────────────────────────────────┘
-```
-
-**Toybox launcher**
-```
-┌───────────────────────────────────────────────────────────────────────────┐
-│  🧸 Ava's Toybox                                    ⏳ 12 min left  ◔      │
-│  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐   │
-│  │  🎨    │  │  🖍️    │  │  🫧    │  │  🐮    │  │  🔺🟦  │  │  🎵    │   │
-│  │ Paint  │  │ Color  │  │ Bubbles│  │ Farm   │  │ Shapes │  │ Music  │   │
-│  └────────┘  └────────┘  └────────┘  └────────┘  └────────┘  └────────┘   │
-│  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐   │
-│  │  🧩 ✨ │  │  🃏    │  │  👾    │  │ 🌻 123 │  │  ⭐    │  │  🔤    │   │
-│  │ Puzzle │  │ Match  │  │ Monster│  │ Count  │  │ Dots   │  │ Letters│   │
-│  └────────┘  └────────┘  └────────┘  └────────┘  └────────┘  └────────┘   │
-└───────────────────────────────────────────────────────────────────────────┘
-```
-(Labels are for parents; tiles are recognizable without reading.)
-
-**Screensaver**
-```
-┌───────────────────────────────────────────────────────────────────────────┐
-│                                                                           │
-│                       [ full-bleed photo, or two paired portraits ]        │
-│                                                                           │
-│ ░░ gradient scrim ░░                                                      │
-│ 7:42                                                🏊 Swim in 45 min     │
-│ Friday, Oct 2 · ☀ 63°                               📷 July 2024 · Dillon  │
-└───────────────────────────────────────────────────────────────────────────┘
-```
-
-**Weather (Wall-L)**
-```
-┌────┬──────────────────────────────────────────────────────────────────────────┐
-│nav │ IN OUR BACKYARD (PWS KCOAUROR123 · 2 min ago)        ⚠ No alerts          │
-│    │ 63.6°  feels 61°  💨 5 mph (gust 12)  💧 30%  🌧 today 0.00 in  UV 3       │
-│    ├──────────────────────────────────────────────────────────────────────────┤
-│    │ NEXT 24 HOURS    "Dry tonight; rain likely 3–7 PM tomorrow, ~0.3 in"     │
-│    │ temp  ╭─╮__╭──╮___                                                       │
-│    │ rain  ▁ ▁ ▁ ▂ ▅ ▇ ▆ ▃   % + amount                                       │
-│    │ sun   ████████░░░░▒▒██  minutes of sun per hour                          │
-│    │ UV    ▂▃▅▆▅▃▂                                                            │
-│    ├──────────────────────────────────────────────────────────────────────────┤
-│    │ 10 DAYS  Fri ☀ 45 ━━━━━━ 71  10%  ☀ 11.5 h                              │
-│    │          Sat ⛅ 43 ━━━━━ 68   20%  ☀ 8.0 h                               │
-│    │          Sun 🌧 40 ━━━ 55     80% 0.4 in  ☀ 2.1 h  ...                    │
-│    ├──────────────────────────────────────────────────────────────────────────┤
-│    │ ☀ sunrise 7:01 ── arc ── sunset 6:43 · daylight 11 h 42 m · 🌔 waxing   │
-└────┴──────────────────────────────────────────────────────────────────────────┘
-```
-
-**Kid room — night (OK-to-wake)**
-```
-┌──────────────────────────────┐
-│                              │
-│            🌙                │   dim, warm, near-black
-│          7:12                │   moon + red/orange tint = stay in bed
-│                              │   at wake time: 🌞 + soft green, gentle chime
-│   2 sleeps until Grandma 🏡  │
-└──────────────────────────────┘
-```
 
 ### 11.8 Component library (`dearth_ui`)
 
@@ -1929,41 +1711,28 @@ numbers refer to the JT215M (T1) in **profile** builds unless noted.
 
 ### 12.2 Renderer strategy
 
-- On the frame, Flutter 3.47's engine picks **Impeller's OpenGL ES backend**
-  (the PowerVR Rogue Vulkan 1.0 driver is denylisted, as confirmed by engine
-  strings). Measured there (2026-10-04, `dumpsys SurfaceFlinger --latency` —
-  HWUI `gfxinfo` sees nothing under a Flutter surface), the Toybox grid
-  scroll is **GPU-bound at ~14 fps (median 71.7 ms/frame)**, steady across
-  content tier, shadow blur, press effects and lazy-grid changes: Impeller
-  re-rasterizes the whole scene every frame, and the GE8300's fill rate
-  can't do ~10 M shaded pixels twice inside a 17.9 ms budget. The GPU has
-  no clock headroom (504 MHz max, already reached under load).
+- On the frame, Flutter's engine picks **Impeller's OpenGL ES backend** (the
+  PowerVR Rogue Vulkan 1.0 driver is denylisted). Impeller keeps no raster
+  cache, so everything on screen is drawn again on every frame that
+  anything moves, and the GE8300 is fill-rate bound with no clock headroom.
+  Measure with `dumpsys SurfaceFlinger --latency` or the perf gate (§12.9):
+  HWUI `gfxinfo` sees nothing under a Flutter surface.
 - **Shipped (owner decision 2026-10-05): Impeller at native resolution.**
-  The time-boxed Skia opt-out was measured at 56.8 fps (raster cache caches
-  the tile layers), and Impeller reaches 57.0 fps at 540p / 32.6 at 720p via
-  `wm size` — but the frame is partly a photo frame, and the owner chose
-  renderer longevity and photo/text crispness over scroll smoothness. No
-  renderer flag ships in the manifest; the opt-out stays documented here as
-  the measured fallback. App-side cost work continues to close the gap:
-  removing the tile gradients (the launcher's dominant fill — one flat quad
-  per tile now) took the same scroll from ~14 to **45.2 fps** (median
-  22.1 ms, 2026-10-05); the remaining stride is the big-emoji and text
-  fill.
-- **Revisit on every Flutter upgrade** via the frame perf gate (§12.9):
-  watch for PowerVR-Rogue GLES work (3.47.3's flutter/181315 fixed
-  B-series PowerVR artifacts/perf, not Rogue fill rate), any Impeller
-  scene/caching work for the GLES backend, and the announced removal of
-  the opt-out (which retires the 56.8 fps fallback). Probe data:
-  beta 3.49.0-0.2.pre measured identical to pinned 3.47.2 (14.0 vs 14.4
-  fps) — record every probe's numbers here. 2026-10-06, 3.47.2 → 3.47.6
-  (shipped): Toybox grid scroll 38.5 → 40.3 fps (median 17.6 ms both,
-  55–59% → 59–60% of frames at 56 Hz; three runs each, `uiautomator` to
-  reach the Toybox, `dumpsys SurfaceFlinger --latency` on the Flutter
-  surface).
+  The Skia opt-out (measured 56.8 fps against Impeller's 14 on the old
+  Toybox grid) and lower resolutions (`wm size`: 57 fps at 540p) were
+  rejected for renderer longevity and photo and text crispness. No renderer
+  flag ships in the manifest.
+- So the gap is closed app-side: costly fills are what hurt. A full-screen
+  gradient drawn corner to corner costs ~73 ms a frame there (top to bottom:
+  ~5 ms), and gradients inside paths, rounded cards and scaling radial glows
+  are the same slow kind; flat fills, `DStillPaint` (a still painter drawn
+  once into an image) and emoji as images (§11.3) are the fixes.
+- **Revisit on every Flutter upgrade** with the perf gate: PowerVR Rogue
+  GLES work, Impeller caching for GLES, and the opt-out's announced removal.
 - Escalation ladder for display perf: 1. tighten tier rules and component
   T1 variants; 2. fix the specific hot path; 3. file upstream issues with
-  reproductions; 4. time-boxed Skia opt-out with an exit plan (measured
-  2026-10-04; not shipped by owner decision).
+  reproductions; 4. a time-boxed Skia opt-out with an exit plan (not
+  shipped, by owner decision).
 
 ### 12.3 Rendering rules
 
@@ -2075,28 +1844,26 @@ numbers refer to the JT215M (T1) in **profile** builds unless noted.
   frames over 50 ms over 1.3× + 5, CPU +3 points, memory ×1.15 (run-to-run
   noise on the JT215M is up to ~20 %). The §12.1 budgets are printed beside
   each scenario; misses already in the baseline don't fail it.
-  `--only <scenario>` probes one; `--soak <min>` adds the memory soak.
-  It runs unattended and ends in a Markdown report (verdict, what it did to
-  the display, every scenario against budget and baseline) beside its logs.
-  It first asks the app what it is (`--es dearth_tool session`, answered
-  on logcat as `DEARTH_TOOL session {…}`). A display **joined to a Hub is
-  reset** for a clean measurement: the app asks its Hub for a single-use
-  rejoin code for itself (`POST /api/devices/self/rejoin`), its data is
-  cleared, and afterwards the gate hands the code back (`--es dearth_hub
-  --es dearth_enroll`): the app claims it from onboarding and returns as
-  the **same device** (id, name, role, settings; only the token is new),
-  gets FreeKiosk's key again, and the gate waits until it syncs live.
-  Solo and Toybox-only displays hold the only copy of their data and demo
-  displays have nothing to lose: they're never reset (`--no-reset` skips
-  it for any display). `--reboot` boots the display fresh and lets it
-  settle 90 s first. A scenario slower than the
-  baseline is **measured again** at once (the profile build reads the
-  `debug.dearth.perf_only` property, so no rebuild) and fails only when
-  it's slower both times: Bubble Pop's random bubbles moved its p90 from
-  33 to 42 ms between two runs of one build, and on the JT215M navigate's
-  build p90 swings between ~95 and ~160 ms run to run (same build, same
-  boot), sometimes for minutes at a time. Exit codes: 0 passed, 1
-  slower or failed, 3 the display couldn't be put back.
+  `--only <scenario>` probes one (`--only games` or `game.<id>` plays
+  each Toybox game; `still.<id>`, `quiet.<id>`, `idle.<id>` and
+  `--only probes` separate screen, sound and technique costs); `--soak
+  <min>` adds the memory soak. It runs unattended and ends in a Markdown
+  report beside its logs. It first asks the app what it is (`--es
+  dearth_tool session`, answered on logcat as `DEARTH_TOOL session {…}`).
+  A display **joined to a Hub is reset** for a clean measurement: the app
+  gets a single-use rejoin code from its Hub (`POST
+  /api/devices/self/rejoin`), its data is cleared, and afterwards the gate
+  hands the code back (`--es dearth_hub --es dearth_enroll`) so it returns
+  as the **same device** (only the token is new) and waits until it syncs
+  live. Solo, Toybox-only and demo displays are never reset (`--no-reset`
+  skips it for any). The scenarios keep their own token in memory
+  (`SessionStore(secure: false)`): the Keystore is shared with the
+  installed Dearth, and a demo start would wipe it. `--reboot` boots the
+  display fresh first. A scenario slower than the baseline is **measured
+  again** at once (`debug.dearth.perf_only`, no rebuild) and fails only
+  when slower both times: on the JT215M navigate's build p90 swings
+  between ~95 and ~160 ms with the same build (cause not found). Exit
+  codes: 0 passed, 1 slower or failed, 3 the display couldn't be put back.
   **Release builds for displays require a green perf gate on the frame**
   before a display is set to update by itself (§15.3); CI can't run it.
 
@@ -2185,8 +1952,7 @@ Hub, adapters included, in a background isolate).
 - **Push:** `events.watch` channels to
   `https://<hub-domain>/api/webhooks/google/calendar`. A notification
   triggers an immediate incremental sync. Channels renew before their
-  `expiration`. A fallback poll runs every 10 min, or every 2 min while a
-  device is in the Calendar view.
+  `expiration`. A fallback poll runs every 10 min.
 - Cancelled events (`status=cancelled`) → tombstones. Exceptions map to
   `recurring_parent_id` + `original_start`.
 
@@ -2643,11 +2409,9 @@ domain and must allow WebSocket upgrades on `/api/sync`.
 
 ### 15.1 Phase 1: the kitchen frame under FreeKiosk "External App" mode
 
-The frame state (2026-10-03): FreeKiosk v2.0.0-beta.4 is **Device Owner**
-and the HOME launcher, in External App mode locked to Dearth. The owner
-switched it from the old webapp while v1 is still in progress, so the frame
-is a working test bed. `tool/deploy_frame.sh` (§15.2) sets all of the below
-up, including after a factory reset.
+FreeKiosk is **Device Owner** and the HOME launcher, in External App mode
+locked to Dearth. `tool/deploy_frame.sh` (§15.2) sets all of the below up,
+including after a factory reset.
 
 1. Build `apps/dearth_app` release APK for **armeabi-v7a**, signed with the
    Dearth release key.
@@ -2660,8 +2424,8 @@ up, including after a factory reset.
 5. Dearth hides the system bars on wall displays (immersive) and follows
    the accelerometer (`fullSensor`), whatever Android's auto-rotate switch
    says.
-6. Optionally `pm disable-user com.fujia.calendar`. **Never disable
-   `com.waophoto.fota`**: it crash-loops this ROM (see the FreeKiosk skill notes).
+6. Disable the ROM's vendor apps (`deploy_frame.sh` keeps the list).
+   **Never disable `com.waophoto.fota`**: every app crash-loops without it.
 7. Verify with Dearth's own remote screenshot (FR-ADM-02) and the Admin →
    Devices health view.
 
@@ -2676,16 +2440,14 @@ Owner does not grant it on the JT215M ROM.
 
 ### 15.2 Provisioning script
 
-`tool/deploy_frame.sh <ip> [--check] [--build | --apk FILE] [--reboot]`
-reuses the logic and quirk handling of the old `setup-freekiosk.sh`. It
-installs or upgrades FreeKiosk (pinned, SHA-256 checked) and the Dearth APK
-for the device's ABI, makes FreeKiosk Device Owner and HOME, writes the
-External App config (a second time when the beta.4 config-ordering quirk
-leaves the old overlay running), turns on auto-rotate and adaptive
-brightness, and verifies by reboot. Every step reads the device first and
-changes only what differs; `--check` reports without changing anything.
-Still to come: pairing with a Hub (`--hub <url>`) and the FreeKiosk REST
-key handoff (§13.9).
+`tool/deploy_frame.sh <ip> [--check] [--build | --apk FILE] [--join HUB
+CODE] [--reboot]` (`--help` lists everything it sets). It installs or
+upgrades FreeKiosk (pinned, SHA-256 checked) and the Dearth APK for the
+device's ABI, makes FreeKiosk Device Owner and HOME, writes the External
+App config, hands Dearth FreeKiosk's REST key (§13.9), sets up the
+keyboard (HeliBoard, pinned) and the ROM's quirks, and can pair Dearth
+with a Hub. Every step reads the device first and changes only what
+differs; `--check` reports without changing anything.
 
 ### 15.3 App updates
 
@@ -2706,7 +2468,7 @@ others.
 
 | Device | How updates install |
 |---|---|
-| Under FreeKiosk, with the ROM's network ADB open (the JT215M: root adbd on 5555, no authorization) | **Silently.** Dearth isn't Device Owner, and lock task allows only FreeKiosk and Dearth, so Android's installer screen can't appear. Dearth connects to its own adbd on 127.0.0.1:5555 (`LocalAdb`) and runs `cat <apk> \| pm install -r -S <size>` in the foreground: adbd ends everything its shell started when the shell ends (`nohup` and `setsid` included), and pm stops the app to replace it, so the new version starts itself from `MY_PACKAGE_REPLACED` (it may start an activity from the background because frames allow it to draw over other apps). Verified on the frame 2026-10-10: installed in under 5 s, still in lock task. A build that fails to install (pm's refusal, or the old version still running 5 min later) is shown in Settings and never retried by itself. Per display (Settings → Updates, grown-up): **When I tap** (default), **Nightly** (the household's night hours, or 2–5 am without a night schedule) or **When idle** (the photo frame, the night clock or the screen off). Never while the display is in use or a kitchen timer is running or ringing. |
+| Under FreeKiosk, with the ROM's network ADB open (the JT215M: root adbd on 5555, no authorization) | **Silently.** Dearth isn't Device Owner, and lock task allows only FreeKiosk and Dearth, so Android's installer screen can't appear. Dearth connects to its own adbd on 127.0.0.1:5555 (`LocalAdb`) and runs `cat <apk> \| pm install -r -S <size>` in the foreground: adbd ends everything its shell started when the shell ends (`nohup` and `setsid` included), and pm stops the app to replace it, so the new version starts itself from `MY_PACKAGE_REPLACED` (it may start an activity from the background because frames allow it to draw over other apps). A build that fails to install (pm's refusal, or the old version still running 5 min later) is shown in Settings and never retried by itself. Per display (Settings → Updates, grown-up): **When I tap** (default), **Nightly** (the household's night hours, or 2–5 am without a night schedule) or **When idle** (the photo frame, the night clock or the screen off). Never while the display is in use or a kitchen timer is running or ringing. |
 | Other Android devices (phones, tablets) | A grown-up taps Install: a `PackageInstaller` session, and Android shows its confirm screen (the first time, Android asks to allow Dearth to install apps). |
 | Developer path | `tool/deploy_frame.sh` installs the latest release, `--apk` a given one, `--build` a local build (keeping the installed build number, so it installs over a newer release). |
 | Dearth as Device Owner/launcher (M5, optional) | Silent `PackageInstaller` sessions without ADB, with staged rollout (one frame first) and automatic rollback if the new version fails to report healthy within 10 min. |
@@ -2725,8 +2487,9 @@ CI.
   with retry, never a red error screen. Errors are reported to the Hub.
 - An optional nightly maintenance window (03:45) restarts the app
   (FreeKiosk `restart-ui`, or app self-restart) for long-uptime hygiene.
-- Recovery playbook (factory-reset-safe) in `docs/frame-recovery.md`,
-  including the FreeKiosk device-owner removal steps.
+- `tool/deploy_frame.sh` is the factory-reset-safe recovery path: it
+  rebuilds the FreeKiosk Device Owner + lock-task setup, including the
+  device-owner removal steps when a fresh start is needed.
 
 ### 15.5 Other devices
 
@@ -2772,43 +2535,37 @@ Revisit after v1 based on how well FreeKiosk works in practice.
 
 ### 16.2 CI/CD (GitHub Actions)
 
-- On every PR:
-  - Format and analyze (strict lints plus custom rules from §12.3).
-  - Unit, property, Hub and golden tests.
-  - **Playwright web E2E** against the web build + a test Hub (all viewport
-    projects; traces, screenshots and videos kept on failure).
-  - Build: armeabi-v7a and arm64 APKs, web, Linux, Windows, macOS, iOS
-    (no-codesign), Hub Docker image.
-- On `main`: publish the Hub image (`ghcr.io`, multi-arch) and attach APKs
-  to a rolling pre-release.
-- On tags: full release with notes, APKs uploaded to the Hub's update
-  channel, and the perf-gate report attached (run on the LAN frame by a
-  self-hosted runner or manually).
+`.github/workflows/build.yml` runs on every push to `main` (a newer push
+cancels older runs): codegen check, analyze, every unit and widget suite,
+the Playwright suite in shards, and builds for Android (armeabi-v7a and
+arm64), web, Linux, Windows, macOS, iOS (no codesign) and the multi-arch
+Hub image (`ghcr.io`). A green run publishes a GitHub release
+`v<major>.<minor>.<run>`, which displays and the Hub update from (§15.3).
+The frame perf gate (§12.9) can't run in CI. `AGENTS.md` → Testing has
+the commands that reproduce each job.
 
-### 16.3 Conventions (to be codified in `AGENTS.md` at M0)
+### 16.3 Conventions
 
-- Dart 3.13, `strict-casts`, `strict-raw-types`, `strict-inference`. No
-  `dynamic` in feature code. No `print` (structured logger).
-- Feature-first folders (`lib/features/calendar/{data,domain,ui}`).
-  Widgets never call HTTP or providers directly.
+`AGENTS.md` holds the working rules (golden rules, style, testing). The
+ones this spec relies on:
+
 - FR IDs appear in test names (`FR-CAL-12: quick add parses "…"`), in
   both Dart tests and Playwright specs.
 - **Test identifiers:** every interactive or asserted widget on a user
   journey carries a stable `Semantics(identifier: 'area.thing')` (helper
-  `tid()`). On web this renders as the `flt-semantics-identifier` DOM
-  attribute that Playwright selects on. The app force-enables the semantics
-  tree when started with `?e2e=1` (or `--dart-define=DEARTH_E2E=true`).
-  Identifiers are part of the test contract: renaming one is a breaking
-  change for `e2e/`.
+  `tid()`), which the web renders as the `flt-semantics-identifier`
+  attribute Playwright selects on. The app forces the semantics tree on
+  with `?e2e=1` (or `--dart-define=DEARTH_E2E=true`). Renaming one is a
+  breaking change for `e2e/`.
 - **Why web E2E is the primary suite:** Flutter renders the same widgets and
   runs the same Dart on web and native, so journeys verified in Chromium hold
   on Android/iOS/desktop. Web can't verify platform channels, armv7 native
   libraries, or Impeller-GLES performance; those stay covered by the native
   smoke test and the perf gate.
-- Changing specified behavior means updating this SPEC in the same PR.
-- Dependencies: each new package needs a justification line in the PR,
-  armv7 verification if it's native, and license compatibility. Prefer
-  first-party (Dart/Flutter team) packages.
+- Changing specified behavior means updating this SPEC in the same commit.
+- Dependencies: each new package needs a reason, armv7 verification if
+  it's native, and a compatible license. Prefer first-party (Dart/Flutter
+  team) packages.
 
 ### 16.4 Definition of done (per feature)
 
@@ -2821,9 +2578,9 @@ Revisit after v1 based on how well FreeKiosk works in practice.
 
 ### 16.5 License
 
-**AGPL-3.0** (consistent with previous editions) unless the owner prefers
-MIT/Apache for wider reuse (see §19). Third-party assets: OFL fonts, MIT
-Fluent Emoji, CC0 Kenney assets and sounds. A licenses screen is generated.
+**AGPL-3.0** (`LICENSE`). Third-party assets: OFL fonts (Noto emoji
+included), CC0 sounds and assets, MIT Fluent Emoji when they land. A
+licenses screen is generated.
 
 ---
 
@@ -2832,28 +2589,10 @@ Fluent Emoji, CC0 Kenney assets and sounds. A licenses screen is generated.
 Each milestone ends in a usable product on the real frame. **v1.0 (the
 "switch the frame" release) = M1 + M2 + M3.**
 
-### M0: Foundations & de-risking spikes
-Each spike has a written result in `docs/spikes/` and a go/no-go.
-
-| # | Spike | Exit criteria |
-|---|---|---|
-| S1 | **Renderer benchmark** on the JT215M (armv7 profile APK, Impeller-GLES) for the §12.9 scenarios + blur/shadow/clip micro-benchmarks | Budgets met, or design rules adjusted with evidence |
-| S2 | drift + sqlite3 (native assets) build and run on **armeabi-v7a**; background isolate; 50k-row query timings | Works; p95 query < 10 ms for Home queries |
-| S3 | Sync prototype: Hub + frame + web client; offline edits; reconnection; fan-out latency | Converges; p95 LAN fan-out ≤ 1 s |
-| S4 | **Amazon shared album** with the owner's real link: listing, pagination, derivative endpoint, a 7-day stability watch | ≥ 1 working derivative path |
-| S5 | Google OAuth on the Hub via the HTTPS domain ("In production" status); calendar list; `events.watch` webhook round trip | Push-triggered sync < 15 s |
-| S6 | WU key: current + 5-day + nearby stations; merge with Open-Meteo/NWS | Unified model populated |
-| S7 | YouTube IFrame on the frame: platform view vs dedicated activity; memory; embed-blocked detection | Smooth playback, PSS within budget |
-| S8 | Spotify Connect: device list and playback on an Echo/phone; can the Spotify app run on the frame? | Playback works on at least one target |
-| S9 | FreeKiosk External App mode with a test APK: auto-relaunch, localhost REST (screen off/on, brightness), 5-tap overlap, installer UI under lock task | All behaviors documented |
-| S10 | Audio: flutter_soloud latency on armv7 (< 30 ms); just_audio streaming; mixing | Pass, or choose an alternative |
-| S11 | Light sensor → brightness curve; accelerometer auto-rotation | Comfortable curve by day and night |
-| S12 | **Design direction:** hi-fi mockups of Home (L/P), Calendar week, Recipe detail, Kid chart, Toybox, Screensaver, Weather. Font choice validated on the panel at distance. | Owner sign-off |
-| S13 | Image decode: 1080p JPEG vs WebP decode time and memory on the frame | Variant formats confirmed |
-
-Also in M0: repo scaffold (pub workspace), CI, `AGENTS.md`, `dearth_ui`
-token foundation, widget gallery, **Playwright E2E harness** (test Hub with
-fake providers, viewport projects, semantics-identifier selectors).
+### M0: Foundations
+Repo scaffold (pub workspace), CI, `AGENTS.md`, `dearth_ui` token
+foundation, **Playwright E2E harness** (test Hub with fake providers,
+viewport projects, semantics-identifier selectors). Done.
 
 ### M1: Wall-ready core
 Hub (pairing, sync, blobs, jobs, admin basics, backups) · app shell, design
@@ -2906,8 +2645,8 @@ passkeys · i18n · ntfy · Mealie/Tandoor · voice via HA Assist.
 
 | Risk | Likelihood / impact | Mitigation |
 |---|---|---|
-| Impeller-GLES on PowerVR GE8300 underperforms or renders incorrectly | Med / High | S1 benchmark first; tiered effects; pinned Flutter for display builds; upstream reports; time-boxed Skia fallback |
-| Flutter/Dart drops 32-bit ARM, or Skia opt-out removal lands before we're ready | Low–Med / High | Pin display builds; monitor release notes; frames keep working on the pinned version; future hardware is arm64 |
+| Impeller-GLES on PowerVR GE8300 underperforms or renders incorrectly | Med / High | It does underperform on fills (§12.2): tiered effects, app-side fixes, the perf gate on every Flutter upgrade, upstream reports |
+| Flutter/Dart drops 32-bit ARM | Low–Med / High | Pin display builds; monitor release notes; frames keep working on the pinned version; future hardware is arm64 |
 | Amazon changes the anonymous share endpoints | Med / Med | Cache-forever pipeline; multiple derivative paths; health badge; Immich/folder alternatives; no credentials means no account lockouts |
 | Google OAuth "Testing" status expires tokens after 7 days | High if missed / Med | Setup docs + Hub health check warn on Testing status; reconnect flow |
 | WU API key limits or policy changes | Low / Low | Keyless sources always on; ~340 calls/day vs a 1,500 limit |
@@ -2925,31 +2664,24 @@ passkeys · i18n · ntfy · Mealie/Tandoor · voice via HA Assist.
 
 ## 19. Open questions
 
+Answered ones are gone (package id `app.dearth`, AGPL-3.0, both
+orientations followed by the accelerometer, Google calendars and the
+shared Family calendar, Amazon shared links, recipe keys).
+
 1. **Screen size:** the frame reports model JT215M (usually a 21.5" panel),
    but it's described as 27". Which is it? This drives the default
    `uiScale`.
-2. **Kitchen mounting orientation** (landscape or portrait)? Both are
-   supported; this sets which layout gets the most polish first.
-3. **Android package id and app name:** keep "Dearth"? The package id must
-   be fixed before the first install (FreeKiosk targets it).
-4. **License:** AGPL-3.0 as before, or MIT/Apache?
-5. **Calendars:** which Google accounts and calendars? Create a shared
-   "Family" calendar (FR-CAL-04)? Week start (Sun/Mon) and 12/24 h?
-6. **Family details for personalization:** names, colors, the daughter's
-   favorite themes (animals? dinosaurs? space?) for stickers, buddy and
-   coloring packs; dietary restrictions or allergies.
-7. **Amazon shared link comfort:** OK with an unlisted public album for the
-   frame? A dedicated "Dearth Frame" album is recommended.
-8. **Spotify Premium?** (Required for playback control.) Is **Alexa Media
-   Player** already installed in HA?
-9. **Recipe keys:** OK to register a free Spoonacular key? Interested in
-   TheMealDB's supporter tier (multi-ingredient search, random sets)?
-10. **Hub domain & LAN:** do LAN devices resolve the HTTPS domain to the
-    LAN IP (split-horizon DNS), or should displays use the LAN IP directly?
-11. **Toddler-room and entry hardware:** which tablets? Their tier and ABI
-    affect testing.
-12. **Grandparents:** should they get anything (read-only calendar link,
-    sending photos to the frame, cheering on chores)?
+2. **Family details for personalization:** the daughter's favorite themes
+   (animals? dinosaurs? space?) for stickers, buddy and coloring packs;
+   dietary restrictions or allergies.
+3. **Spotify Premium?** (Required for playback control.) Is **Alexa Media
+   Player** already installed in HA? (Music box, deferred.)
+4. **Hub domain & LAN:** do LAN devices resolve the HTTPS domain to the
+   LAN IP (split-horizon DNS), or should displays use the LAN IP directly?
+5. **Toddler-room and entry hardware:** which tablets? Their tier and ABI
+   affect testing.
+6. **Grandparents:** should they get anything (read-only calendar link,
+   sending photos to the frame, cheering on chores)?
 
 ---
 
@@ -3091,27 +2823,10 @@ points, not limits.
 {"type":"ops","from":18235,"to":18240,"ops":[ /* … */ ]}
 {"type":"ephemeral","channel":"ha.state","data":{ /* entity deltas */ }}
 {"type":"command","id":"c-12","cmd":"wake"}            // also: sleep, reload, screenshot, chime, announce, timer
-{"type":"error","code":"upgrade_required","minSchema":4}
-```
+ {"type":"error","code":"upgrade_required","minSchema":4}
+ ```
 
-### Appendix F: Event auto-icon keywords (sample)
-
-| Keywords | Icon | Keywords | Icon |
-|---|---|---|---|
-| swim, pool | 🏊 | dentist, teeth | 🦷 |
-| soccer | ⚽ | doctor, checkup, pediatrician | 🩺 |
-| birthday, bday, party | 🎂 | daycare, school, preschool | 🏫 |
-| dance, ballet | 🩰 | library, story time | 📚 |
-| park, playground | 🛝 | zoo | 🦁 |
-| grandma, grandpa, nana, papa | 👵 | flight, airport, trip | ✈️ |
-| haircut | 💇 | vet | 🐾 |
-| dinner, lunch, brunch | 🍽️ | church, temple | ⛪ |
-| music, piano, lesson | 🎹 | bath | 🛁 |
-
-The bundled map holds ~300 keywords (English first). User overrides are
-learned per title (FR-CAL-15).
-
-### Appendix G: Glossary
+### Appendix F: Glossary
 
 | Term | Meaning |
 |---|---|

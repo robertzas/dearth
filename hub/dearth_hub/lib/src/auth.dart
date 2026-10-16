@@ -48,7 +48,7 @@ class HubAuth {
   DearthDb get db => kernel.db;
 
   /// Wrong admin passwords, unknown pairing codes and pairing requests per
-  /// caller (SUGGESTIONS Hub §3).
+  /// caller (from the 2026-10-11 review, fixed).
   final adminFailures = RateLimiter(10, const Duration(minutes: 10));
   final claimFailures = RateLimiter(20, const Duration(minutes: 10));
   final pairStarts = RateLimiter(20, const Duration(minutes: 10));

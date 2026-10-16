@@ -12,7 +12,7 @@ Future<String> legacySeal(String key, String plain) async {
   return base64.encode([...box.nonce, ...box.cipherText, ...box.mac.bytes]);
 }
 
-/// Integration secrets at rest (SUGGESTIONS Hub §7).
+/// Integration secrets at rest (from the 2026-10-11 review, fixed).
 void main() {
   test('the generated key seals as before', () async {
     final db = openHubDatabase(inMemory: true);

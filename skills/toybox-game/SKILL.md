@@ -274,9 +274,9 @@ phone-size layout tests had been looking at the launcher, not the game.
 - `SPEC.md`: the Appendix B row (ages, skills, how it plays, ladder) and
   the FR-TOY-03 list, if not already there.
 - `README.md`: add the game to the Toybox paragraph's list.
-- `PROGRESS.md`: the 6.2 Toybox line (what it does, briefly), a dated
-  **Log** entry with test counts, and anything surprising under
-  **Decisions & findings**. Clear the **In progress** marker.
+- `PROGRESS.md`: clear the **In progress** marker and update **State**
+  (game count) if it changed. Anything durable (a new gotcha, rule or
+  technique) goes into `AGENTS.md` or this skill — not into a log.
 
 ## Step 8: Verify, commit, deploy, stop
 
@@ -295,7 +295,7 @@ phone-size layout tests had been looking at the launcher, not the game.
 4. Push to `main`, then watch the `build.yml` run. If a job fails, read
    it, fix, push again, and repeat until green.
 5. Deploy: `tool/deploy_frame.sh <frame-ip> --build` (the household's
-   address is in PROGRESS.md's command table). It builds the APK for the
+   address is in AGENTS.md's Commands table). It builds the APK for the
    frame's CPU and installs it over the old one.
 6. Stop and report: what the game does, what was verified, new clips to
    listen to, anything left for the owner (CI publishes a release per
