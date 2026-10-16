@@ -85,6 +85,21 @@ void main() {
       expect((await balance(ava))[Currency.star], 1);
     });
 
+    test('a grown-up can send a waiting completion back; the kid asks again and it is approved', () async {
+      final c = await chore('potty', approval: true);
+      await m.commit(completeChoreOps(op(), await today_(c), ledger: await ledger(), actor: ava, nowMs: 1));
+      await m.commit(undoChoreOps(op(), await today_(c), ledger: await ledger(), nowMs: 2));
+      final back = await today_(c);
+      expect((back.status, back.done, back.waitingApproval), (ChoreStatus.pending, false, false));
+      expect(await ledger(), isEmpty, reason: 'nothing was granted, so nothing to balance');
+      await m.commit(completeChoreOps(op(), back, ledger: await ledger(), actor: ava, nowMs: 3));
+      final again = await today_(c);
+      expect(again.waitingApproval, isTrue);
+      await m.commit(approveChoreOps(op(), again, ledger: await ledger(), approver: 'p-mom', nowMs: 4));
+      expect((await today_(c)).status, ChoreStatus.approved);
+      expect(await balance(ava), {Currency.star: 1, Currency.jar: 1, Currency.sticker: 1});
+    });
+
     test('Anyone-pool chores reward whoever did them; adults fill only the family jar', () async {
       final pool = await chore('napkins', who: const []);
       await m.commit(completeChoreOps(op(), await today_(pool, profileId: null), ledger: await ledger(), actor: ava, nowMs: 1));

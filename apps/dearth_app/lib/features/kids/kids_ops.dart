@@ -99,7 +99,8 @@ List<Op> approveChoreOps(MakeOp op, ChoreToday c, {required List<LedgerEntry> le
 }
 
 /// Undo (SPEC FR-KID-03, within 30 s): back to pending, and whatever the
-/// completion granted is balanced by compensating entries.
+/// completion granted is balanced by compensating entries. A grown-up sending
+/// a waiting completion back uses it too (nothing was granted yet).
 List<Op> undoChoreOps(MakeOp op, ChoreToday c, {required List<LedgerEntry> ledger, required int nowMs}) {
   final id = c.due.instanceId;
   final mine = _refs(ledger, _choreRef, id).toList();

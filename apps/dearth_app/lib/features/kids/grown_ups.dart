@@ -43,7 +43,14 @@ class GrownUpsView extends ConsumerWidget {
                     leading: DEmoji(c.due.chore.emoji ?? '⭐', size: 36 * t.scale),
                     title: c.due.chore.title,
                     subtitle: '${people[c.instance?.completedBy ?? c.due.profileId]?.name ?? 'Someone'} says it’s done',
-                    trailing: DButton(label: 'Approve', size: DButtonSize.sm, onPressed: () => approveChore(context, ref, c)),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        DButton(label: 'Not yet', tone: DButtonTone.ghost, size: DButtonSize.sm, id: 'grownups.sendback.${c.due.chore.id}', onPressed: () => sendBackChore(context, ref, c)),
+                        SizedBox(width: t.space.xs),
+                        DButton(label: 'Approve', size: DButtonSize.sm, id: 'grownups.approve.${c.due.chore.id}.ok', onPressed: () => approveChore(context, ref, c)),
+                      ],
+                    ),
                   ),
                 for (final r in requests)
                   DListRow(

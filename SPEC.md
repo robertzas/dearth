@@ -1112,7 +1112,9 @@ fairness, reminders.
   **celebration** (buddy dance, sound, sticker or star flying to the
   jar/bank). Undo is available for 30 s. If approval is required, the card
   shows "Waiting for grown-up 👀" and approval happens in grown-up mode on
-  any device, or by actionable phone notification (§10.14).
+  any device, or by actionable phone notification (§10.14). A grown-up can
+  instead send it back ("Not yet"): the chore returns to "I did it!", nothing
+  is granted, and the kid can finish it and ask again later.
 - **FR-KID-04 [M3]** Ships with an age-sorted **chore library** (Appendix C):
   "Put toys in the bin", "Shoes in the basket", "Feed Biscuit (with
   grown-up)", "Wipe the table", "Water the plants"… Each comes with a

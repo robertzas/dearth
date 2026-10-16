@@ -63,6 +63,17 @@ Future<void> approveChore(BuildContext context, WidgetRef ref, ChoreToday c) asy
   ref.read(toastProvider).show('Approved “${c.due.chore.title}”', emoji: '👍');
 }
 
+/// A grown-up sends a waiting completion back (behind the PIN): the chore is
+/// "I did it!" again, so the kid can finish it and ask later. A waiting
+/// completion granted nothing, so this only resets the instance.
+Future<void> sendBackChore(BuildContext context, WidgetRef ref, ChoreToday c) async {
+  if (!await ensureGrownUp(context, ref, reason: 'Send “${c.due.chore.title}” back')) return;
+  final w = ref.read(writerProvider);
+  final db = ref.read(dbProvider);
+  await w.commit(undoChoreOps(w.op, c, ledger: await ledgerFor(db, 'chore_instances', c.due.instanceId), nowMs: ref.read(appClockProvider).nowMs()));
+  ref.read(toastProvider).show('“${c.due.chore.title}” is back on the list', emoji: '↩️');
+}
+
 /// A big picture card for one of a kid's chores (SPEC FR-KID-01/03).
 class KidChoreCard extends ConsumerWidget {
   const KidChoreCard({super.key, required this.chore, required this.kid, required this.width});
@@ -107,7 +118,16 @@ class KidChoreCard extends ConsumerWidget {
             Text(c.title, style: t.text.title, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
             SizedBox(height: t.space.sm),
             if (canApprove)
-              DButton(label: 'Approve', icon: Icons.thumb_up_alt_rounded, size: DButtonSize.sm, id: 'kids.approve.${c.id}', onPressed: () => approveChore(context, ref, chore))
+              // Side by side on a wide card, stacked on a narrow one.
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: t.space.xs,
+                runSpacing: t.space.xs,
+                children: [
+                  DButton(label: 'Approve', icon: Icons.thumb_up_alt_rounded, size: DButtonSize.sm, id: 'kids.approve.${c.id}', onPressed: () => approveChore(context, ref, chore)),
+                  DButton(label: 'Not yet', icon: Icons.undo_rounded, tone: DButtonTone.ghost, size: DButtonSize.sm, id: 'kids.sendback.${c.id}', onPressed: () => sendBackChore(context, ref, chore)),
+                ],
+              )
             else
               Container(
                 padding: EdgeInsets.symmetric(horizontal: t.space.md, vertical: t.space.xs),
